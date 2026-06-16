@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Template — install.sh substitutes __HOME__ and __SCRIPT_PATH__ before copying. -->
+<!-- Never add an EnvironmentVariables key with secret values here. -->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.51publisher.backend</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>__SCRIPT_PATH__</string>
+    </array>
+
+    <!-- Restart automatically on crash. -->
+    <key>KeepAlive</key>
+    <true/>
+
+    <!-- Fire at midnight every day. When waking from sleep, fires once on next wake
+         rather than accumulating every missed interval (unlike StartInterval). -->
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>0</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+
+    <!-- Also start immediately when the plist is loaded (e.g. after install or reboot). -->
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>__HOME__/.51publisher/backend.log</string>
+    <key>StandardErrorPath</key>
+    <string>__HOME__/.51publisher/backend.log</string>
+</dict>
+</plist>

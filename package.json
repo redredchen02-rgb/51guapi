@@ -1,0 +1,37 @@
+{
+	"name": "publisher-monorepo",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"setup": "pnpm install",
+		"dev:extension": "pnpm --filter publisher-fill-assistant dev",
+		"dev:backend": "pnpm --filter publisher-backend dev",
+		"build:extension": "pnpm --filter publisher-fill-assistant build",
+		"build:backend": "pnpm --filter publisher-backend build",
+		"test": "pnpm -r test",
+		"coverage": "pnpm -r --parallel coverage",
+		"compile": "pnpm -r compile",
+		"preflight": "tsx --import ./scripts/preflight/wxt-imports-register.mjs scripts/preflight/runner.ts",
+		"test:preflight": "vitest run --config vitest.preflight.config.ts",
+		"lint": "biome check --write",
+		"lint:ci": "biome ci --diagnostic-level=error .",
+		"format": "biome format --write",
+		"check": "biome check",
+		"postinstall": "git config core.hooksPath scripts/git-hooks",
+		"eval:golden": "bash scripts/eval-golden.sh"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.4.16",
+		"@vitest/coverage-v8": "^4.1.8",
+		"jsdom": "^25.0.1",
+		"tsx": "^4.19.2",
+		"vitest": "^4.1.8"
+	},
+	"pnpm": {
+		"onlyBuiltDependencies": [
+			"esbuild",
+			"better-sqlite3"
+		]
+	},
+	"version": "0.1.0"
+}

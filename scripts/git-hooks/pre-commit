@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# pre-commit: Type check + 脱敏闸门(fail-closed,挡提交)。
+# 启用方式(一次性):
+#   git config core.hooksPath scripts/git-hooks
+set -euo pipefail
+
+# 有 .ts/.tsx 变更 → 跑类型检查
+if git diff --cached --name-only | grep -qiE '\.tsx?$'; then
+  echo "[pre-commit] 检测到 TS 变更,运行 pnpm compile…"
+  pnpm compile || {
+    echo "[pre-commit] ✗ 类型检查未通过,已阻止提交。修复后重试。" >&2
+    exit 1
+  }
+fi
+
+# fixture 变更 → 脱敏闸门
+if git diff --cached --name-only | grep -qiE '(^|/)(fixtures?)/.*\.html$'; then
+  echo "[pre-commit] fixture 有变更,运行脱敏闸门…"
+  bash scripts/check-fixture-secrets.sh || {
+    echo "[pre-commit] ✗ 脱敏闸门未通过,已阻止提交。修掉机密后重试。" >&2
+    exit 1
+  }
+fi

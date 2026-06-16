@@ -1,0 +1,61 @@
+.backBtn {
+	margin-bottom: var(--space-md);
+}
+
+.heading {
+	font-size: var(--font-lg);
+	margin: 0 0 var(--space-sm);
+}
+
+.intro {
+	margin-bottom: var(--space-md);
+}
+
+.nestedCard {
+	margin-top: var(--space-lg);
+}
+
+.fallbackToggle {
+	width: 100%;
+	text-align: left;
+	font-size: var(--font-sm);
+	padding: 0;
+}
+
+.fallbackContent {
+	margin-top: var(--space-lg);
+}
+
+.fewShotCount {
+	margin-left: var(--space-sm);
+}
+
+.textareaMd {
+	min-height: 120px;
+}
+
+.textareaSm {
+	min-height: 100px;
+}
+
+.textareaXs {
+	min-height: 80px;
+}
+
+.promptSelect {
+	margin-bottom: var(--space-sm);
+}
+
+.saveToBackendBtn {
+	margin-top: var(--space-xs);
+}
+
+.textareaMapping {
+	min-height: 140px;
+	font-family: monospace;
+	font-size: var(--font-xs);
+}
+
+.saveBtn {
+	margin-top: var(--space-lg);
+}

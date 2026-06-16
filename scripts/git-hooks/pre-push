@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+# pre-push: secret scan (fail-closed) over the commits being pushed.
+# 启用方式(一次性): git config core.hooksPath scripts/git-hooks
+#
+# Prefers gitleaks when installed; otherwise falls back to a pattern scan of
+# the diff range. Covers CI config, .ai-memory, fixtures, and source. The
+# .env file itself is gitignored and never enters the diff.
+set -euo pipefail
+
+remote="${1:-origin}"
+zero="0000000000000000000000000000000000000000"
+
+# Determine the range of commits being pushed (read from stdin per githooks(5)).
+range=""
+while read -r local_ref local_sha remote_ref remote_sha; do
+  [ "$local_sha" = "$zero" ] && continue   # branch deletion, nothing to scan
+  if [ "$remote_sha" = "$zero" ]; then
+    # New branch: scan commits not already on any remote branch.
+    range="$local_sha --not --remotes=$remote"
+  else
+    range="$remote_sha..$local_sha"
+  fi
+done
+
+# Nothing piped (e.g. manual run) → scan working tree's tracked files instead.
+if [ -z "$range" ]; then
+  range="HEAD"
+fi
+
+if command -v gitleaks >/dev/null 2>&1; then
+  echo "[pre-push] gitleaks 扫描推送范围…"
+  # 必须 scoped 到 $range:否则 gitleaks 默认扫全 repo 所有 ref,使任一本地分支
+  # (如他人 WIP)夹带的命中字符串误拦本次推送。与下方 fallback 用 $range 对齐。
+  if ! gitleaks detect --no-banner --redact -l error --log-opts "$range" >/dev/null 2>&1; then
+    echo "[pre-push] ✗ gitleaks 命中疑似机密，已阻止推送。核实/轮换后重试。" >&2
+    exit 1
+  fi
+  echo "[pre-push] ✓ gitleaks 通过。"
+  exit 0
+fi
+
+# Fallback: pattern scan of the pushed diff.
+echo "[pre-push] gitleaks 未安装，使用模式扫描兜底 (建议 brew install gitleaks)…"
+# High-risk patterns: long hex/base64 secrets, common key prefixes, assigned secrets.
+patterns='(AKIA[0-9A-Z]{16})|(sk-[A-Za-z0-9]{20,})|(ghp_[A-Za-z0-9]{20,})|(-----BEGIN [A-Z ]*PRIVATE KEY-----)|((api[_-]?key|secret|token|password)["'"'"' ]*[:=]["'"'"' ]*[A-Za-z0-9/+_-]{16,})'
+
+# Scan added lines only; exclude obvious placeholders.
+hits="$(git diff $range -- 2>/dev/null \
+  | grep -E '^\+' \
+  | grep -viE '(your_|change-this|example|placeholder|xxxx|<.*>|redacted|dummy|mock)' \
+  | grep -inE "$patterns" || true)"
+
+if [ -n "$hits" ]; then
+  echo "[pre-push] ✗ 模式扫描命中疑似机密，已阻止推送：" >&2
+  echo "$hits" | head -20 >&2
+  echo "[pre-push] 若为误报，请用 gitleaks 复核或调整 .gitignore；真机密须轮换。" >&2
+  exit 1
+fi
+echo "[pre-push] ✓ 模式扫描通过 (非穷尽，正式防线请安装 gitleaks)。"

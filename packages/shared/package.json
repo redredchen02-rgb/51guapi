@@ -1,0 +1,26 @@
+{
+	"name": "@51guapi/shared",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"import": "./dist/index.js",
+			"types": "./dist/index.d.ts"
+		}
+	},
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build": "tsc",
+		"compile": "tsc",
+		"dev": "tsc --watch"
+	},
+	"dependencies": {},
+	"devDependencies": {
+		"typescript": "^6.0.3"
+	}
+}

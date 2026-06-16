@@ -1,0 +1,94 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # 脱敏强制门:fail-fast 在任何 build/artifact 之前。从 repo 根调用脚本
+      # (脚本内 FIXTURE_DIR 已锚定到自身位置,空扫会 exit 2 大声失败)。
+      - name: Check fixture secrets
+        run: bash scripts/check-fixture-secrets.sh
+
+      - name: Dependency audit (prod)
+        run: pnpm audit --prod --audit-level=high
+      - name: Dependency audit (dev warning)
+        run: pnpm audit --audit-level=high || echo "::warning::dev 依赖存在高/严重漏洞，请关注"
+
+      - name: Build shared
+        run: pnpm --filter @51guapi/shared build
+
+      - name: Type check
+        run: pnpm -r compile
+
+      - name: Lint
+        run: pnpm lint:ci
+
+      - name: Test
+        run: pnpm -r test
+
+      # e2e 真闸 + 跳过可见:把 vitest 的 passed/skipped 汇总写进 CI step summary,
+      # 杜绝「无 API_KEY 全 skip 却显示绿」的假绿。e2e 失败仍中断(真闸)。
+      - name: E2E (skips visible)
+        run: |
+          set -o pipefail
+          pnpm --filter publisher-fill-assistant test:e2e 2>&1 | tee e2e.log
+          echo "### E2E test summary" >> "$GITHUB_STEP_SUMMARY"
+          grep -E "Tests +[0-9]" e2e.log | tail -1 >> "$GITHUB_STEP_SUMMARY" \
+            || echo "(no vitest summary line found — investigate)" >> "$GITHUB_STEP_SUMMARY"
+
+      # 产物校验:build 双端并断言产物存在,消除「CI 绿但产物坏」。
+      # 复用 scripts/check-all.sh 的产物校验尾段思路(不整段调它以免重复 lint/test)。
+      - name: Build and verify artifacts
+        run: |
+          pnpm --filter publisher-backend build
+          pnpm --filter publisher-fill-assistant build
+          # 断言关键产物文件存在(非仅目录),避免空/坏 build 通过 test -d。
+          test -f packages/extension/.output/chrome-mv3/manifest.json \
+            || { echo "✗ 扩展产物缺 chrome-mv3/manifest.json(build 可能空/坏)"; exit 1; }
+          ls packages/backend/dist/*.js >/dev/null 2>&1 \
+            || { echo "✗ 后端产物 dist 无 .js(build 可能空/坏)"; exit 1; }
+          echo "✓ 双端产物存在且含关键文件"
+
+  dependency-review:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+
+  # 无条件强制密钥扫描:不依赖任何 clone 端 hook 配置(postinstall 设的 core.hooksPath
+  # 只在 pnpm install 后生效,bare clone/CI 不覆盖)。fetch-depth:0 拉全史,使 gitleaks
+  # 既扫本次变更也覆盖历史(清史后一次性确认旧 key 已除)。失败即 fail pipeline。
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

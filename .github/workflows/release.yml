@@ -1,0 +1,92 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared
+        run: pnpm --filter @51guapi/shared build
+
+      - name: Type check
+        run: pnpm -r compile
+
+      - name: Lint
+        run: pnpm lint:ci
+
+      - name: Test
+        run: pnpm -r test
+
+      - name: Build extension zip
+        run: pnpm --filter publisher-fill-assistant zip
+
+      - name: Prepare extension artifact
+        run: cp packages/extension/.output/publisher-fill-assistant-*.zip ./extension.zip
+
+      - name: Build Docker image
+        run: docker build -f packages/backend/Dockerfile -t 51publisher-backend .
+
+      - name: Export Docker image
+        if: success()
+        run: docker save 51publisher-backend | gzip > 51publisher-backend.tar.gz
+
+      - name: Upload extension artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-zip
+          path: extension.zip
+          if-no-files-found: error
+
+      - name: Upload Docker artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image
+          path: 51publisher-backend.tar.gz
+          if-no-files-found: ignore
+
+  release:
+    needs: build-and-verify
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download extension artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: extension-zip
+          path: artifacts/
+
+      - name: Download Docker artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-image
+          path: artifacts/
+          if-no-files-found: ignore
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            artifacts/*.zip
+            artifacts/*.tar.gz
