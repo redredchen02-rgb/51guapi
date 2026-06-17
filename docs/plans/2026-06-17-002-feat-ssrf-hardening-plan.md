@@ -1,7 +1,7 @@
 ---
 title: "feat: 安全加固收尾 — DNS rebinding pinning + channel 寫入防越權 + IDN 同形脚本白名單"
 type: feat
-status: active
+status: completed
 date: 2026-06-17
 origin: docs/v0.2-backlog.md
 ---
@@ -93,7 +93,7 @@ graph TB
 
 （三項互相獨立、可並行；都只動 backend。）
 
-- [ ] **Unit 1: DNS rebinding socket pinning**
+- [x] **Unit 1: DNS rebinding socket pinning**
 
 **Goal:** 消除解析↔連線的 TOCTOU——把每跳校驗通過的公網 IP 釘到 socket，連線端對齊校驗端並再驗私網。
 
@@ -127,7 +127,7 @@ graph TB
 
 ---
 
-- [ ] **Unit 2: channel 寫入 step-up + 審計身份**
+- [x] **Unit 2: channel 寫入 step-up + 審計身份**
 
 **Goal:** channel 寫入除 JWT 外要求口令 step-up（被竊 token 單獨寫不了），並讓 JWT 帶可審計主體使 `created_by` 真實。
 
@@ -163,7 +163,7 @@ graph TB
 
 ---
 
-- [ ] **Unit 3: IDN 同形脚本白名單**
+- [x] **Unit 3: IDN 同形脚本白名單**
 
 **Goal:** hostname 脚本白名單——允許 ASCII + CJK，拒絕拉丁可混淆脚本，堵住純單一非拉丁脚本同形。
 
