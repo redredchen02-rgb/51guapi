@@ -93,6 +93,14 @@ interface ListPageResult {
 /** fetchListPaged 累積詳情 URL 的硬上限，防止被誘導成無限翻頁放大器。 */
 const MAX_PAGED_URLS = 200;
 
+/**
+ * fetchListPaged 翻頁「請求次數」的常量硬上限（纵深防御閘）。
+ * maxPages 來自操作者寫入的 channel.maxDepth，代碼側不信任其上界——即使配置寫成
+ * 極大值，這裡在消費點封頂，確保單次 discover 的出站 list-fetch 次數 ≤ MAX_PAGES。
+ * MAX_PAGED_URLS 只封累積 URL 數，封不住「詳情 URL 稀疏時的請求次數」，故另設此閘。
+ */
+const MAX_PAGES = 50;
+
 function extractOgMeta(html: string, property: string): string {
 	const re = new RegExp(
 		`<meta[^>]+property=["']${property}["'][^>]+content=["']([^"']*)["']|<meta[^>]+content=["']([^"']*)["'][^>]+property=["']${property}["']`,
@@ -181,6 +189,11 @@ function resolveSameHost(href: string, base: URL): string | undefined {
 	try {
 		absolute = new URL(href, base);
 	} catch {
+		return undefined;
+	}
+	// 协议白名单化（纵深防御）：只允许 http(s)，不依赖远端 safeFetch 这唯一一道。
+	// 非 http(s) 的 next（file:/javascript:/data:）在此即不跟随。
+	if (absolute.protocol !== "http:" && absolute.protocol !== "https:") {
 		return undefined;
 	}
 	if (absolute.hostname !== base.hostname) return undefined;
@@ -301,7 +314,8 @@ export async function fetchListPaged(
 	listUrl: string,
 	maxPages: number,
 ): Promise<DiscoveredUrl[]> {
-	const pages = Math.max(1, Math.floor(maxPages) || 1);
+	// 消费点封顶：无论 maxPages（= 不信任的 channel.maxDepth）多大，翻页请求次数 ≤ MAX_PAGES。
+	const pages = Math.min(Math.max(1, Math.floor(maxPages) || 1), MAX_PAGES);
 	let startHost: string;
 	try {
 		startHost = new URL(listUrl).hostname;

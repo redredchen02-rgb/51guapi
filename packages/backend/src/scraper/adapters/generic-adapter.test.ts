@@ -416,4 +416,41 @@ describe("generic-adapter.fetchListPaged（U1 翻頁能力）", () => {
 		]);
 		expect(mockSafeFetch).toHaveBeenCalledTimes(2);
 	});
+
+	it("Security：maxPages 極大 + 詳情 URL 稀疏 + 每頁都有 next → 請求次數封頂 MAX_PAGES(50)", async () => {
+		// 每頁僅 1 條詳情 URL（稀疏，MAX_PAGED_URLS=200 封不住），且永遠有同 host next。
+		// 唯一硬閘是 MAX_PAGES：底層 list-fetch 實際調用次數必須 ≤ 50。
+		let page = 1;
+		mockSafeFetch.mockImplementation(async () => {
+			const id = page;
+			const next = `https://example.com/latest?page=${page + 1}`;
+			page += 1;
+			return makeResponse(listHtmlWithNext([id], next));
+		});
+		const results = await fetchListPaged("https://example.com/latest", 10000);
+		// 請求次數封頂（不是只看累積 URL ≤ 200）
+		expect(mockSafeFetch).toHaveBeenCalledTimes(50);
+		expect(results).toHaveLength(50);
+	});
+
+	it("Security：next 為 javascript:/file:/data: → resolveSameHost 協議白名單拒，不跟隨", async () => {
+		for (const evil of [
+			"javascript:alert(1)",
+			"file:///etc/passwd",
+			"data:text/html,<a href=/gossip/9>x</a>",
+		]) {
+			mockSafeFetch.mockReset();
+			mockSafeFetch.mockResolvedValueOnce(
+				makeResponse(
+					`<html><head><link rel="next" href="${evil}" /></head><body><a href="/gossip/1">x</a></body></html>`,
+				),
+			);
+			const results = await fetchListPaged("https://example.com/latest", 5);
+			// 協議白名單在 resolveSameHost 即拒 → 無下一頁 → 只發一次請求
+			expect(mockSafeFetch).toHaveBeenCalledOnce();
+			expect(results.map((r) => r.url)).toEqual([
+				"https://example.com/gossip/1",
+			]);
+		}
+	});
 });
