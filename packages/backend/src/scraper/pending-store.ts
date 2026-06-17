@@ -99,7 +99,9 @@ function rowToTopic(row: PendingRow): PendingTopic {
 
 /**
  * 计算选题质量分 (0–1):
- *   score = fieldCompleteness × freshnessDecay
+ *   score = fieldCompleteness × freshnessDecay × confidenceFactor
+ * - fieldCompleteness: title/body/cover(布尔) + facts 真实非空占比(连续),取均值
+ * - confidenceFactor: 0.5 + 0.5×confidence(软化,confidence=0 不归零)
  * - fieldCompleteness: {title, body, facts, coverImageUrl} 中非空字段占比
  * - freshnessDecay: exp(-daysSinceCreation / 7)，半衰期约 5 天
  *
@@ -107,14 +109,18 @@ function rowToTopic(row: PendingRow): PendingTopic {
  *  发布回访机制随发布机器一并下线。)
  */
 function computeScore(topic: PendingTopic): number {
-	const hasTitle = topic.title.trim().length > 0;
-	const hasBody = !!topic.rawContent?.body?.trim();
-	const hasFacts = Object.values(topic.facts ?? {}).some(
-		(v) => v !== null && v !== undefined && v !== "",
-	);
-	const hasCover = !!topic.coverImageUrl;
+	const hasTitle = topic.title.trim().length > 0 ? 1 : 0;
+	const hasBody = topic.rawContent?.body?.trim() ? 1 : 0;
+	const hasCover = topic.coverImageUrl ? 1 : 0;
+	// facts 完整度用「真实非空占比」(0..1) 而非「任一非空即满分」——否则只填 1 个
+	// 字段(如恒非空的来源连结)的垃圾草稿与 8 事实全满的优质草稿同分,排序失真。
+	const factsVals = Object.values(topic.facts ?? {});
+	const factsCompleteness = factsVals.length
+		? factsVals.filter((v) => v !== null && v !== undefined && v !== "").length /
+			factsVals.length
+		: 0;
 	const fieldCompleteness =
-		[hasTitle, hasBody, hasFacts, hasCover].filter(Boolean).length / 4;
+		(hasTitle + hasBody + hasCover + factsCompleteness) / 4;
 
 	const parsedTs = Date.parse(topic.createdAt);
 	const daysSince = Number.isNaN(parsedTs)
@@ -122,7 +128,16 @@ function computeScore(topic: PendingTopic): number {
 		: (Date.now() - parsedTs) / (1000 * 60 * 60 * 24);
 	const freshnessDecay = Math.exp(-daysSince / 7);
 
-	return fieldCompleteness * freshnessDecay;
+	// confidence 因子:把提炼置信度纳入排序,但用 0.5+0.5×confidence 软化——confidence=0
+	// 的旧数据不被归零(仍按完整度计分),高 confidence 则获加成。
+	const confidenceFactor = 0.5 + 0.5 * clamp01(topic.confidence);
+
+	return fieldCompleteness * freshnessDecay * confidenceFactor;
+}
+
+function clamp01(n: number): number {
+	if (Number.isNaN(n)) return 0;
+	return Math.max(0, Math.min(1, n));
 }
 
 export async function pendingTopicExistsBySourceUrl(

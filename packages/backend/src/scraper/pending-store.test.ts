@@ -59,6 +59,87 @@ describe("pending-store (SQLite)", () => {
 		expect(result).toBeNull();
 	});
 
+	// ---- computeScore 质量信号（经 save→load 读回持久化 score）----
+	const FULL_GOSSIP = {
+		當事人: "明星A",
+		事件摘要: "出軌事件",
+		起因: "被拍私會",
+		經過: "前任發文",
+		結果: "已分手",
+		來源連結: "https://x.com/1",
+		發生時間: "2024-08",
+		熱度標籤: "出軌",
+	};
+
+	async function scoreOf(t: PendingTopic): Promise<number> {
+		await savePendingTopic(t);
+		const loaded = await loadPendingTopic(t.id);
+		return loaded?.score ?? 0;
+	}
+
+	it("score：8 事实全 + 高 confidence 显著高于 仅 1 字段 + 低 confidence", async () => {
+		const rich = makeTopic({
+			id: "rich",
+			sourceUrl: "https://x.com/rich",
+			facts: FULL_GOSSIP,
+			confidence: 0.9,
+			coverImageUrl: "https://cdn/x.jpg",
+			rawContent: { title: "t", body: "一段较长的正文内容", url: "https://x/1" },
+		});
+		const sparse = makeTopic({
+			id: "sparse",
+			sourceUrl: "https://x.com/sparse",
+			facts: {
+				當事人: null,
+				事件摘要: null,
+				起因: null,
+				經過: null,
+				結果: null,
+				來源連結: "https://x.com/2",
+				發生時間: null,
+				熱度標籤: null,
+			},
+			confidence: 0.1,
+			coverImageUrl: "https://cdn/y.jpg",
+			rawContent: { title: "t", body: "一段较长的正文内容", url: "https://x/2" },
+		});
+		const rScore = await scoreOf(rich);
+		const sScore = await scoreOf(sparse);
+		// 旧实现两者 fieldCompleteness 同为 4/4(hasFacts 二元)、无 confidence 因子 → 同分。
+		expect(rScore).toBeGreaterThan(sScore * 1.4);
+	});
+
+	it("score：同完整度下高 confidence 胜出", async () => {
+		const base = {
+			facts: FULL_GOSSIP,
+			coverImageUrl: "https://cdn/x.jpg",
+			rawContent: { title: "t", body: "正文", url: "https://x/1" },
+		};
+		const hi = makeTopic({
+			...base,
+			id: "hi",
+			sourceUrl: "https://x.com/hi",
+			confidence: 0.9,
+		});
+		const lo = makeTopic({
+			...base,
+			id: "lo",
+			sourceUrl: "https://x.com/lo",
+			confidence: 0.3,
+		});
+		expect(await scoreOf(hi)).toBeGreaterThan(await scoreOf(lo));
+	});
+
+	it("score：confidence=0 的旧数据不被归零（仍按完整度计分）", async () => {
+		const t = makeTopic({
+			id: "old",
+			facts: FULL_GOSSIP,
+			confidence: 0,
+			rawContent: { title: "t", body: "正文", url: "https://x/1" },
+		});
+		expect(await scoreOf(t)).toBeGreaterThan(0);
+	});
+
 	it("save 同 id 两次 → upsert，以最新值为准", async () => {
 		const topic = makeTopic();
 		await savePendingTopic(topic);
