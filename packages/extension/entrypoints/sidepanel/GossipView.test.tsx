@@ -268,4 +268,66 @@ describe("GossipView", () => {
 		fireEvent.click(screen.getByText("确认新增"));
 		await waitFor(() => expect(screen.getByText(/同形/)).toBeDefined());
 	});
+
+	it("新增站点 — 空名称/URL 显示验证错误，不调 createGossipSite", async () => {
+		mockFetchSites.mockResolvedValue([]);
+		render(<GossipView onBack={onBack} onTopicAdded={onTopicAdded} />);
+		await waitFor(() => screen.getByPlaceholderText("站點名稱"));
+		// 点新增但不填任何内容
+		fireEvent.click(screen.getByText("新增"));
+		await waitFor(() =>
+			expect(screen.getByText(/請填寫站點名稱和 URL/)).toBeDefined(),
+		);
+		expect(mockCreateSite).not.toHaveBeenCalled();
+	});
+
+	it("新增渠道 — 未填口令显示验证错误，不调 createChannel", async () => {
+		mockFetchSites.mockResolvedValue([]);
+		mockFetchChannels.mockResolvedValue([]);
+		render(<GossipView onBack={onBack} onTopicAdded={onTopicAdded} />);
+		await waitFor(() => screen.getByPlaceholderText(/钉死 https/));
+		fireEvent.change(screen.getByPlaceholderText(/钉死 https/), {
+			target: { value: "example.com" },
+		});
+		// 故意不填口令
+		fireEvent.click(screen.getByText("确认新增"));
+		await waitFor(() =>
+			expect(screen.getByText(/管理员口令重验/)).toBeDefined(),
+		);
+		expect(mockCreateChannel).not.toHaveBeenCalled();
+	});
+
+	it("删除站点 → 站点从列表消失", async () => {
+		const { deleteGossipSite } = await import("../../lib/gossip-client");
+		const mockDelete = vi.mocked(deleteGossipSite);
+		mockDelete.mockResolvedValueOnce(undefined);
+		mockFetchSites.mockResolvedValueOnce([makeSite("site-a", "站點A")]);
+		render(<GossipView onBack={onBack} onTopicAdded={onTopicAdded} />);
+		await waitFor(() => screen.getByText("站點A"));
+		fireEvent.click(screen.getByText("刪除"));
+		await waitFor(() =>
+			expect(screen.queryByText("站點A")).toBeNull(),
+		);
+		expect(mockDelete).toHaveBeenCalledWith("site-a");
+	});
+
+	it("生成文章 — DUPLICATE_URL 时同样调用 onTopicAdded 并移除该条目", async () => {
+		mockFetchSites.mockResolvedValueOnce([makeSite("site-a", "站點A")]);
+		mockDiscover.mockResolvedValueOnce([
+			{ url: "https://site-a.com/dup", title: "已存在文章" },
+		]);
+		mockFromUrl.mockRejectedValueOnce(new Error("DUPLICATE_URL"));
+
+		render(<GossipView onBack={onBack} onTopicAdded={onTopicAdded} />);
+		await waitFor(() => screen.getByText("站點A"));
+		fireEvent.click(screen.getByText("🔄 刷新"));
+		await waitFor(() => screen.getByText("已存在文章"));
+
+		fireEvent.click(screen.getByText("生成文章"));
+		await waitFor(() => {
+			expect(onTopicAdded).toHaveBeenCalledTimes(1);
+			// 条目被移除
+			expect(screen.queryByText("已存在文章")).toBeNull();
+		});
+	});
 });
