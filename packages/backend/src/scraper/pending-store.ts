@@ -122,11 +122,7 @@ function computeScore(topic: PendingTopic): number {
 	const fieldCompleteness =
 		(hasTitle + hasBody + hasCover + factsCompleteness) / 4;
 
-	const parsedTs = Date.parse(topic.createdAt);
-	const daysSince = Number.isNaN(parsedTs)
-		? 0
-		: (Date.now() - parsedTs) / (1000 * 60 * 60 * 24);
-	const freshnessDecay = Math.exp(-daysSince / 7);
+	const freshnessDecay = Math.exp(-freshnessDays(topic) / 7);
 
 	// confidence 因子:把提炼置信度纳入排序,但用 0.5+0.5×confidence 软化——confidence=0
 	// 的旧数据不被归零(仍按完整度计分),高 confidence 则获加成。
@@ -138,6 +134,29 @@ function computeScore(topic: PendingTopic): number {
 function clamp01(n: number): number {
 	if (Number.isNaN(n)) return 0;
 	return Math.max(0, Math.min(1, n));
+}
+
+/**
+ * 新鲜度参照「天数」:优先事件/发布时间,createdAt(入库时间)仅兜底。
+ * 否则刚爬的 3 年前旧瓜会因 createdAt≈now 恒判新鲜。基准依序取:
+ *   rawContent.metadata.publishedTime → facts.發生時間 → createdAt。
+ * 任一不可解析(如「2024年5月」)即跳到下一个;全失败退回 createdAt。负值(未来时间)归 0。
+ */
+function freshnessDays(topic: PendingTopic): number {
+	const facts = topic.facts as Record<string, unknown> | undefined;
+	const candidates = [
+		topic.rawContent?.metadata?.publishedTime,
+		typeof facts?.發生時間 === "string" ? facts.發生時間 : undefined,
+		topic.createdAt,
+	];
+	for (const c of candidates) {
+		if (!c) continue;
+		const ts = Date.parse(c);
+		if (!Number.isNaN(ts)) {
+			return Math.max(0, (Date.now() - ts) / (1000 * 60 * 60 * 24));
+		}
+	}
+	return 0;
 }
 
 export async function pendingTopicExistsBySourceUrl(

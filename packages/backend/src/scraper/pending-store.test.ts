@@ -71,6 +71,10 @@ describe("pending-store (SQLite)", () => {
 		熱度標籤: "出軌",
 	};
 
+	// 把新鲜度钉到近期(publishedTime 优先于 發生時間),让 score 测试只隔离 facts+confidence。
+	const RECENT = new Date().toISOString();
+	const META = { publishedTime: RECENT };
+
 	async function scoreOf(t: PendingTopic): Promise<number> {
 		await savePendingTopic(t);
 		const loaded = await loadPendingTopic(t.id);
@@ -84,7 +88,7 @@ describe("pending-store (SQLite)", () => {
 			facts: FULL_GOSSIP,
 			confidence: 0.9,
 			coverImageUrl: "https://cdn/x.jpg",
-			rawContent: { title: "t", body: "一段较长的正文内容", url: "https://x/1" },
+			rawContent: { title: "t", body: "一段较长的正文内容", url: "https://x/1", metadata: META },
 		});
 		const sparse = makeTopic({
 			id: "sparse",
@@ -101,7 +105,7 @@ describe("pending-store (SQLite)", () => {
 			},
 			confidence: 0.1,
 			coverImageUrl: "https://cdn/y.jpg",
-			rawContent: { title: "t", body: "一段较长的正文内容", url: "https://x/2" },
+			rawContent: { title: "t", body: "一段较长的正文内容", url: "https://x/2", metadata: META },
 		});
 		const rScore = await scoreOf(rich);
 		const sScore = await scoreOf(sparse);
@@ -113,7 +117,7 @@ describe("pending-store (SQLite)", () => {
 		const base = {
 			facts: FULL_GOSSIP,
 			coverImageUrl: "https://cdn/x.jpg",
-			rawContent: { title: "t", body: "正文", url: "https://x/1" },
+			rawContent: { title: "t", body: "正文", url: "https://x/1", metadata: META },
 		};
 		const hi = makeTopic({
 			...base,
@@ -135,9 +139,67 @@ describe("pending-store (SQLite)", () => {
 			id: "old",
 			facts: FULL_GOSSIP,
 			confidence: 0,
-			rawContent: { title: "t", body: "正文", url: "https://x/1" },
+			rawContent: { title: "t", body: "正文", url: "https://x/1", metadata: META },
 		});
 		expect(await scoreOf(t)).toBeGreaterThan(0);
+	});
+
+	it("freshness：publishedTime 旧 → score 显著低于 publishedTime 近期（同完整度）", async () => {
+		const common = {
+			facts: FULL_GOSSIP,
+			confidence: 0.9,
+			coverImageUrl: "https://cdn/x.jpg",
+		};
+		const fresh = makeTopic({
+			...common,
+			id: "fresh",
+			sourceUrl: "https://x.com/fresh",
+			rawContent: {
+				title: "t",
+				body: "正文",
+				url: "https://x/1",
+				metadata: { publishedTime: RECENT },
+			},
+		});
+		const stale = makeTopic({
+			...common,
+			id: "stale",
+			sourceUrl: "https://x.com/stale",
+			rawContent: {
+				title: "t",
+				body: "正文",
+				url: "https://x/2",
+				metadata: { publishedTime: "2020-01-01T00:00:00.000Z" },
+			},
+		});
+		expect(await scoreOf(fresh)).toBeGreaterThan(await scoreOf(stale) * 5);
+	});
+
+	it("freshness：无 publishedTime 时退回 facts.發生時間（旧事件 → 低分）", async () => {
+		// createdAt=now,但 發生時間=2020 → 应按事件时间判旧,而非入库时间判新鲜
+		const t = makeTopic({
+			id: "byevent",
+			sourceUrl: "https://x.com/byevent",
+			facts: { ...FULL_GOSSIP, 發生時間: "2020-01" },
+			confidence: 0.9,
+			coverImageUrl: "https://cdn/x.jpg",
+			rawContent: { title: "t", body: "正文", url: "https://x/1" },
+		});
+		// 旧事件 freshnessDecay≈0 → score 接近 0(远低于按 createdAt 判新鲜的 ~0.9)
+		expect(await scoreOf(t)).toBeLessThan(0.1);
+	});
+
+	it("freshness：publishedTime/發生時間 皆不可解析 → 退回 createdAt（新爬判新鲜）", async () => {
+		const t = makeTopic({
+			id: "fallback",
+			sourceUrl: "https://x.com/fallback",
+			facts: { ...FULL_GOSSIP, 發生時間: "2024年5月" }, // Date.parse 失败
+			confidence: 0.9,
+			coverImageUrl: "https://cdn/x.jpg",
+			rawContent: { title: "t", body: "正文", url: "https://x/1" }, // 无 metadata
+		});
+		// createdAt=now → 兜底判新鲜,score 高
+		expect(await scoreOf(t)).toBeGreaterThan(0.5);
 	});
 
 	it("save 同 id 两次 → upsert，以最新值为准", async () => {
