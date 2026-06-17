@@ -207,6 +207,28 @@ describe("exportTopicsAsCSV", () => {
 		expect(csv.split("\r\n")).toHaveLength(1);
 		expect(csv).toContain("id,title,siteName");
 	});
+
+	it("Security: 以 = + - @ 起首的不可信单元格被前导单引号中和(公式注入)", () => {
+		const csv = exportTopicsAsCSV([
+			makeTopic({
+				title: '=HYPERLINK("http://evil","x")',
+				facts: { 當事人: "+1+2", 事件摘要: "-cmd", 起因: "@SUM(A1)" },
+			}),
+		]);
+		const cells = csv.split("\r\n")[1]!;
+		// title 含逗号会被 RFC 包裹,但内容须以 '= 开头(中和后)
+		expect(cells).toContain("\"'=HYPERLINK");
+		expect(cells).toContain("'+1+2");
+		expect(cells).toContain("'-cmd");
+		expect(cells).toContain("'@SUM(A1)");
+	});
+
+	it("Security: 数字 score/confidence 列不被误加单引号", () => {
+		const csv = exportTopicsAsCSV([makeTopic({ facts: {} })]);
+		const cells = csv.split("\r\n")[1]!.split(",");
+		expect(cells[4]).toBe("0.8"); // confidence 数字
+		expect(cells[5]).toBe("0.75"); // score 数字
+	});
 });
 
 describe("downloadFile", () => {
