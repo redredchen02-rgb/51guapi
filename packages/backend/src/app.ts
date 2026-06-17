@@ -1,4 +1,4 @@
-import type { FactsBlock, Settings } from "@51guapi/shared";
+import type { GossipFactsBlock, Settings } from "@51guapi/shared";
 import cors from "@fastify/cors";
 import rateLimit from "@fastify/rate-limit";
 import type { FastifyInstance } from "fastify";
@@ -187,7 +187,7 @@ export function buildApp(): FastifyInstance {
 interface GenerateDraftBody {
 	prompt: string;
 	settings: Settings;
-	facts?: FactsBlock;
+	facts?: GossipFactsBlock;
 	enrichment?: string;
 }
 

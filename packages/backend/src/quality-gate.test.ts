@@ -1,4 +1,4 @@
-import type { ContentDraft, FactsBlock } from "@51guapi/shared";
+import type { ContentDraft, GossipFactsBlock } from "@51guapi/shared";
 import { evaluateQuality } from "@51guapi/shared";
 import { describe, expect, it } from "vitest";
 
@@ -9,7 +9,7 @@ function makeDraft(overrides: Partial<ContentDraft> = {}): ContentDraft {
 		subtitle: "副标题",
 		category: "漫画文章",
 		coverImageUrl: "",
-		body: "<p>这是一篇测试文章，包含足够的内容来通过正文长度检查。嗨嗨大家好，今天给大家推荐一部宝藏作品。</p>",
+		body: "<p>这是一篇测试文章，包含足够的内容来通过正文长度检查。据知情人爆料，疑似曝光相关细节，网传已坐实。</p>",
 		tags: ["标签1", "标签2"],
 		description: "描述",
 		postStatus: "1",
@@ -24,7 +24,16 @@ function makeDraft(overrides: Partial<ContentDraft> = {}): ContentDraft {
 describe("evaluateQuality", () => {
 	it("全部达标时 overall >= 0.6", () => {
 		const draft = makeDraft();
-		const facts: FactsBlock = { 作品名: "测试作品", 题材: "多人群交" };
+		const facts: GossipFactsBlock = {
+			當事人: "测试当事人",
+			事件摘要: "测试摘要",
+			起因: "起因说明",
+			經過: "经过描述",
+			結果: "结果说明",
+			來源連結: null,
+			發生時間: null,
+			熱度標籤: null,
+		};
 		const result = evaluateQuality(draft, facts);
 		expect(result.pass).toBe(true);
 		expect(result.overall).toBeGreaterThanOrEqual(0.6);
@@ -81,7 +90,16 @@ describe("evaluateQuality", () => {
 
 	it("事实不完整时扣分", () => {
 		const draft = makeDraft();
-		const facts: FactsBlock = {};
+		const facts: GossipFactsBlock = {
+			當事人: null,
+			事件摘要: null,
+			起因: null,
+			經過: null,
+			結果: null,
+			來源連結: null,
+			發生時間: null,
+			熱度標籤: null,
+		};
 		const result = evaluateQuality(draft, facts);
 		const check = result.checks.find((c) => c.name === "facts_completeness");
 		expect(check?.pass).toBe(false);
@@ -89,7 +107,20 @@ describe("evaluateQuality", () => {
 
 	it("可自定义阈值", () => {
 		const draft = makeDraft();
-		const result = evaluateQuality(draft, {}, 0.9);
+		const result = evaluateQuality(
+			draft,
+			{
+				當事人: null,
+				事件摘要: null,
+				起因: null,
+				經過: null,
+				結果: null,
+				來源連結: null,
+				發生時間: null,
+				熱度標籤: null,
+			},
+			0.9,
+		);
 		expect(result.pass).toBe(result.overall >= 0.9);
 	});
 

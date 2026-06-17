@@ -43,7 +43,6 @@ describe("MetricsView", () => {
 	it("有数据时显示正确成功率和批次数", async () => {
 		mockPrometheus(PROMETHEUS_TEXT);
 		mockGetCounters.mockResolvedValue({
-			publishAttempts: { success: 0, failed: 0 },
 			batchesCompleted: 7,
 		});
 
@@ -57,7 +56,6 @@ describe("MetricsView", () => {
 	it("后端离线时 Prometheus 卡片显示[后端离线]，批次数正常", async () => {
 		mockApiFetch.mockRejectedValue(new Error("network error"));
 		mockGetCounters.mockResolvedValue({
-			publishAttempts: { success: 0, failed: 0 },
 			batchesCompleted: 3,
 		});
 
@@ -77,7 +75,6 @@ publisher_drafts_total{status="success"} 0
 publisher_drafts_total{status="failed"} 0
 `);
 		mockGetCounters.mockResolvedValue({
-			publishAttempts: { success: 0, failed: 0 },
 			batchesCompleted: 0,
 		});
 
@@ -99,7 +96,6 @@ publisher_drafts_total{status="success"} 0
 publisher_drafts_total{status="failed"} 3
 `);
 		mockGetCounters.mockResolvedValue({
-			publishAttempts: { success: 0, failed: 0 },
 			batchesCompleted: 0,
 		});
 

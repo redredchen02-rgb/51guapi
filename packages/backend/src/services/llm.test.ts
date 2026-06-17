@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import type { FactsBlock, Settings } from "@51guapi/shared";
+import type { GossipFactsBlock, Settings } from "@51guapi/shared";
 import { assembleDraft, toDraft } from "@51guapi/shared";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -59,12 +59,15 @@ const oaiReply = (content: string) => ({ choices: [{ message: { content } }] });
 const slotsReply = (slots: Record<string, unknown>) =>
 	oaiReply(JSON.stringify(slots));
 const base = { now: () => "2026-06-03T00:00:00.000Z", genId: () => "draft_1" };
-const FACTS: FactsBlock = {
-	作品名: "作品X",
-	集数: "2期",
-	漢化: "https://h.com/a",
-	無修: "https://u.com/b",
-	简介: "梗概",
+const FACTS: GossipFactsBlock = {
+	當事人: "明星A与明星B",
+	事件摘要: "疑似出轨事件",
+	起因: "网传目击照片流出",
+	經過: "当事人否认，经纪公司发声明澄清",
+	結果: "事件坐实，双方解约",
+	來源連結: "https://example.com/news",
+	發生時間: "2026-06",
+	熱度標籤: "出轨,解约",
 };
 
 describe("chatCompletionsUrl / modelsUrl", () => {
@@ -174,9 +177,8 @@ describe("generateDraft (结构化组装)", () => {
 		});
 		expect(res.ok).toBe(true);
 		if (res.ok) {
-			expect(res.draft.title).toBe("作品X介紹");
-			expect(res.draft.body).toContain("作品名:作品X");
-			expect(res.draft.body).toContain('<a href="https://h.com/a">');
+			expect(res.draft.title).toBe("【待补】"); // gossip facts 无作品名 → 标题占位
+			expect(res.draft.body).not.toContain("作品名"); // gossip facts 无漫画字段
 			expect(res.draft.body).toContain("<p>引子</p>");
 			expect(res.draft.tags).toEqual(["奇幻", "冒險"]);
 			// 分类经 normalizeCategory:模型给后台 value '2' → 归一化为后台真实 label(fillNativeSelect 按文本命中)。
@@ -255,7 +257,7 @@ describe("generateDraft (结构化组装)", () => {
 		expect(res.ok).toBe(true);
 		if (res.ok) {
 			expect(res.draft.title).toBe("【待补】");
-			expect(res.draft.body).not.toContain("作品名"); // 缺事实 → 不渲染抬头行
+			expect(res.draft.body).not.toContain("作品名"); // 无 FactsBlock manga 字段 → 不渲染抬头行
 			expect(res.draft.tags).toEqual([]);
 		}
 	});

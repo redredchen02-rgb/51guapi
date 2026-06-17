@@ -126,16 +126,14 @@ export async function clearBatch(): Promise<void> {
 }
 
 // ---- 扩展端运营计数器（跨会话持久，chrome.storage.local）----
-// batchesCompleted 由 background.ts handleRunBatch 成功完成时递增；
-// publishAttempts 为 future placeholder（发布机器已拆除，当前不接线）。
+// batchesCompleted 由 background.ts handleRunBatch 成功完成时递增。
 
 export interface ExtensionCounters {
-	publishAttempts: { success: number; failed: number };
 	batchesCompleted: number;
 }
 
 function defaultExtensionCounters(): ExtensionCounters {
-	return { publishAttempts: { success: 0, failed: 0 }, batchesCompleted: 0 };
+	return { batchesCompleted: 0 };
 }
 
 /**
@@ -148,10 +146,6 @@ export async function getExtensionCounters(): Promise<ExtensionCounters> {
 	const def = defaultExtensionCounters();
 	if (!stored) return def;
 	return {
-		publishAttempts: {
-			success: stored.publishAttempts?.success ?? def.publishAttempts.success,
-			failed: stored.publishAttempts?.failed ?? def.publishAttempts.failed,
-		},
 		batchesCompleted: stored.batchesCompleted ?? def.batchesCompleted,
 	};
 }
