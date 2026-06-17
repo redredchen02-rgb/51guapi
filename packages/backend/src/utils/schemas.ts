@@ -135,20 +135,6 @@ export const ModelsResponse = Type.Object({
 	models: Type.Optional(Type.Array(Type.Unknown())),
 });
 
-// ── Batch ─────────────────────────────────────────────
-export const CreateBatchBody = Type.Object({
-	id: Type.String({ minLength: 1 }),
-	tabId: Type.Number(),
-	authorizedHost: Type.String({ minLength: 1 }),
-	topics: Type.Array(Type.String({ minLength: 1 }), {
-		minItems: 1,
-		maxItems: 20,
-	}),
-	facts: Type.Optional(
-		Type.Array(Type.Optional(Type.Record(Type.String(), Type.Unknown()))),
-	),
-});
-
 // ── Pending ──────────────────────────────────────────
 export const PendingIdParams = Type.Object({
 	id: Type.String({ minLength: 1 }),
@@ -188,23 +174,6 @@ export const GossipSiteCreate = Type.Object({
 export const GossipFromUrlBody = Type.Object({
 	url: Type.String({ minLength: 1 }),
 	siteName: Type.String({ minLength: 1, maxLength: 200 }),
-});
-
-// ── Published Posts ──────────────────────────────────
-export const PublishedPostBody = Type.Object({
-	id: Type.Optional(Type.String()),
-	batch_item_id: Type.Optional(Type.String()),
-	source_title: Type.Optional(Type.String()),
-	publish_url: Type.Optional(Type.String()),
-	publish_url_source: Type.Optional(Type.String()),
-	published_at: Type.Optional(Type.String()),
-	outcome: Type.Optional(Type.String()),
-});
-
-export const PublishedPostQuery = Type.Object({
-	sourceTitle: Type.Optional(Type.String()),
-	limit: Type.Optional(Type.String()),
-	offset: Type.Optional(Type.String()),
 });
 
 // ── Health & Metrics ───────────────────────────────

@@ -1,7 +1,6 @@
 export const counters = {
 	draftsGenerated: 0,
 	draftsFailed: 0,
-	batchesCompleted: 0,
 	scraperRuns: { success: 0, failed: 0 },
 };
 
@@ -23,20 +22,12 @@ export function recordScraperRun(ok: boolean): void {
 	else counters.scraperRuns.failed++;
 }
 
-export function recordBatchCompleted(): void {
-	counters.batchesCompleted++;
-}
-
 export function getMetrics(): string {
 	const lines = [
 		"# HELP publisher_drafts_total Total drafts generated",
 		"# TYPE publisher_drafts_total counter",
 		`publisher_drafts_total{status="success"} ${counters.draftsGenerated}`,
 		`publisher_drafts_total{status="failed"} ${counters.draftsFailed}`,
-		"",
-		"# HELP publisher_batches_total Total batches completed",
-		"# TYPE publisher_batches_total counter",
-		`publisher_batches_total ${counters.batchesCompleted}`,
 		"",
 		"# HELP publisher_scraper_runs_total Total gossip content fetch+extraction events by gossip-routes",
 		"# TYPE publisher_scraper_runs_total counter",
