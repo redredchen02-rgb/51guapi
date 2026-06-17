@@ -240,9 +240,15 @@ describe("GossipView", () => {
 		fireEvent.change(screen.getByPlaceholderText(/钉死 https/), {
 			target: { value: "news-a.com" },
 		});
+		// step-up:新增渠道须输入管理员口令。
+		fireEvent.change(screen.getByPlaceholderText(/管理员口令/), {
+			target: { value: "pw" },
+		});
 		fireEvent.click(screen.getByText("确认新增"));
 		await waitFor(() =>
-			expect(mockCreateChannel).toHaveBeenCalledWith("news-a.com"),
+			expect(mockCreateChannel).toHaveBeenCalledWith("news-a.com", {
+				adminPassword: "pw",
+			}),
 		);
 		await waitFor(() => expect(screen.getByText("news-a.com")).toBeDefined());
 	});
@@ -255,6 +261,9 @@ describe("GossipView", () => {
 		await waitFor(() => screen.getByPlaceholderText(/钉死 https/));
 		fireEvent.change(screen.getByPlaceholderText(/钉死 https/), {
 			target: { value: "аpple.com" },
+		});
+		fireEvent.change(screen.getByPlaceholderText(/管理员口令/), {
+			target: { value: "pw" },
 		});
 		fireEvent.click(screen.getByText("确认新增"));
 		await waitFor(() => expect(screen.getByText(/同形/)).toBeDefined());

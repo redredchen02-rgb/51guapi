@@ -21,3 +21,14 @@ export function verifyPassword(password: string, storedHash: string): boolean {
 	const derived = scryptSync(password, Buffer.from(saltHex, "hex"), KEYLEN);
 	return timingSafeEqual(derived, key);
 }
+
+// Verify a password against the configured admin hash (JWT_ADMIN_PASSWORD_HASH).
+// Shared by auth login and channel-write step-up so the comparison lives in one
+// place. Returns false (never throws) when the hash is unconfigured or wrong.
+export function verifyAdminPassword(password: unknown): boolean {
+	const adminHash = process.env.JWT_ADMIN_PASSWORD_HASH;
+	if (!adminHash || typeof password !== "string" || password.length === 0) {
+		return false;
+	}
+	return verifyPassword(password, adminHash);
+}

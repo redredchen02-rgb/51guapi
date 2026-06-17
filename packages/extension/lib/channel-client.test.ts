@@ -67,7 +67,11 @@ describe("channel-client — createChannel", () => {
 			ok: true,
 			channel: CHANNEL,
 		});
-		const result = await createChannel("51cg1.com", { reason: "吃瓜源" }, fn);
+		const result = await createChannel(
+			"51cg1.com",
+			{ reason: "吃瓜源", adminPassword: "pw" },
+			fn,
+		);
 		expect(result.hostname).toBe("51cg1.com");
 		expect(capturedUrls[0]).toContain("/api/v1/channels");
 		expect(capturedInits[0]?.method).toBe("POST");
@@ -77,6 +81,18 @@ describe("channel-client — createChannel", () => {
 		expect(body.confirm).toBe(true);
 		expect(body.channel).toBe("51cg1.com");
 		expect(body.reason).toBe("吃瓜源");
+		// step-up:口令随 body 上送,后端比对 JWT_ADMIN_PASSWORD_HASH。
+		expect(body.adminPassword).toBe("pw");
+	});
+
+	it("Error 403(无口令被后端 step-up 拒)→ 抛 error", async () => {
+		const { capturedInits, fn } = mockFetch(
+			{ error: "需管理员口令重验", kind: "step_up_required" },
+			403,
+		);
+		await expect(createChannel("x.com", {}, fn)).rejects.toThrow(/口令/);
+		const body = JSON.parse(capturedInits[0]?.body as string);
+		expect(body.adminPassword).toBeUndefined();
 	});
 
 	it("Error 400(后端拒绝,如私网/同形/通配)→ 抛后端 error", async () => {

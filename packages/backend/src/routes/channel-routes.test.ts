@@ -1,3 +1,4 @@
+import { randomBytes, scryptSync } from "node:crypto";
 import Fastify, { type FastifyInstance } from "fastify";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PUBLIC_ROUTES } from "../middleware/auth-middleware.js";
@@ -36,19 +37,30 @@ const CONFIRM = {
 	"content-type": "application/json",
 };
 
+// scrypt hash matching ADMIN_PW (mirrors services/password.ts storage format).
+const ADMIN_PW = "step-up-secret-pw";
+function makeHash(pw: string): string {
+	const salt = randomBytes(16);
+	return `${salt.toString("hex")}:${scryptSync(pw, salt, 64).toString("hex")}`;
+}
+
 describe("channel-routes", () => {
 	let app: FastifyInstance;
+	const prevHash = process.env.JWT_ADMIN_PASSWORD_HASH;
 
 	beforeEach(async () => {
 		resetPendingDb();
 		initPendingDb();
 		getDb().exec("DELETE FROM channels");
 		mockLookup.mockReset();
+		process.env.JWT_ADMIN_PASSWORD_HASH = makeHash(ADMIN_PW);
 		app = await buildApp();
 	});
 	afterEach(async () => {
 		await app.close();
 		resetPendingDb();
+		if (prevHash === undefined) delete process.env.JWT_ADMIN_PASSWORD_HASH;
+		else process.env.JWT_ADMIN_PASSWORD_HASH = prevHash;
 	});
 
 	it("不在 PUBLIC_ROUTES(保持 JWT 鉴权)", () => {
@@ -61,7 +73,12 @@ describe("channel-routes", () => {
 			method: "POST",
 			url: "/api/v1/channels",
 			headers: CONFIRM,
-			payload: { channel: "51cg1.com", displayName: "51cg1", confirm: true },
+			payload: {
+				channel: "51cg1.com",
+				displayName: "51cg1",
+				confirm: true,
+				adminPassword: ADMIN_PW,
+			},
 		});
 		expect(res.statusCode).toBe(201);
 		const body = res.json();
@@ -69,6 +86,57 @@ describe("channel-routes", () => {
 
 		const list = await app.inject({ method: "GET", url: "/api/v1/channels" });
 		expect(list.json().channels).toHaveLength(1);
+	});
+
+	it("Security(step-up):带手势但无口令 → 403,不入库,不解析 DNS", async () => {
+		mockLookup.mockResolvedValue(resolved("1.1.1.1"));
+		const res = await app.inject({
+			method: "POST",
+			url: "/api/v1/channels",
+			headers: CONFIRM,
+			payload: { channel: "51cg1.com", confirm: true },
+		});
+		expect(res.statusCode).toBe(403);
+		expect(res.json().kind).toBe("step_up_required");
+		// 早退:口令 step-up 在 DNS 解析前,无权请求不得触发出站解析。
+		expect(mockLookup).not.toHaveBeenCalled();
+		const list = await app.inject({ method: "GET", url: "/api/v1/channels" });
+		expect(list.json().channels).toHaveLength(0);
+	});
+
+	it("Security(step-up):带手势但口令错误 → 403,不入库,不解析 DNS", async () => {
+		mockLookup.mockResolvedValue(resolved("1.1.1.1"));
+		const res = await app.inject({
+			method: "POST",
+			url: "/api/v1/channels",
+			headers: CONFIRM,
+			payload: { channel: "51cg1.com", confirm: true, adminPassword: "wrong" },
+		});
+		expect(res.statusCode).toBe(403);
+		expect(res.json().kind).toBe("step_up_required");
+		expect(mockLookup).not.toHaveBeenCalled();
+		const list = await app.inject({ method: "GET", url: "/api/v1/channels" });
+		expect(list.json().channels).toHaveLength(0);
+	});
+
+	it("审计:created_by 反映 JWT sub(非恒 operator)", async () => {
+		mockLookup.mockResolvedValue(resolved("1.1.1.1"));
+		const app2 = Fastify({ logger: false });
+		// 模拟全局 JWT preHandler 把 sub 挂到 request.user。
+		app2.addHook("preHandler", async (req) => {
+			req.user = { authenticated: true, sub: "operator" };
+		});
+		registerChannelRoutes(app2);
+		await app2.ready();
+		const res = await app2.inject({
+			method: "POST",
+			url: "/api/v1/channels",
+			headers: CONFIRM,
+			payload: { channel: "audit.com", confirm: true, adminPassword: ADMIN_PW },
+		});
+		expect(res.statusCode).toBe(201);
+		expect(res.json().channel.createdBy).toBe("operator");
+		await app2.close();
 	});
 
 	it("Security(写入手势):缺 header → 403,不入库", async () => {
@@ -101,7 +169,11 @@ describe("channel-routes", () => {
 			method: "POST",
 			url: "/api/v1/channels",
 			headers: CONFIRM,
-			payload: { channel: "metadata.evil", confirm: true },
+			payload: {
+				channel: "metadata.evil",
+				confirm: true,
+				adminPassword: ADMIN_PW,
+			},
 		});
 		expect(res.statusCode).toBe(400);
 		expect(res.json().error).toMatch(/非公网/);
@@ -115,7 +187,7 @@ describe("channel-routes", () => {
 			method: "POST",
 			url: "/api/v1/channels",
 			headers: CONFIRM,
-			payload: { channel: "priv.evil", confirm: true },
+			payload: { channel: "priv.evil", confirm: true, adminPassword: ADMIN_PW },
 		});
 		expect(res.statusCode).toBe(400);
 	});
@@ -125,7 +197,7 @@ describe("channel-routes", () => {
 			method: "POST",
 			url: "/api/v1/channels",
 			headers: CONFIRM,
-			payload: { channel: "аpple.com", confirm: true },
+			payload: { channel: "аpple.com", confirm: true, adminPassword: ADMIN_PW },
 		});
 		expect(res.statusCode).toBe(400);
 		expect(res.json().error).toMatch(/同形|homograph/i);
@@ -136,7 +208,11 @@ describe("channel-routes", () => {
 			method: "POST",
 			url: "/api/v1/channels",
 			headers: CONFIRM,
-			payload: { channel: "*.evil.com", confirm: true },
+			payload: {
+				channel: "*.evil.com",
+				confirm: true,
+				adminPassword: ADMIN_PW,
+			},
 		});
 		expect(res.statusCode).toBe(400);
 		expect(res.json().error).toMatch(/通配/);
@@ -147,14 +223,18 @@ describe("channel-routes", () => {
 			method: "POST",
 			url: "/api/v1/channels",
 			headers: CONFIRM,
-			payload: { channel: "https://127.0.0.1/", confirm: true },
+			payload: {
+				channel: "https://127.0.0.1/",
+				confirm: true,
+				adminPassword: ADMIN_PW,
+			},
 		});
 		expect(res.statusCode).toBe(400);
 	});
 
 	it("Edge(去重):重复新增同域名 → 200 deduped,不增列表", async () => {
 		mockLookup.mockResolvedValue(resolved("1.1.1.1"));
-		const p = { channel: "dup.com", confirm: true };
+		const p = { channel: "dup.com", confirm: true, adminPassword: ADMIN_PW };
 		await app.inject({
 			method: "POST",
 			url: "/api/v1/channels",
@@ -179,7 +259,7 @@ describe("channel-routes", () => {
 			method: "POST",
 			url: "/api/v1/channels",
 			headers: CONFIRM,
-			payload: { channel: "del.com", confirm: true },
+			payload: { channel: "del.com", confirm: true, adminPassword: ADMIN_PW },
 		});
 		const id = created.json().channel.id;
 		// 删除前在 allowlist
@@ -203,7 +283,7 @@ describe("channel-routes", () => {
 			method: "POST",
 			url: "/api/v1/channels",
 			headers: CONFIRM,
-			payload: { channel: "live.com", confirm: true },
+			payload: { channel: "live.com", confirm: true, adminPassword: ADMIN_PW },
 		});
 		// 新增后立即:同进程读 SQLite → 放行(env 仍空,证明并入渠道源)
 		expect(
@@ -226,7 +306,7 @@ describe("channel-routes", () => {
 			method: "POST",
 			url: "/api/v1/channels",
 			headers: CONFIRM,
-			payload: { channel: "not a url", confirm: true },
+			payload: { channel: "not a url", confirm: true, adminPassword: ADMIN_PW },
 		});
 		expect(res.statusCode).toBe(400);
 	});

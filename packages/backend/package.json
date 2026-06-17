@@ -23,7 +23,8 @@
 		"dotenv": "^16.4.7",
 		"fastify": "^5.2.1",
 		"jsonwebtoken": "^9.0.2",
-		"node-cron": "^4.2.1"
+		"node-cron": "^4.2.1",
+		"undici": "^6.27.0"
 	},
 	"devDependencies": {
 		"@types/better-sqlite3": "^7.6.13",

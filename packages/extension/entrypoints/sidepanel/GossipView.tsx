@@ -38,6 +38,7 @@ export function GossipView({ onBack, onTopicAdded }: Props) {
 	// U6 渠道白名单(动态 SSRF allowlist)。
 	const [channels, setChannels] = useState<Channel[]>([]);
 	const [newChannel, setNewChannel] = useState("");
+	const [chanPassword, setChanPassword] = useState("");
 	const [chanError, setChanError] = useState("");
 	const [chanBusy, setChanBusy] = useState(false);
 
@@ -77,11 +78,16 @@ export function GossipView({ onBack, onTopicAdded }: Props) {
 			setChanError("请填写渠道域名");
 			return;
 		}
+		if (!chanPassword) {
+			setChanError("新增渠道需管理员口令重验");
+			return;
+		}
 		setChanBusy(true);
 		setChanError("");
 		try {
-			await createChannel(newChannel.trim());
+			await createChannel(newChannel.trim(), { adminPassword: chanPassword });
 			setNewChannel("");
+			setChanPassword("");
 			await loadChannels();
 		} catch (e) {
 			setChanError(e instanceof Error ? e.message : "新增渠道失败");
@@ -236,6 +242,19 @@ export function GossipView({ onBack, onTopicAdded }: Props) {
 						placeholder="域名,如 51cg1.com(钉死 https)"
 						value={newChannel}
 						onChange={(e) => setNewChannel(e.target.value)}
+						style={{
+							flex: 1,
+							padding: "4px 6px",
+							fontSize: 12,
+							border: "1px solid #d9d9d9",
+							borderRadius: 4,
+						}}
+					/>
+					<input
+						type="password"
+						placeholder="管理员口令(step-up)"
+						value={chanPassword}
+						onChange={(e) => setChanPassword(e.target.value)}
 						style={{
 							flex: 1,
 							padding: "4px 6px",

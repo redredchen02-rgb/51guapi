@@ -1,17 +1,17 @@
 import type { LookupAddress } from "node:dns";
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
+import { Agent } from "undici";
 
 // Deny-unless-global-unicast SSRF guard for scraper fetches.
 //
 // Strategy: before each fetch (and on every redirect hop) resolve the host and
-// reject if any resolved address is non-public (private / loopback / link-local
-// / CGNAT / IPv6 special). This is dependency-free; it does NOT pin the resolved
-// IP to the socket, so a small TOCTOU window remains between this lookup and
-// fetch's own resolution. That residual is bounded by the hostname allowlist
-// applied upstream (scraper-routes). Full pinning would require an undici
-// custom-lookup dispatcher (deliberately avoided to not add a native-fetch
-// version-skew dependency).
+// select ONE public address, then PIN that exact IP to the socket via an undici
+// custom-lookup dispatcher. The dispatcher's connect.lookup ignores the OS
+// resolver and hands back the already-validated IP, re-checking isPublicUnicastIp
+// at connect time (defence in depth). This closes the DNS-rebinding TOCTOU
+// window: the IP that passed validation is the IP the socket connects to, never
+// a fresh resolution. Every redirect hop re-resolves and re-pins its own IP.
 
 export class SsrfError extends Error {}
 
@@ -130,7 +130,15 @@ export function isPublicUnicastIp(ip: string): boolean {
 	return false;
 }
 
-export async function assertUrlSafe(rawUrl: string): Promise<URL> {
+// 校验结果:既校验通过的 URL,又选定的、要钉到 socket 的公网 IP。
+export interface PinnedTarget {
+	url: URL;
+	pinnedIp: string;
+	pinnedFamily: 4 | 6;
+}
+
+// 校验 + 选定一个公网 IP 钉住。assertUrlSafe(只关心拋不拋/拿 URL)在其上薄封装,保持向后兼容。
+export async function resolveAndPin(rawUrl: string): Promise<PinnedTarget> {
 	let u: URL;
 	try {
 		u = new URL(rawUrl);
@@ -156,14 +164,62 @@ export async function assertUrlSafe(rawUrl: string): Promise<URL> {
 	if (addrs.length === 0) {
 		throw new SsrfError(`No DNS records for ${u.hostname}`);
 	}
-	for (const { address } of addrs) {
+	// 守卫检查全部地址(任一私网即拒,保持既有 fail-closed 语义),
+	// 同时选定第一个公网地址作为要钉的 IP。
+	let pinned: PinnedTarget | null = null;
+	for (const { address, family } of addrs) {
 		if (!isPublicUnicastIp(address)) {
 			throw new SsrfError(
 				`Host ${u.hostname} resolves to non-public address ${address}`,
 			);
 		}
+		if (!pinned) {
+			pinned = {
+				url: u,
+				pinnedIp: address,
+				pinnedFamily: family === 6 ? 6 : 4,
+			};
+		}
 	}
-	return u;
+	// addrs 非空且全部公网,pinned 必非空;此分支为类型收窄。
+	if (!pinned) {
+		throw new SsrfError(`No public address for ${u.hostname}`);
+	}
+	return pinned;
+}
+
+export async function assertUrlSafe(rawUrl: string): Promise<URL> {
+	return (await resolveAndPin(rawUrl)).url;
+}
+
+type LookupCallback = (
+	err: NodeJS.ErrnoException | null,
+	address: string,
+	family: number,
+) => void;
+
+// undici connect.lookup 形态的回调:无视 OS 解析器,强制回传已钉 IP(连线端 == 校验端),
+// 并在 connect 时再跑一次 isPublicUnicastIp(纵深;万一钉的是私网即拒)。
+// 单独导出以便对「连线目标 == 校验时 IP」做确定性断言(rebinding 硬指标)。
+export function makePinnedLookup(target: PinnedTarget) {
+	return (_hostname: string, _options: unknown, callback: LookupCallback) => {
+		if (!isPublicUnicastIp(target.pinnedIp)) {
+			callback(
+				new SsrfError(
+					`Pinned IP ${target.pinnedIp} is non-public`,
+				) as NodeJS.ErrnoException,
+				"",
+				0,
+			);
+			return;
+		}
+		callback(null, target.pinnedIp, target.pinnedFamily);
+	};
+}
+
+// 为某一跳构造一个把已校验公网 IP 钉到 socket 的 undici dispatcher。
+export function pinnedDispatcher(target: PinnedTarget): Agent {
+	return new Agent({ connect: { lookup: makePinnedLookup(target) } });
 }
 
 // 每跳重过 allowlist 的回调:返回 false → 该 URL 不在 allowlist,safeFetch 拒绝。
@@ -199,13 +255,27 @@ export async function safeFetch(
 			? AbortSignal.any([init.signal, timeoutSignal])
 			: timeoutSignal;
 	for (let hop = 0; hop <= maxHops; hop++) {
-		const safeUrl = await assertUrlSafe(current);
-		if (allowlistCheck && !allowlistCheck(safeUrl)) {
+		// 逐跳:重新解析 + 重新选定要钉的公网 IP。
+		const target = await resolveAndPin(current);
+		if (allowlistCheck && !allowlistCheck(target.url)) {
 			throw new SsrfError(
-				`Host not in allowlist (hop ${hop}): ${safeUrl.hostname}`,
+				`Host not in allowlist (hop ${hop}): ${target.url.hostname}`,
 			);
 		}
-		const res = await fetch(current, { ...init, signal, redirect: "manual" });
+		// 该跳用钉住此 IP 的 dispatcher:连线端 IP == 刚校验通过的 IP,无 rebinding 窗口。
+		const dispatcher = pinnedDispatcher(target);
+		let res: Response;
+		try {
+			res = await fetch(current, {
+				...init,
+				signal,
+				redirect: "manual",
+				// @ts-expect-error Node fetch 支援 dispatcher 选项(类型未声明)
+				dispatcher,
+			});
+		} finally {
+			void dispatcher.close();
+		}
 		if (res.status >= 300 && res.status < 400) {
 			const loc = res.headers.get("location");
 			if (!loc) return res;
