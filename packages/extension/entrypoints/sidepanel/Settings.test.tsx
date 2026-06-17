@@ -1,7 +1,79 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from "vitest";
+import {
+	cleanup,
+	fireEvent,
+	render,
+	screen,
+	waitFor,
+} from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { deriveFewShotExamples } from "../../lib/storage";
-import { parseTagsText } from "./Settings";
+import { parseTagsText, Settings } from "./Settings";
+
+// Settings 组件测试 — mock hook 层以隔离 UI 行为
+const mockSave = vi.fn();
+const mockLoad = vi.fn();
+
+vi.mock("./hooks/useSettingsForm", () => ({
+	useSettingsForm: () => ({
+		formValues: {
+			endpoint: "https://api.example.com",
+			model: "gpt-4",
+			promptTemplate: "",
+			fewShotPairs: [],
+			recommendedTags: [],
+			backendUrl: "http://localhost:3001",
+			reviewCriteriaPrompt: "",
+			dailyBatchSize: 5,
+		},
+		setFormValue: vi.fn(),
+		getApiKey: vi.fn(),
+		getBackendToken: vi.fn(),
+		setApiKey: vi.fn(),
+		setBackendToken: vi.fn(),
+		derivedFewShotExamples: "",
+		prompts: [],
+		promptStatus: "",
+		loadPrompts: vi.fn(),
+		selectPrompt: vi.fn(),
+		savePromptToBackend: vi.fn(),
+		testConnectionFn: vi.fn(),
+		load: mockLoad,
+		save: mockSave,
+	}),
+}));
+
+afterEach(() => {
+	cleanup();
+	vi.clearAllMocks();
+});
+
+describe("Settings UI — handleSave", () => {
+	it("save() 返回错误字串 → 显示 role=alert 错误信息", async () => {
+		mockSave.mockResolvedValue("endpoint 必须是 https:// 地址");
+		render(<Settings onClose={vi.fn()} />);
+		fireEvent.click(screen.getByText("保存"));
+		await waitFor(() => {
+			const alert = screen.getByRole("alert");
+			expect(alert.textContent).toContain("endpoint 必须是 https://");
+		});
+	});
+
+	it("二次保存时 [已保存] 先消失再出现（saved 重置）", async () => {
+		mockSave.mockResolvedValue(null);
+		render(<Settings onClose={vi.fn()} />);
+		// 第一次保存 → 显示"已保存。"
+		fireEvent.click(screen.getByText("保存"));
+		await waitFor(() => expect(screen.getByText("已保存。")).toBeTruthy());
+		// 第二次保存 → 期间"已保存。"消失再现
+		mockSave.mockResolvedValue(null);
+		fireEvent.click(screen.getByText("保存"));
+		// 点击瞬间 saved 被重置，"已保存。"应消失
+		expect(screen.queryByText("已保存。")).toBeNull();
+		// 等待再次显示
+		await waitFor(() => expect(screen.getByText("已保存。")).toBeTruthy());
+	});
+});
 
 describe("parseTagsText", () => {
 	it("换行分隔 → 标签数组", () => {
