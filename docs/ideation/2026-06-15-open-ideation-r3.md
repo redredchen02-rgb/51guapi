@@ -60,7 +60,7 @@ focus: open exploration — round 3 (after R2 batch-reliability shipped in full)
 **Downsides:** WXT/MV3 manifest generation reads config at build time — must confirm the shared import resolves in that context.
 **Confidence:** 85%
 **Complexity:** Low
-**Status:** Unexplored
+**Status:** Explored (brainstorm 2026-06-17)
 
 ### 5. slotDiff → quality dataset + edit-rate metric (replace asserted quality with measured)
 **Description:** Aggregate the already-captured slotDiff / hasManualEdit across batches into a structured per-slot dataset: direct-send rate (% published with zero edits), per-slot edit frequency, and hallucination-edit rate (edits near injected facts). Surface via a /metrics-fed report or backend JSON endpoint. Demote the gameable hardcoded slang-word check in `quality-gate.ts checkCommunityTone` to a soft hint.
@@ -105,3 +105,4 @@ focus: open exploration — round 3 (after R2 batch-reliability shipped in full)
 ## Session Log
 - 2026-06-15: R3 ideation — 35 raw ideas (5 frames × 7), ~24 unique after dedup/synthesis, 7 survived adversarial filtering. Grounded on a fresh code audit confirming all 7 R2 survivors + 5 bonus features shipped.
 - 2026-06-15: Selected idea #1 (inline 【待补】 fill editor) → handed off to ce:brainstorm.
+- 2026-06-17: Selected idea #4 (Host SSOT) → handed off to ce:brainstorm.

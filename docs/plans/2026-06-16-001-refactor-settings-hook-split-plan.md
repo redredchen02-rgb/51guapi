@@ -1,7 +1,7 @@
 ---
 title: "refactor: Settings.tsx hook extraction and sub-component split"
 type: refactor
-status: active
+status: completed
 date: 2026-06-16
 origin: docs/brainstorms/2026-06-16-settings-refactor-requirements.md
 ---

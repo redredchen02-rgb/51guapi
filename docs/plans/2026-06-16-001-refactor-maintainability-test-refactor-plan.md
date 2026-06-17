@@ -1,7 +1,7 @@
 ---
 title: "refactor: Maintainability, Test Coverage, and UI Component Splits"
 type: refactor
-status: active
+status: completed
 date: 2026-06-16
 origin: docs/brainstorms/2026-06-16-maintainability-test-refactor-requirements.md
 ---
