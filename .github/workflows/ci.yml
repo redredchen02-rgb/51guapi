@@ -78,7 +78,13 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: gitleaks
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # 直接跑 gitleaks 二进制(非 action wrapper):wrapper 在某些 commit range 下
+      # 因 git 向 stderr 输出(如 dubious ownership 警告)误判「stderr is not empty」失败,
+      # 即便扫描零泄密。直接 detect 全史,失败即 fail pipeline。
+      - name: gitleaks (binary)
+        run: |
+          VERSION=8.24.3
+          curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v${VERSION}/gitleaks_${VERSION}_linux_x64.tar.gz" \
+            | tar -xz gitleaks
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          ./gitleaks detect --source . --redact -v --exit-code 1
