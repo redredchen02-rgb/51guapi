@@ -115,7 +115,12 @@ export function PendingTopicsView({ onBack, onDraftReady, onError }: Props) {
 			const res = await requestGenerate(prompt);
 			if (res.ok) {
 				await updatePendingStatus(t.id, "approved");
-				setSelected(new Set());
+				// 每次只批准並生成一條草稿；從選中集合移除已處理的，其餘保留
+				setSelected((prev) => {
+					const next = new Set(prev);
+					next.delete(t.id);
+					return next;
+				});
 				onDraftReady(res.draft);
 			} else {
 				const isKeyError = res.kind === "no-key";
@@ -674,7 +679,7 @@ export function PendingTopicsView({ onBack, onDraftReady, onError }: Props) {
 							disabled={selected.size === 0 || busy}
 							className="btn btn-primary"
 						>
-							{busy ? "生成中…" : `批准并生成草稿 (${selected.size})`}
+							{busy ? "生成中…" : "批准并生成草稿"}
 						</button>
 						<button
 							type="button"
