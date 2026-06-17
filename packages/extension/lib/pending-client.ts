@@ -1,3 +1,4 @@
+import type { RejectionReason } from "@51guapi/shared";
 import { apiFetch } from "./api-fetch";
 import { logger } from "./logger";
 
@@ -16,7 +17,7 @@ export interface PendingTopic {
 	confidence: number;
 	score?: number;
 	status: "pending" | "approved" | "rejected";
-	rejectedReason?: string;
+	rejectedReason?: RejectionReason;
 	coverImageUrl?: string;
 	/** 质量分低于 fold_threshold 时后端标记为折叠（低优先级）。 */
 	folded?: boolean;
@@ -175,7 +176,7 @@ export async function fetchAdapters(timeoutMs = 10_000): Promise<string[]> {
 export async function updatePendingStatus(
 	id: string,
 	status: "pending" | "approved" | "rejected",
-	rejectedReason?: string,
+	rejectedReason?: RejectionReason,
 	timeoutMs = 10_000,
 ): Promise<boolean> {
 	try {

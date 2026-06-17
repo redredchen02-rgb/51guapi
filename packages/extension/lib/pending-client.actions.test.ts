@@ -137,10 +137,10 @@ describe("pending-client — updatePendingStatus", () => {
 
 	it("rejected + reason → body 含 rejectedReason", async () => {
 		mocked.mockResolvedValueOnce(jsonResponse({ ok: true }));
-		expect(await updatePendingStatus("id1", "rejected", "质量不足")).toBe(true);
+		expect(await updatePendingStatus("id1", "rejected", "quality")).toBe(true);
 		expect(JSON.parse(lastInit().body as string)).toEqual({
 			status: "rejected",
-			rejectedReason: "质量不足",
+			rejectedReason: "quality",
 		});
 	});
 
