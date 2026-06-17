@@ -124,7 +124,9 @@ export function MetricsView({ onBack }: Props) {
 							? rate(backend.scraperSuccess, backend.scraperFailed)
 							: "—"}
 				</div>
-				<div style={cardNote}>自上次后端启动（publisher_scraper_runs_total）</div>
+				<div style={cardNote}>
+					自上次后端启动（publisher_scraper_runs_total）
+				</div>
 			</div>
 
 			<div style={card}>

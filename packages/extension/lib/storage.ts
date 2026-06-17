@@ -149,8 +149,9 @@ function defaultExtensionCounters(): ExtensionCounters {
  * 读取扩展端计数器。读不到或字段不完整时回落完整默认对象（不崩溃）。
  */
 export async function getExtensionCounters(): Promise<ExtensionCounters> {
-	const stored =
-		await storage.getItem<Partial<ExtensionCounters>>(EXTENSION_COUNTERS_KEY);
+	const stored = await storage.getItem<Partial<ExtensionCounters>>(
+		EXTENSION_COUNTERS_KEY,
+	);
 	const def = defaultExtensionCounters();
 	if (!stored) return def;
 	return {

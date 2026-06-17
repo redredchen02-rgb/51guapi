@@ -14,7 +14,6 @@ import { ProgressBar } from "./components/ProgressBar";
 import { Toast } from "./components/Toast";
 import { DraftPreview } from "./DraftPreview";
 import { GossipView } from "./GossipView";
-import { MetricsView } from "./MetricsView";
 import { useAutoSave } from "./hooks/useAutoSave";
 import { useErrorHandler } from "./hooks/useErrorHandler";
 import { useErrorLogger } from "./hooks/useErrorLogger";
@@ -22,6 +21,7 @@ import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useLoadingState } from "./hooks/useLoadingState";
 import { useOperationHistory } from "./hooks/useOperationHistory";
 import { Loading } from "./Loading";
+import { MetricsView } from "./MetricsView";
 import { PendingTopicsView } from "./PendingTopicsView";
 import { Settings } from "./Settings";
 
