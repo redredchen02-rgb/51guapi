@@ -65,6 +65,30 @@ describe("normalizeChannelHost", () => {
 		expect(res.error).toMatch(/同形|homograph|脚本/i);
 	});
 
+	it("Security(IDN):全角拉丁 U+FF41(ａｐｐｌｅ.com) → 拒绝", () => {
+		expect(normalizeChannelHost("ａｐｐｌｅ.com").error).toMatch(
+			/同形|homograph|脚本/i,
+		);
+	});
+
+	it("Security(IDN):零宽字符 U+200B → 拒绝", () => {
+		expect(normalizeChannelHost("a​b.com").error).toMatch(
+			/同形|homograph|脚本/i,
+		);
+	});
+
+	it("Security(IDN):BIDI 控制符 U+202E → 拒绝", () => {
+		expect(normalizeChannelHost("‮apple.com").error).toMatch(
+			/同形|homograph|脚本/i,
+		);
+	});
+
+	it("Security(IDN):组合附加符 U+0301 → 拒绝", () => {
+		expect(normalizeChannelHost("ápple.com").error).toMatch(
+			/同形|homograph|脚本/i,
+		);
+	});
+
 	it("放行纯 CJK(例子.com)并转 punycode", () => {
 		const res = normalizeChannelHost("例子.com");
 		expect(res.hostname).toMatch(/^xn--/);
