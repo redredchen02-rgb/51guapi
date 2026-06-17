@@ -4,9 +4,13 @@ WORKDIR /app
 
 COPY . .
 
-RUN git init && npm install -g pnpm@9 && pnpm install --frozen-lockfile && pnpm rebuild better-sqlite3
+# backend image 不需要 extension;--ignore-scripts 跳过其 wxt prepare postinstall
+# (该 postinstall 依赖 shared dist,安装阶段尚未 build,会污染安装状态)。
+# better-sqlite3 原生编译被 --ignore-scripts 跳过,随后显式 rebuild。
+RUN git init && npm install -g pnpm@9 && pnpm install --frozen-lockfile --ignore-scripts && pnpm rebuild better-sqlite3
 
-RUN pnpm --filter @51guapi/shared build
+# composite 增量编译:清 buildinfo 强制 emit,避免「认为已最新」跳过产出 dist。
+RUN rm -f packages/shared/tsconfig.tsbuildinfo && pnpm --filter @51guapi/shared build
 RUN pnpm --filter publisher-backend build
 
 FROM node:20-slim

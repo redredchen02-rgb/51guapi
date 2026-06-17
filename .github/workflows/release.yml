@@ -45,11 +45,11 @@ jobs:
         run: cp packages/extension/.output/publisher-fill-assistant-*.zip ./extension.zip
 
       - name: Build Docker image
-        run: docker build -f packages/backend/Dockerfile -t 51publisher-backend .
+        run: docker build -f packages/backend/Dockerfile -t 51guapi-backend .
 
       - name: Export Docker image
         if: success()
-        run: docker save 51publisher-backend | gzip > 51publisher-backend.tar.gz
+        run: docker save 51guapi-backend | gzip > 51guapi-backend.tar.gz
 
       - name: Upload extension artifact
         uses: actions/upload-artifact@v4
@@ -63,7 +63,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: docker-image
-          path: 51publisher-backend.tar.gz
+          path: 51guapi-backend.tar.gz
           if-no-files-found: ignore
 
   release:
