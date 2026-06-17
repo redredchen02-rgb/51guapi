@@ -305,9 +305,7 @@ describe("GossipView", () => {
 		render(<GossipView onBack={onBack} onTopicAdded={onTopicAdded} />);
 		await waitFor(() => screen.getByText("站點A"));
 		fireEvent.click(screen.getByText("刪除"));
-		await waitFor(() =>
-			expect(screen.queryByText("站點A")).toBeNull(),
-		);
+		await waitFor(() => expect(screen.queryByText("站點A")).toBeNull());
 		expect(mockDelete).toHaveBeenCalledWith("site-a");
 	});
 
