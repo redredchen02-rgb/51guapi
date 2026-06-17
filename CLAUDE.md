@@ -52,7 +52,7 @@ npx vitest run -t "测试名"                     # 按名称过滤
 - **不发布、不写回**(硬约束):成品只导出,绝不提交/写入任何站点
 - **SSRF 守卫**:爬取渠道走 `src/scraper/ssrf-guard.ts` 的 allowlist(fail-closed,列表为空全拒)+ 私有 IP 阻挡 + 输入层拒 IP literal。新增渠道需人手确认手势,爬取管线/LLM 自身不可触发 allowlist 写入(防 prompt 注入自开渠道)
 - **防幻觉**:模型只写口吻散文槽位;作品名/集数/链接由系统从抓取事实 verbatim 注入,模型碰不到
-- **XSS 消毒**:正文 HTML 来自 LLM(最不可信输入),写入预览前经 `lib/sanitize.ts` 白名单消毒
+- **正文 HTML 处理**:草稿正文(`draft.body`,LLM 产出)目前仅在 side panel 的 `<textarea>` 以纯文本源码展示/编辑,**不做 HTML 渲染**,故无 live XSS 面。**约束**:未来若新增正文 HTML 预览渲染(`dangerouslySetInnerHTML` 等),必须同步引入白名单消毒层(如 DOMPurify),否则即引入存储型 XSS
 
 ### 后端
 
