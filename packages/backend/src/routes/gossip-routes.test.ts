@@ -94,7 +94,27 @@ describe("gossip-routes", () => {
 		const res = await app.inject({
 			method: "POST",
 			url: "/api/v1/gossip/sites",
-			payload: { name: "惡意站點", listUrl: "http://192.168.1.1/list" },
+			payload: { name: "惡意站點", listUrl: "https://192.168.1.1/list" },
+		});
+		expect(res.statusCode).toBe(400);
+		expect(res.json().error).toMatch(/IP literal/i);
+	});
+
+	it("POST /gossip/sites：listUrl 使用 http:// → 400 + https scheme 錯誤", async () => {
+		const res = await app.inject({
+			method: "POST",
+			url: "/api/v1/gossip/sites",
+			payload: { name: "站點", listUrl: "http://example.com/list" },
+		});
+		expect(res.statusCode).toBe(400);
+		expect(res.json().error).toMatch(/https/i);
+	});
+
+	it("POST /gossip/sites：listUrl 為 127.0.0.1 IP literal → 400", async () => {
+		const res = await app.inject({
+			method: "POST",
+			url: "/api/v1/gossip/sites",
+			payload: { name: "站點", listUrl: "https://127.0.0.1/list" },
 		});
 		expect(res.statusCode).toBe(400);
 		expect(res.json().error).toMatch(/IP literal/i);

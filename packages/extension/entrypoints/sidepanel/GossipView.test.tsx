@@ -84,6 +84,20 @@ describe("GossipView", () => {
 			.mockResolvedValueOnce([]) // 初始
 			.mockResolvedValueOnce([makeSite("new-1", "新站點")]); // 新增後重新載入
 		mockCreateSite.mockResolvedValueOnce(makeSite("new-1", "新站點"));
+		// hostname 在渠道白名单里 → 直接新增，不显示 warning
+		mockFetchChannels.mockResolvedValue([
+			{
+				id: "c1",
+				hostname: "new-gossip.com",
+				displayName: "new-gossip",
+				pathPrefix: "/",
+				maxDepth: 1,
+				maxBytes: 5242880,
+				createdBy: "operator",
+				reason: "",
+				createdAt: "",
+			},
+		]);
 
 		render(<GossipView onBack={onBack} onTopicAdded={onTopicAdded} />);
 		await waitFor(() => screen.getByPlaceholderText("站點名稱"));
@@ -158,6 +172,10 @@ describe("GossipView", () => {
 			target: { value: "http://192.168.1.1/list" },
 		});
 		fireEvent.click(screen.getByText("新增"));
+
+		// 192.168.1.1 not in channels whitelist → warning appears; confirm to proceed
+		await waitFor(() => screen.getByText("仍然继续"));
+		fireEvent.click(screen.getByText("仍然继续"));
 
 		await waitFor(() => {
 			expect(screen.getByText(/IP literal/)).toBeDefined();

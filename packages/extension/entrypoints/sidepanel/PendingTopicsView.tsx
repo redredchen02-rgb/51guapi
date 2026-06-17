@@ -1,6 +1,8 @@
+import type { ContentDraft } from "@51guapi/shared";
+import { GOSSIP_FACT_KEYS } from "@51guapi/shared";
 import React, { useCallback, useEffect, useState } from "react";
 import { downloadFile, exportTopicsAsCSV } from "../../lib/export";
-import { resolveAdminTabId, runBatch } from "../../lib/messaging";
+import { requestGenerate } from "../../lib/messaging";
 import {
 	fetchAdapters,
 	fetchPendingTopics,
@@ -17,21 +19,11 @@ interface QuickDraftConfirm {
 
 interface Props {
 	onBack: () => void;
-	onBatchStarted: () => void;
+	onDraftReady: (draft: ContentDraft) => void;
 	onError: (msg: string) => void;
 }
 
-const FACTS_KEYS = [
-	"作品名",
-	"集数",
-	"制作",
-	"漢化",
-	"無修",
-	"题材",
-	"简介",
-] as const;
-
-export function PendingTopicsView({ onBack, onBatchStarted, onError }: Props) {
+export function PendingTopicsView({ onBack, onDraftReady, onError }: Props) {
 	const [topics, setTopics] = useState<PendingTopic[]>([]);
 	const [selected, setSelected] = useState<Set<string>>(new Set());
 	const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -43,6 +35,7 @@ export function PendingTopicsView({ onBack, onBatchStarted, onError }: Props) {
 	const [busy, setBusy] = useState(false);
 	const [loading, setLoading] = useState(true);
 	const [hideLowScore, setHideLowScore] = useState(false);
+	const [approveError, setApproveError] = useState<string | null>(null);
 	const [quickDraftConfirm, setQuickDraftConfirm] =
 		useState<QuickDraftConfirm | null>(null);
 	const [quickDraftStatus, setQuickDraftStatus] = useState("");
@@ -94,42 +87,48 @@ export function PendingTopicsView({ onBack, onBatchStarted, onError }: Props) {
 		}));
 	}
 
+	function buildGossipPrompt(
+		topic: PendingTopic,
+		editedFacts?: Record<string, string>,
+	): string {
+		const facts = editedFacts ?? topic.facts;
+		const lines = GOSSIP_FACT_KEYS.filter(
+			(k) => facts[k] != null && facts[k] !== "",
+		).map((k) => `- ${k}：${facts[k]}`);
+		const factsBlock =
+			lines.length > 0
+				? `\n\n【吃瓜事实】（只能使用以下事实，严禁编造）：\n${lines.join("\n")}`
+				: "";
+		return `${topic.title || topic.sourceUrl}${factsBlock}`;
+	}
+
 	async function handleApproveSelected() {
 		if (selected.size === 0) return;
+		const t = topics.find((t) => selected.has(t.id));
+		if (!t) return;
 		setBusy(true);
+		setApproveError(null);
 		try {
-			const selectedTopics = topics.filter((t) => selected.has(t.id));
-
-			await Promise.all(
-				selectedTopics.map(async (t) => {
-					const edited = localFacts[t.id];
-					if (edited) await patchPendingTopic(t.id, { facts: edited });
-					await updatePendingStatus(t.id, "approved");
-				}),
-			);
-
-			const adminTabId = await resolveAdminTabId();
-			if (adminTabId == null) {
-				onError("未找到目标页标签——请先在浏览器打开目标页。");
-				setBusy(false);
-				return;
+			const edited = localFacts[t.id];
+			if (edited) await patchPendingTopic(t.id, { facts: edited });
+			const prompt = buildGossipPrompt(t, edited);
+			const res = await requestGenerate(prompt);
+			if (res.ok) {
+				await updatePendingStatus(t.id, "approved");
+				setSelected(new Set());
+				onDraftReady(res.draft);
+			} else {
+				const isKeyError = res.kind === "no-key";
+				setApproveError(
+					isKeyError
+						? "请先在设置中填写 API Key"
+						: `生成草稿失败：${res.error}`,
+				);
 			}
-
-			const topicList = selectedTopics.map((t) => t.title || t.sourceUrl);
-			const factsList = selectedTopics.map((t) => localFacts[t.id] ?? t.facts);
-			const coverUrls = selectedTopics.map((t) => t.coverImageUrl ?? "");
-			const hasCoverUrls = coverUrls.some((u) => u !== "");
-			await runBatch(
-				topicList,
-				adminTabId,
-				factsList.length > 0 ? factsList : undefined,
-				hasCoverUrls ? coverUrls : undefined,
+		} catch (err) {
+			setApproveError(
+				`生成草稿失败：${err instanceof Error ? err.message : "请重试"}`,
 			);
-
-			setSelected(new Set());
-			onBatchStarted();
-		} catch {
-			onError("操作失败,请重试。");
 		} finally {
 			setBusy(false);
 		}
@@ -196,39 +195,31 @@ export function PendingTopicsView({ onBack, onBatchStarted, onError }: Props) {
 
 	async function handleQuickDraftConfirm() {
 		if (!quickDraftConfirm) return;
-		const confirmedTopics = quickDraftConfirm.topics;
+		const [t] = quickDraftConfirm.topics;
+		if (!t) return;
 		setQuickDraftConfirm(null);
 		setQuickDraftStatus("");
-		setSelected(new Set(confirmedTopics.map((t) => t.id)));
 		setBusy(true);
+		setApproveError(null);
 		try {
-			await Promise.all(
-				confirmedTopics.map(async (t) => {
-					const edited = localFacts[t.id];
-					if (edited) await patchPendingTopic(t.id, { facts: edited });
-					await updatePendingStatus(t.id, "approved");
-				}),
-			);
-			const adminTabId = await resolveAdminTabId();
-			if (adminTabId == null) {
-				onError("未找到目标页标签——请先在浏览器打开目标页。");
-				setBusy(false);
-				return;
+			const edited = localFacts[t.id];
+			if (edited) await patchPendingTopic(t.id, { facts: edited });
+			const prompt = buildGossipPrompt(t, edited);
+			const res = await requestGenerate(prompt);
+			if (res.ok) {
+				await updatePendingStatus(t.id, "approved");
+				setSelected(new Set());
+				onDraftReady(res.draft);
+			} else {
+				const isKeyError = res.kind === "no-key";
+				setApproveError(
+					isKeyError
+						? "请先在设置中填写 API Key"
+						: `生成草稿失败：${res.error}`,
+				);
 			}
-			const topicList = confirmedTopics.map((t) => t.title || t.sourceUrl);
-			const factsList = confirmedTopics.map((t) => localFacts[t.id] ?? t.facts);
-			const coverUrls = confirmedTopics.map((t) => t.coverImageUrl ?? "");
-			const hasCoverUrls = coverUrls.some((u) => u !== "");
-			await runBatch(
-				topicList,
-				adminTabId,
-				factsList.length > 0 ? factsList : undefined,
-				hasCoverUrls ? coverUrls : undefined,
-			);
-			setSelected(new Set());
-			onBatchStarted();
-		} catch {
-			onError("操作失败，请重试。");
+		} catch (err) {
+			onError(`操作失败：${err instanceof Error ? err.message : "请重试"}`);
 		} finally {
 			setBusy(false);
 		}
@@ -524,6 +515,23 @@ export function PendingTopicsView({ onBack, onBatchStarted, onError }: Props) {
 													borderTop: "1px solid var(--color-border-lighter)",
 												}}
 											>
+												{/* Unit 6: 质量信号 */}
+												{t.confidence != null && (
+													<div
+														style={{
+															marginBottom: "var(--space-md)",
+															fontSize: "var(--font-xs)",
+															color:
+																t.confidence >= 0.7
+																	? "var(--color-success)"
+																	: t.confidence >= 0.4
+																		? "var(--color-warning)"
+																		: "var(--color-text-disabled)",
+														}}
+													>
+														置信度 {Math.round(t.confidence * 100)}%
+													</div>
+												)}
 												{t.coverImageUrl && (
 													<img
 														src={t.coverImageUrl}
@@ -542,36 +550,51 @@ export function PendingTopicsView({ onBack, onBatchStarted, onError }: Props) {
 														style={{
 															marginTop: "var(--space-sm)",
 															display: "grid",
-															gridTemplateColumns: "4em 1fr",
+															gridTemplateColumns: "5em 1fr",
 															gap: "3px var(--space-lg)",
 															alignItems: "center",
 														}}
 													>
-														{FACTS_KEYS.map((key) => (
-															<React.Fragment key={key}>
-																<div
-																	className="text-xs text-muted"
-																	style={{ textAlign: "right" }}
-																>
-																	{key}
-																</div>
-																<input
-																	type="text"
-																	className="field-input"
-																	value={
-																		(localFacts[t.id] ?? t.facts)[key] ?? ""
-																	}
-																	onChange={(e) =>
-																		setFactField(t.id, key, e.target.value)
-																	}
-																	disabled={busy}
-																	style={{
-																		fontSize: "var(--font-xs)",
-																		padding: "1px var(--space-sm)",
-																	}}
-																/>
-															</React.Fragment>
-														))}
+														{GOSSIP_FACT_KEYS.map((key) => {
+															const rawVal = t.facts[key];
+															const isNull = rawVal == null || rawVal === "";
+															return (
+																<React.Fragment key={key}>
+																	<div
+																		className="text-xs text-muted"
+																		style={{ textAlign: "right" }}
+																	>
+																		{isNull && (
+																			<span
+																				style={{
+																					color: "var(--color-warning)",
+																					marginRight: 2,
+																				}}
+																				title="待补充"
+																			>
+																				⚠
+																			</span>
+																		)}
+																		{key}
+																	</div>
+																	<input
+																		type="text"
+																		className="field-input"
+																		value={
+																			localFacts[t.id]?.[key] ?? rawVal ?? ""
+																		}
+																		onChange={(e) =>
+																			setFactField(t.id, key, e.target.value)
+																		}
+																		disabled={busy}
+																		style={{
+																			fontSize: "var(--font-xs)",
+																			padding: "1px var(--space-sm)",
+																		}}
+																	/>
+																</React.Fragment>
+															);
+														})}
 													</div>
 												</div>
 												{t.rawContent?.body && (
@@ -597,6 +620,47 @@ export function PendingTopicsView({ onBack, onBatchStarted, onError }: Props) {
 							})}
 					</ul>
 
+					{approveError && (
+						<div
+							role="alert"
+							style={{
+								marginTop: "var(--space-md)",
+								padding: "var(--space-md) var(--space-lg)",
+								background: "var(--color-error-bg, #fff2f0)",
+								border: "1px solid var(--color-error, #cf1322)",
+								borderRadius: "var(--radius-md)",
+								fontSize: "var(--font-sm)",
+								color: "var(--color-error, #cf1322)",
+								display: "flex",
+								alignItems: "center",
+								gap: "var(--space-md)",
+							}}
+						>
+							<span style={{ flex: 1 }}>{approveError}</span>
+							{approveError.includes("API Key") && (
+								<button
+									type="button"
+									className="btn btn-plain btn-sm"
+									onClick={() => {
+										// bubble up to App via onError to navigate to settings
+										onError("open-settings");
+									}}
+									style={{ whiteSpace: "nowrap", flexShrink: 0 }}
+								>
+									打开设置
+								</button>
+							)}
+							<button
+								type="button"
+								className="btn btn-plain btn-sm"
+								onClick={() => void handleApproveSelected()}
+								disabled={busy || selected.size === 0}
+								style={{ whiteSpace: "nowrap", flexShrink: 0 }}
+							>
+								重试生成草稿
+							</button>
+						</div>
+					)}
 					<div
 						style={{
 							display: "flex",
@@ -610,7 +674,7 @@ export function PendingTopicsView({ onBack, onBatchStarted, onError }: Props) {
 							disabled={selected.size === 0 || busy}
 							className="btn btn-primary"
 						>
-							{busy ? "处理中…" : `批准 (${selected.size}) → 批量`}
+							{busy ? "生成中…" : `批准并生成草稿 (${selected.size})`}
 						</button>
 						<button
 							type="button"

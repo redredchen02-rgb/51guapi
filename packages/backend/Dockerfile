@@ -11,16 +11,15 @@ RUN git init && npm install -g pnpm@9 && pnpm install --frozen-lockfile --ignore
 
 # composite 增量编译:清 buildinfo 强制 emit,避免「认为已最新」跳过产出 dist。
 RUN rm -f packages/shared/tsconfig.tsbuildinfo && pnpm --filter @51guapi/shared build
-RUN pnpm --filter publisher-backend build
+RUN pnpm --filter 51guapi-backend build
 
 FROM node:20-slim
 WORKDIR /app
 
 COPY --from=builder /app/packages/backend/dist ./dist
-COPY --from=builder /app/packages/backend/package.json ./
-COPY --from=builder /app/packages/shared/dist ../packages/shared/dist
-
-RUN npm install --omit=dev
+COPY --from=builder /app/packages/backend/package.json ./package.json
+COPY --from=builder /app/packages/shared/dist ./packages/shared/dist
+COPY --from=builder /app/node_modules ./node_modules
 
 ENV NODE_ENV=production
 EXPOSE 3001
