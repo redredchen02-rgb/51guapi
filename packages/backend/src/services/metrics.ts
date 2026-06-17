@@ -3,7 +3,6 @@ export const counters = {
 	draftsFailed: 0,
 	batchesCompleted: 0,
 	scraperRuns: { success: 0, failed: 0 },
-	publishAttempts: { success: 0, failed: 0 },
 };
 
 // 指标递增收口在这里:各业务路径调用以下函数,/api/v1/metrics 才反映真实活动
@@ -22,11 +21,6 @@ export function recordDraft(ok: boolean): void {
 export function recordScraperRun(ok: boolean): void {
 	if (ok) counters.scraperRuns.success++;
 	else counters.scraperRuns.failed++;
-}
-
-export function recordPublishAttempt(ok: boolean): void {
-	if (ok) counters.publishAttempts.success++;
-	else counters.publishAttempts.failed++;
 }
 
 export function recordBatchCompleted(): void {
@@ -48,11 +42,6 @@ export function getMetrics(): string {
 		"# TYPE publisher_scraper_runs_total counter",
 		`publisher_scraper_runs_total{status="success"} ${counters.scraperRuns.success}`,
 		`publisher_scraper_runs_total{status="failed"} ${counters.scraperRuns.failed}`,
-		"",
-		"# HELP publisher_publish_attempts_total Total publish attempts",
-		"# TYPE publisher_publish_attempts_total counter",
-		`publisher_publish_attempts_total{status="success"} ${counters.publishAttempts.success}`,
-		`publisher_publish_attempts_total{status="failed"} ${counters.publishAttempts.failed}`,
 	];
 	return `${lines.join("\n")}\n`;
 }

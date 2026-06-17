@@ -1,21 +1,18 @@
-// Preflight 默认检查集(Unit 2 全套 green + red 残留清单)。
+// Preflight 默认检查集。
 //
-// 注意:metrics 自增检查被**故意排除**(plan Key Decisions:死指标),勿加回。
+// 注意:dryrun-green / trajectory-verify 已随 batch-orchestrator.ts / trajectory.ts
+// 在 0.2.1.0 重构中删除而失效,已从检查集移除。
 
 import type { GreenCheck, RedResidual } from "../types.ts";
 import { alarmsPermissionCheck } from "./alarms-permission.ts";
 import { backendFailClosedCheck } from "./backend-failclosed.ts";
 import { bundleKeyScanCheck } from "./bundle-key-scan.ts";
 import { corsIdCheck } from "./cors-id.ts";
-import { dryRunGreenCheck } from "./dryrun-green.ts";
-import { trajectoryVerifyCheck } from "./trajectory-verify.ts";
 
 export const GREEN_CHECKS: GreenCheck[] = [
 	corsIdCheck,
 	backendFailClosedCheck,
 	bundleKeyScanCheck,
-	dryRunGreenCheck,
-	trajectoryVerifyCheck,
 	alarmsPermissionCheck,
 ];
 

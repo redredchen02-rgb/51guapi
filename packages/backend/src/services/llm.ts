@@ -2,6 +2,7 @@ import type {
 	ContentDraft,
 	FactsBlock,
 	GenerateDraftResponse,
+	GossipFactsBlock,
 	Settings,
 } from "@51guapi/shared";
 import {
@@ -14,7 +15,7 @@ import {
 export interface LlmDeps {
 	settings: Settings;
 	apiKey: string;
-	facts?: FactsBlock;
+	facts?: GossipFactsBlock;
 	/** Web 搜索富化的格式化文本；为空则不注入。 */
 	enrichment?: string;
 	fetchFn?: typeof fetch;
@@ -272,7 +273,16 @@ export async function generateDraft(
 	const now = deps.now ? deps.now() : new Date().toISOString();
 	const id = deps.genId ? deps.genId() : `draft_${Date.now()}`;
 	const timeoutMs = deps.timeoutMs ?? 60_000;
-	const facts = deps.facts ?? {};
+	const facts = deps.facts ?? {
+		當事人: null,
+		事件摘要: null,
+		起因: null,
+		經過: null,
+		結果: null,
+		來源連結: null,
+		發生時間: null,
+		熱度標籤: null,
+	};
 
 	// 注入 Web 搜索富化内容到 prompt 末尾
 	const finalPrompt = deps.enrichment
@@ -387,7 +397,7 @@ export async function generateDraft(
 
 	// 提升为具名常量,以便随响应返回 —— 扩展端据此重新组装(re-assemble)。
 	const slots = slotsFromParsed(parsed);
-	const assembled = assembleDraft(slots, facts);
+	const assembled = assembleDraft(slots, facts as unknown as FactsBlock);
 	const tags = Array.isArray(parsed.tags)
 		? parsed.tags.map(str).filter(Boolean)
 		: [];
@@ -517,7 +527,7 @@ const DEFAULT_CRITERIA = `你是专业内容评审员。请对以下帖子草稿
 
 四个维度：
 1. body_richness（正文丰富度）：正文字数≥150字、内容实质丰富、不空洞单薄。
-2. community_tone（社区口吻）：文风贴近动漫社区，口语化接地气，不过于官方生硬。
+2. community_tone（吃瓜口吻）：用词贴近吃瓜娱乐报道，含知情人/爆料/疑似等词汇，不过于官方生硬。
 3. title_quality（标题质量）：标题有信息量、吸引人，让读者想点进去看。
 4. category_accuracy（分类准确性）：分类和标签准确匹配内容，标签有实际含义。
 
@@ -525,7 +535,7 @@ const DEFAULT_CRITERIA = `你是专业内容评审员。请对以下帖子草稿
 
 const DIM_LABELS: Record<string, string> = {
 	body_richness: "正文（需更丰富充实，≥150字，有实质内容）",
-	community_tone: "正文风格（需更贴近动漫社区口吻，口语化接地气）",
+	community_tone: "正文风格（需更贴近吃瓜娱乐报道口吻，含爆料/疑似等词汇）",
 	title_quality: "标题（需更吸引人、有信息量）",
 	category_accuracy: "分类和标签（需更准确匹配内容）",
 };

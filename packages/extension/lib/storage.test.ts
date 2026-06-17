@@ -153,32 +153,21 @@ describe("storage", () => {
 	});
 
 	describe("ExtensionCounters", () => {
-		it("首次调用返回默认 0/0/0", async () => {
+		it("首次调用返回默认 batchesCompleted=0", async () => {
 			const c = await getExtensionCounters();
-			expect(c).toEqual({
-				publishAttempts: { success: 0, failed: 0 },
-				batchesCompleted: 0,
-			});
+			expect(c).toEqual({ batchesCompleted: 0 });
 		});
 
 		it("save 后 getExtensionCounters 取回 batchesCompleted", async () => {
-			await saveExtensionCounters({
-				publishAttempts: { success: 1, failed: 2 },
-				batchesCompleted: 3,
-			});
+			await saveExtensionCounters({ batchesCompleted: 3 });
 			const c = await getExtensionCounters();
 			expect(c.batchesCompleted).toBe(3);
-			expect(c.publishAttempts).toEqual({ success: 1, failed: 2 });
 		});
 
 		it("不完整旧数据（缺 batchesCompleted）→ 回落默认而不崩溃", async () => {
-			await storage.setItem("local:extensionCounters", {
-				publishAttempts: { success: 5 },
-			});
+			await storage.setItem("local:extensionCounters", {});
 			const c = await getExtensionCounters();
 			expect(c.batchesCompleted).toBe(0);
-			expect(c.publishAttempts.success).toBe(5);
-			expect(c.publishAttempts.failed).toBe(0);
 		});
 	});
 

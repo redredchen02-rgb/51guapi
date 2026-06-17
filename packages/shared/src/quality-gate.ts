@@ -1,7 +1,7 @@
 // 内容质量门禁：评估草稿是否达到发布标准。
 // 纯函数、无副作用，可在 shared 包中复用。
 
-import type { FactsBlock } from "./facts.js";
+import type { GossipFactsBlock } from "./gossip-facts.js";
 import { containsPlaceholder } from "./post-assembler.js";
 import type { ContentDraft } from "./types.js";
 
@@ -51,11 +51,11 @@ function checkBodyLength(body: string): QualityCheck {
 }
 
 /** 检查事实完整性。 */
-function checkFactsCompleteness(facts: FactsBlock): QualityCheck {
-	const coreKeys = ["作品名", "集数", "制作", "漢化", "無修", "题材", "简介"];
+function checkFactsCompleteness(facts: GossipFactsBlock): QualityCheck {
+	const coreKeys = ["當事人", "事件摘要", "起因", "經過", "結果"];
 	const filled = coreKeys.filter((k) => {
-		const v = facts[k as keyof FactsBlock];
-		return v && v.trim().length > 0;
+		const v = facts[k as keyof GossipFactsBlock];
+		return v != null && v.trim().length > 0;
 	}).length;
 	const ratio = filled / coreKeys.length;
 	const pass = ratio >= 0.5;
@@ -90,24 +90,20 @@ function checkTitleQuality(title: string): QualityCheck {
 /** 检查社区口吻。 */
 function checkCommunityTone(body: string): QualityCheck {
 	const toneWords = [
-		"嗨嗨",
-		"大家好",
-		"推荐",
-		"安利",
-		"宝藏",
-		"绝了",
-		"太顶了",
-		"快来看",
-		"赶紧",
-		"冲",
-		"入坑",
-		"必看",
-		"神作",
-		"良心",
-		"小伙伴们",
-		"各位",
-		"紳士",
-		"51娘",
+		"爆料",
+		"知情人",
+		"当事人",
+		"疑似",
+		"曝光",
+		"回应",
+		"否认",
+		"澄清",
+		"撕逼",
+		"吃瓜",
+		"坐实",
+		"目击",
+		"网传",
+		"官方",
 	];
 	const text = body.replace(/<[^>]*>/g, "").toLowerCase();
 	const found = toneWords.filter((w) => text.includes(w));
@@ -148,12 +144,23 @@ function checkTagsAccuracy(draft: ContentDraft): QualityCheck {
  */
 export function evaluateQuality(
 	draft: ContentDraft,
-	facts?: FactsBlock,
+	facts?: GossipFactsBlock,
 	threshold: number = DEFAULT_THRESHOLD,
 ): QualityVerdict {
 	const checks: QualityCheck[] = [
 		checkBodyLength(draft.body),
-		checkFactsCompleteness(facts ?? {}),
+		checkFactsCompleteness(
+			facts ?? {
+				當事人: null,
+				事件摘要: null,
+				起因: null,
+				經過: null,
+				結果: null,
+				來源連結: null,
+				發生時間: null,
+				熱度標籤: null,
+			},
+		),
 		checkTitleQuality(draft.title),
 		checkCommunityTone(draft.body),
 		checkTagsAccuracy(draft),
