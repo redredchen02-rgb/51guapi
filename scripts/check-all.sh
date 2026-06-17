@@ -8,10 +8,10 @@ echo "=> Running tests..."
 pnpm -r test
 
 echo "=> Building backend..."
-pnpm --filter publisher-backend build
+pnpm --filter 51guapi-backend build
 
 echo "=> Building extension..."
-pnpm --filter publisher-fill-assistant build
+pnpm --filter 51guapi-extension build
 
 echo "=> Verifying build artifacts..."
 if [ ! -d "packages/extension/.output" ]; then

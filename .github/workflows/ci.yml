@@ -50,8 +50,8 @@ jobs:
       # 复用 scripts/check-all.sh 的产物校验尾段思路(不整段调它以免重复 lint/test)。
       - name: Build and verify artifacts
         run: |
-          pnpm --filter publisher-backend build
-          pnpm --filter publisher-fill-assistant build
+          pnpm --filter 51guapi-backend build
+          pnpm --filter 51guapi-extension build
           # 断言关键产物文件存在(非仅目录),避免空/坏 build 通过 test -d。
           test -f packages/extension/.output/chrome-mv3/manifest.json \
             || { echo "✗ 扩展产物缺 chrome-mv3/manifest.json(build 可能空/坏)"; exit 1; }

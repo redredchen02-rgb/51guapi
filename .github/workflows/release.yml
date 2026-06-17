@@ -39,10 +39,10 @@ jobs:
         run: pnpm -r test
 
       - name: Build extension zip
-        run: pnpm --filter publisher-fill-assistant zip
+        run: pnpm --filter 51guapi-extension zip
 
       - name: Prepare extension artifact
-        run: cp packages/extension/.output/publisher-fill-assistant-*.zip ./extension.zip
+        run: cp packages/extension/.output/51guapi-extension-*.zip ./extension.zip
 
       # backend Docker 打包延后到 v0.2:runtime 阶段 npm install 不认 workspace: 协议,
       # 需改 pnpm deploy / 复制 prod node_modules,在可本地验证的环境下再处理。

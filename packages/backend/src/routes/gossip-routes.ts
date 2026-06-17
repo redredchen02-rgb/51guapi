@@ -47,8 +47,8 @@ function parseUrl(
 ): { url: URL; error?: undefined } | { error: string; url?: undefined } {
 	try {
 		const u = new URL(raw);
-		if (u.protocol !== "https:" && u.protocol !== "http:") {
-			return { error: "URL must use http or https scheme" };
+		if (u.protocol !== "https:") {
+			return { error: "URL must use https scheme" };
 		}
 		if (isIpLiteral(u.hostname)) {
 			return { error: "IP literal URLs are not allowed" };

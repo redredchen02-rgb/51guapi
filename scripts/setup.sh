@@ -123,7 +123,7 @@ needs_build() {
 
 if needs_build; then
   info "构建后端..."
-  pnpm --filter publisher-backend build
+  pnpm --filter 51guapi-backend build
   ok "后端构建完成 ✓"
 else
   ok "后端构建产物是最新的，跳过构建 ✓"
@@ -144,11 +144,11 @@ fi
 info "启动后端服务..."
 set -a; source "$ENV_FILE"; set +a
 
-# 后台运行，日志写到 /tmp/51publisher-backend.log
-LOG_FILE="/tmp/51publisher-backend.log"
+# 后台运行，日志写到 /tmp/51guapi-backend.log
+LOG_FILE="/tmp/51guapi-backend.log"
 nohup node "$DIST_JS" >> "$LOG_FILE" 2>&1 &
 BACKEND_PID=$!
-echo "$BACKEND_PID" > /tmp/51publisher-backend.pid
+echo "$BACKEND_PID" > /tmp/51guapi-backend.pid
 info "后端进程 pid=$BACKEND_PID，日志: $LOG_FILE"
 
 # 等待 healthz 就绪（最多 15 秒）
@@ -181,7 +181,7 @@ echo ""
 echo -e "  后端地址: ${CYAN}http://localhost:3001${NC}"
 echo -e "  健康检查: ${CYAN}$HEALTHZ${NC}"
 echo -e "  后端日志: ${CYAN}$LOG_FILE${NC}"
-echo -e "  停止服务: ${CYAN}kill \$(cat /tmp/51publisher-backend.pid)${NC}"
+echo -e "  停止服务: ${CYAN}kill \$(cat /tmp/51guapi-backend.pid)${NC}"
 echo ""
 echo "  下一步：在 Chrome 加载扩展"
 echo "    chrome://extensions → 开启开发者模式 → 加载已解压"

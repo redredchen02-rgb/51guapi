@@ -23,7 +23,10 @@ vi.mock("../../lib/pending-client", () => ({
 }));
 
 vi.mock("../../lib/messaging", () => ({
-	runBatch: vi.fn(async () => null),
+	requestGenerate: vi.fn(async () => ({
+		ok: true,
+		draft: { title: "", body: "", tags: [] },
+	})),
 }));
 
 vi.mock("../../lib/export", async (importOriginal) => {
@@ -51,13 +54,14 @@ function makeTopic(
 		siteName: "test-site",
 		title: `选题 ${id}`,
 		facts: {
-			作品名: "测试作品",
-			集数: "01",
-			制作: "",
-			漢化: "",
-			無修: "",
-			题材: "",
-			简介: "",
+			當事人: "测试人物",
+			事件摘要: "测试摘要",
+			起因: "",
+			經過: "",
+			結果: "",
+			來源連結: "",
+			發生時間: "",
+			熱度標籤: "",
 		},
 		confidence: 0.9,
 		status: "pending",
@@ -88,13 +92,13 @@ describe("R1 — inline fact editing", () => {
 		render(
 			<PendingTopicsView
 				onBack={vi.fn()}
-				onBatchStarted={vi.fn()}
+				onDraftReady={vi.fn()}
 				onError={vi.fn()}
 			/>,
 		);
 		await waitFor(() => screen.getByText("选题 t1"));
 		fireEvent.click(screen.getByText("详情"));
-		expect(screen.getByDisplayValue("测试作品")).toBeTruthy();
+		expect(screen.getByDisplayValue("测试人物")).toBeTruthy();
 	});
 
 	it("编辑「作品名」后值更新(折叠再展开保留编辑)", async () => {
@@ -102,30 +106,30 @@ describe("R1 — inline fact editing", () => {
 		render(
 			<PendingTopicsView
 				onBack={vi.fn()}
-				onBatchStarted={vi.fn()}
+				onDraftReady={vi.fn()}
 				onError={vi.fn()}
 			/>,
 		);
 		await waitFor(() => screen.getByText("选题 t1"));
 
 		fireEvent.click(screen.getByText("详情"));
-		const input = screen.getByDisplayValue("测试作品") as HTMLInputElement;
-		fireEvent.change(input, { target: { value: "新作品名" } });
-		expect(input.value).toBe("新作品名");
+		const input = screen.getByDisplayValue("测试人物") as HTMLInputElement;
+		fireEvent.change(input, { target: { value: "新人物名" } });
+		expect(input.value).toBe("新人物名");
 
 		// 折叠再展开 → 编辑保留
 		fireEvent.click(screen.getByText("收起"));
 		fireEvent.click(screen.getByText("详情"));
-		expect(screen.getByDisplayValue("新作品名")).toBeTruthy();
+		expect(screen.getByDisplayValue("新人物名")).toBeTruthy();
 	});
 
-	it("展开后批准 → PATCH 调用 facts，后跟 updatePendingStatus 和 runBatch", async () => {
+	it("展开后批准 → PATCH 调用 facts，后跟 requestGenerate 和 updatePendingStatus", async () => {
 		const topic = makeTopic("t1");
 		vi.mocked(fetchPendingTopics).mockResolvedValue([topic]);
 		render(
 			<PendingTopicsView
 				onBack={vi.fn()}
-				onBatchStarted={vi.fn()}
+				onDraftReady={vi.fn()}
 				onError={vi.fn()}
 			/>,
 		);
@@ -133,13 +137,13 @@ describe("R1 — inline fact editing", () => {
 
 		// 先展开 → initLocalFacts
 		fireEvent.click(screen.getByText("详情"));
-		await waitFor(() => screen.getByDisplayValue("测试作品"));
+		await waitFor(() => screen.getByDisplayValue("测试人物"));
 
 		// 再勾选
 		fireEvent.click(screen.getByRole("checkbox"));
-		await waitFor(() => screen.getByText(/批准 \(1\)/));
+		await waitFor(() => screen.getByText(/批准并生成草稿/));
 
-		fireEvent.click(screen.getByText(/批准/));
+		fireEvent.click(screen.getByText(/批准并生成草稿/));
 		await waitFor(() => {
 			expect(patchPendingTopic).toHaveBeenCalledWith(
 				"t1",
@@ -155,7 +159,7 @@ describe("R1 — inline fact editing", () => {
 		render(
 			<PendingTopicsView
 				onBack={vi.fn()}
-				onBatchStarted={vi.fn()}
+				onDraftReady={vi.fn()}
 				onError={vi.fn()}
 			/>,
 		);
@@ -163,22 +167,22 @@ describe("R1 — inline fact editing", () => {
 
 		// 展开并编辑
 		fireEvent.click(screen.getByText("详情"));
-		await waitFor(() => screen.getByDisplayValue("测试作品"));
-		fireEvent.change(screen.getByDisplayValue("测试作品"), {
-			target: { value: "改后作品名" },
+		await waitFor(() => screen.getByDisplayValue("测试人物"));
+		fireEvent.change(screen.getByDisplayValue("测试人物"), {
+			target: { value: "改后人物名" },
 		});
-		await waitFor(() => screen.getByDisplayValue("改后作品名"));
+		await waitFor(() => screen.getByDisplayValue("改后人物名"));
 
 		// 勾选
 		fireEvent.click(screen.getByRole("checkbox"));
-		await waitFor(() => screen.getByText(/批准 \(1\)/));
+		await waitFor(() => screen.getByText(/批准并生成草稿/));
 
-		fireEvent.click(screen.getByText(/批准/));
+		fireEvent.click(screen.getByText(/批准并生成草稿/));
 		await waitFor(() => {
 			expect(patchPendingTopic).toHaveBeenCalledWith(
 				"t1",
 				expect.objectContaining({
-					facts: expect.objectContaining({ 作品名: "改后作品名" }),
+					facts: expect.objectContaining({ 當事人: "改后人物名" }),
 				}),
 			);
 		});
@@ -197,7 +201,7 @@ describe("R2 — cover thumbnail", () => {
 		render(
 			<PendingTopicsView
 				onBack={vi.fn()}
-				onBatchStarted={vi.fn()}
+				onDraftReady={vi.fn()}
 				onError={vi.fn()}
 			/>,
 		);
@@ -215,7 +219,7 @@ describe("R2 — cover thumbnail", () => {
 		render(
 			<PendingTopicsView
 				onBack={vi.fn()}
-				onBatchStarted={vi.fn()}
+				onDraftReady={vi.fn()}
 				onError={vi.fn()}
 			/>,
 		);
@@ -235,7 +239,7 @@ describe("R4 — CSV export button", () => {
 		render(
 			<PendingTopicsView
 				onBack={vi.fn()}
-				onBatchStarted={vi.fn()}
+				onDraftReady={vi.fn()}
 				onError={vi.fn()}
 			/>,
 		);
@@ -254,7 +258,7 @@ describe("R4 — CSV export button", () => {
 		render(
 			<PendingTopicsView
 				onBack={vi.fn()}
-				onBatchStarted={vi.fn()}
+				onDraftReady={vi.fn()}
 				onError={vi.fn()}
 			/>,
 		);
@@ -276,7 +280,7 @@ describe("R3 — scraper trigger button", () => {
 		render(
 			<PendingTopicsView
 				onBack={vi.fn()}
-				onBatchStarted={vi.fn()}
+				onDraftReady={vi.fn()}
 				onError={vi.fn()}
 			/>,
 		);
@@ -295,7 +299,7 @@ describe("R3 — scraper trigger button", () => {
 		render(
 			<PendingTopicsView
 				onBack={vi.fn()}
-				onBatchStarted={vi.fn()}
+				onDraftReady={vi.fn()}
 				onError={vi.fn()}
 			/>,
 		);

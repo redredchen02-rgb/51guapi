@@ -184,8 +184,18 @@ export function App() {
 		return (
 			<PendingTopicsView
 				onBack={() => setView("main")}
-				onBatchStarted={() => setView("main")}
-				onError={(msg) => handleError(msg)}
+				onDraftReady={(d) => {
+					updateDraft(d);
+					setMode("draft");
+					setView("main");
+				}}
+				onError={(msg) => {
+					if (msg === "open-settings") {
+						setView("settings");
+					} else {
+						handleError(msg);
+					}
+				}}
 			/>
 		);
 	if (view === "gossip")
@@ -272,7 +282,9 @@ export function App() {
 						className="workflow-card"
 					>
 						<span className="workflow-card-title">待审池</span>
-						<span className="workflow-card-desc">补事实、挑选进入批量生成</span>
+						<span className="workflow-card-desc">
+							补事实、批准 → AI 草稿 → 导出
+						</span>
 					</button>
 					<button
 						type="button"

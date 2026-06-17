@@ -1,13 +1,13 @@
 {
-	"name": "publisher-monorepo",
+	"name": "51guapi-monorepo",
 	"private": true,
 	"type": "module",
 	"scripts": {
 		"setup": "pnpm install",
-		"dev:extension": "pnpm --filter publisher-fill-assistant dev",
-		"dev:backend": "pnpm --filter publisher-backend dev",
-		"build:extension": "pnpm --filter publisher-fill-assistant build",
-		"build:backend": "pnpm --filter publisher-backend build",
+		"dev:extension": "pnpm --filter 51guapi-extension dev",
+		"dev:backend": "pnpm --filter 51guapi-backend dev",
+		"build:extension": "pnpm --filter 51guapi-extension build",
+		"build:backend": "pnpm --filter 51guapi-backend build",
 		"test": "pnpm -r test",
 		"coverage": "pnpm -r --parallel coverage",
 		"compile": "pnpm -r compile",

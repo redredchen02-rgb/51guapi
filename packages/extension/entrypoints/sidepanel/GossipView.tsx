@@ -34,6 +34,10 @@ export function GossipView({ onBack, onTopicAdded }: Props) {
 	const [newUrl, setNewUrl] = useState("");
 	const [addError, setAddError] = useState("");
 	const [addBusy, setAddBusy] = useState(false);
+	const [addWarning, setAddWarning] = useState<{
+		hostname: string;
+		proceed: () => Promise<void>;
+	} | null>(null);
 
 	// U6 渠道白名单(动态 SSRF allowlist)。
 	const [channels, setChannels] = useState<Channel[]>([]);
@@ -105,23 +109,50 @@ export function GossipView({ onBack, onTopicAdded }: Props) {
 		}
 	}
 
-	async function handleAdd() {
-		if (!newName.trim() || !newUrl.trim()) {
-			setAddError("請填寫站點名稱和 URL");
-			return;
-		}
+	async function doCreateSite(name: string, url: string) {
 		setAddBusy(true);
 		setAddError("");
 		try {
-			await createGossipSite(newName.trim(), newUrl.trim());
+			await createGossipSite(name, url);
 			setNewName("");
 			setNewUrl("");
+			setAddWarning(null);
 			await loadSites();
 		} catch (e) {
 			setAddError(e instanceof Error ? e.message : "新增失敗");
 		} finally {
 			setAddBusy(false);
 		}
+	}
+
+	async function handleAdd() {
+		if (!newName.trim() || !newUrl.trim()) {
+			setAddError("請填寫站點名稱和 URL");
+			return;
+		}
+		setAddError("");
+		setAddWarning(null);
+
+		let hostname: string;
+		try {
+			hostname = new URL(newUrl.trim()).hostname;
+		} catch {
+			setAddError("站点 URL 无效，请检查格式");
+			return;
+		}
+
+		const inWhitelist = channels.some((c) => c.hostname === hostname);
+		if (!inWhitelist) {
+			const name = newName.trim();
+			const url = newUrl.trim();
+			setAddWarning({
+				hostname,
+				proceed: () => doCreateSite(name, url),
+			});
+			return;
+		}
+
+		await doCreateSite(newName.trim(), newUrl.trim());
 	}
 
 	async function handleDelete(id: string) {
@@ -354,6 +385,43 @@ export function GossipView({ onBack, onTopicAdded }: Props) {
 				</div>
 				{addError && (
 					<div style={{ fontSize: 12, color: "#cf1322" }}>{addError}</div>
+				)}
+				{addWarning && (
+					<div
+						role="status"
+						style={{
+							marginTop: 6,
+							padding: "8px 10px",
+							background: "#fffbe6",
+							border: "1px solid #ffe58f",
+							borderRadius: 4,
+							fontSize: 12,
+							color: "#7c4d00",
+						}}
+					>
+						<div style={{ marginBottom: 6 }}>
+							⚠ 域名 <strong>{addWarning.hostname}</strong>{" "}
+							未在渠道白名单，此站点爬取将被 SSRF
+							守卫拒绝。建议先在上方「可爬取渠道」中添加 {addWarning.hostname}。
+						</div>
+						<div style={{ display: "flex", gap: 8 }}>
+							<button
+								type="button"
+								onClick={() => void addWarning.proceed()}
+								disabled={addBusy}
+								style={{ ...btn, background: "#faad14", color: "white" }}
+							>
+								仍然继续
+							</button>
+							<button
+								type="button"
+								onClick={() => setAddWarning(null)}
+								style={{ ...btn, background: "#f0f0f0" }}
+							>
+								取消
+							</button>
+						</div>
+					</div>
 				)}
 			</div>
 

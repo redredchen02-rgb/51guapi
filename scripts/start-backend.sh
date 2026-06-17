@@ -17,7 +17,7 @@ needs_build() {
 
 if needs_build; then
   echo "[start-backend] dist is stale or missing — building…"
-  (cd "$REPO_ROOT" && pnpm --filter publisher-backend build)
+  (cd "$REPO_ROOT" && pnpm --filter 51guapi-backend build)
 fi
 
 # Check if backend is already running.
@@ -43,8 +43,8 @@ set -a
 source "$ENV_FILE"
 set +a
 
-LOG_FILE="/tmp/51publisher-backend.log"
-PID_FILE="/tmp/51publisher-backend.pid"
+LOG_FILE="/tmp/51guapi-backend.log"
+PID_FILE="/tmp/51guapi-backend.pid"
 
 echo "[start-backend] Starting backend (background, log: $LOG_FILE)…"
 nohup node "$DIST_JS" >> "$LOG_FILE" 2>&1 &

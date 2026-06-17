@@ -28,7 +28,7 @@ pnpm lint                         # biome check --write;CI 用 pnpm lint:ci
 bash scripts/check-all.sh         # 测试 + 双端构建 + 产物校验
 ```
 
-扩展专属(在 `packages/extension/` 下或加 `--filter publisher-fill-assistant`):
+扩展专属(在 `packages/extension/` 下或加 `--filter 51guapi-extension`):
 
 ```bash
 pnpm check:fixtures               # 脱敏闸门:扫 fixture 是否夹带机密(pre-commit 自动跑)
