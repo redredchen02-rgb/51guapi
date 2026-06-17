@@ -236,7 +236,7 @@ export async function savePendingTopic(
 				coverImageUrl: topic.coverImageUrl ?? null,
 				score,
 				enrichment: topic.enrichment ? JSON.stringify(topic.enrichment) : null,
-				domain: topic.domain ?? "gossip",
+				domain: topic.domain ?? "acg",
 				createdAt: topic.createdAt,
 				updatedAt: topic.updatedAt,
 			});

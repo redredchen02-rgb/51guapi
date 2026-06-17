@@ -470,4 +470,24 @@ describe("pending-store (SQLite)", () => {
 		const acgList = await listPendingTopics(50, undefined, undefined, "acg");
 		expect(acgList.every((t) => t.domain === "acg")).toBe(true);
 	});
+
+	it("savePendingTopic — domain 未传时默认 'acg'，不混入 gossip 池", async () => {
+		const topic = makeTopic({ sourceUrl: "https://acg.test/no-domain" });
+		// domain 字段未设置（undefined）
+		const { inserted } = await savePendingTopic(topic);
+		expect(inserted).toBe(true);
+		const loaded = await loadPendingTopic(topic.id);
+		expect(loaded?.domain).toBe("acg");
+	});
+
+	it("savePendingTopic — domain='gossip' 显式传入时正确保留", async () => {
+		const topic = makeTopic({
+			sourceUrl: "https://gossip.test/explicit",
+			domain: "gossip",
+		});
+		const { inserted } = await savePendingTopic(topic);
+		expect(inserted).toBe(true);
+		const loaded = await loadPendingTopic(topic.id);
+		expect(loaded?.domain).toBe("gossip");
+	});
 });
