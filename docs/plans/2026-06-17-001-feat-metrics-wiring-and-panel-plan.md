@@ -1,7 +1,7 @@
 ---
 title: "feat: Metrics wiring + extension counters + metrics view"
 type: feat
-status: active
+status: completed
 date: 2026-06-17
 origin: docs/brainstorms/2026-06-17-001-p1-iteration-requirements.md
 ---
@@ -359,3 +359,9 @@ graph TB
 - Related code: `packages/backend/src/services/metrics.ts`, `packages/backend/src/routes/gossip-routes.ts`, `packages/backend/src/routes/scraper-routes.ts`（参考已接线的 recordScraperRun）
 - Related code: `packages/extension/lib/storage.ts`, `packages/extension/entrypoints/background.ts`, `packages/extension/entrypoints/sidepanel/App.tsx`
 - Related: `docs/solutions/extension-http-client-testability-injection-seam.md`（扩展端 deps 注入模式参考）
+
+## Execution Summary (2026-06-17)
+
+完成並合併（PR #2）。U1–U4 + U6 全做，U5 作廢（trajectory 已刪）。整合了先前留在工作樹的部分 WIP（background U4 + App/MetricsView U6），補齊 U1/U2（gossip-routes recordScraperRun 接線 + HTTP 測試）+ U3（ExtensionCounters storage helper，解除編譯錯誤）。correctness 複查確認計數無雙計/漏計、409 不污染、無除零；修掉一個 P2（空態守衛漏 draftsFailed）。backend 455 + extension 441 全綠。commits：e6cff063 / 3ec6d64f / de295cd9。
+
+殘留（P2，未阻塞）：卡片標題「內容抓取成功率」僅涵蓋 from-url 路徑，口徑可後續澄清；background get-modify-save 非原子（MV3 單線程 + 批次串行，實際 race 風險低）。
