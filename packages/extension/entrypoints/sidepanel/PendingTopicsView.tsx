@@ -135,6 +135,18 @@ export function PendingTopicsView({ onBack, onBatchStarted, onError }: Props) {
 		}
 	}
 
+	async function handleTriggerScrape() {
+		const site = adapters[0] ?? null;
+		if (!site) return;
+		setScrapeStatus("抓取中…");
+		try {
+			await triggerScrape(site);
+			await refresh();
+		} finally {
+			setScrapeStatus("");
+		}
+	}
+
 	async function handleRejectSelected() {
 		if (selected.size === 0) return;
 		setBusy(true);
@@ -245,18 +257,7 @@ export function PendingTopicsView({ onBack, onBatchStarted, onError }: Props) {
 					<button
 						type="button"
 						disabled={busy || adapters.length === 0}
-						onClick={() => {
-							void (async () => {
-								const site = adapters[0] ?? null;
-								if (!site) return;
-								setScrapeStatus("抓取中…");
-								await triggerScrape(site);
-								setTimeout(() => {
-									setScrapeStatus("");
-									void refresh();
-								}, 2000);
-							})();
-						}}
+						onClick={() => void handleTriggerScrape()}
 						className="btn btn-sm"
 						style={{
 							background:
