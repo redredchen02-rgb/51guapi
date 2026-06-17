@@ -11,6 +11,7 @@ const API_KEY = "local:apiKey";
 const BACKEND_TOKEN_KEY = "local:backendToken";
 const CURRENT_DRAFT_KEY = "local:currentDraft";
 const BATCH_KEY = "local:batch";
+const EXTENSION_COUNTERS_KEY = "local:extensionCounters";
 
 /** 默认设置。字段映射拆到 lib/field-mapping.ts(不依赖 #imports,供测试复用)。 */
 export const DEFAULT_SETTINGS: Settings = {
@@ -129,6 +130,43 @@ export async function saveBatch(batch: Batch): Promise<void> {
 
 export async function clearBatch(): Promise<void> {
 	await storage.removeItem(BATCH_KEY);
+}
+
+// ---- 扩展端运营计数器（跨会话持久，chrome.storage.local）----
+// batchesCompleted 由 background.ts handleRunBatch 成功完成时递增；
+// publishAttempts 为 future placeholder（发布机器已拆除，当前不接线）。
+
+export interface ExtensionCounters {
+	publishAttempts: { success: number; failed: number };
+	batchesCompleted: number;
+}
+
+function defaultExtensionCounters(): ExtensionCounters {
+	return { publishAttempts: { success: 0, failed: 0 }, batchesCompleted: 0 };
+}
+
+/**
+ * 读取扩展端计数器。读不到或字段不完整时回落完整默认对象（不崩溃）。
+ */
+export async function getExtensionCounters(): Promise<ExtensionCounters> {
+	const stored = await storage.getItem<Partial<ExtensionCounters>>(
+		EXTENSION_COUNTERS_KEY,
+	);
+	const def = defaultExtensionCounters();
+	if (!stored) return def;
+	return {
+		publishAttempts: {
+			success: stored.publishAttempts?.success ?? def.publishAttempts.success,
+			failed: stored.publishAttempts?.failed ?? def.publishAttempts.failed,
+		},
+		batchesCompleted: stored.batchesCompleted ?? def.batchesCompleted,
+	};
+}
+
+export async function saveExtensionCounters(
+	c: ExtensionCounters,
+): Promise<void> {
+	await storage.setItem(EXTENSION_COUNTERS_KEY, c);
 }
 
 // ---- Few-shot 范例（R11 一键存为范例）----

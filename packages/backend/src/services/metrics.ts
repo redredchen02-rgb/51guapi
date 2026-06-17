@@ -14,6 +14,11 @@ export function recordDraft(ok: boolean): void {
 	else counters.draftsFailed++;
 }
 
+/**
+ * 记录一次 gossip 内容爬取事件。仅由 gossip-routes POST /gossip/topics/from-url 调用。
+ * ok=true 表示 fetchContent + gossipExtractFacts + pending 存储全部成功（201）；
+ * ok=false 表示 fetch 或提取失败（502）。409 重复 URL 早退，不计数。
+ */
 export function recordScraperRun(ok: boolean): void {
 	if (ok) counters.scraperRuns.success++;
 	else counters.scraperRuns.failed++;
@@ -39,7 +44,7 @@ export function getMetrics(): string {
 		"# TYPE publisher_batches_total counter",
 		`publisher_batches_total ${counters.batchesCompleted}`,
 		"",
-		"# HELP publisher_scraper_runs_total Total scraper runs",
+		"# HELP publisher_scraper_runs_total Total gossip content fetch+extraction events by gossip-routes",
 		"# TYPE publisher_scraper_runs_total counter",
 		`publisher_scraper_runs_total{status="success"} ${counters.scraperRuns.success}`,
 		`publisher_scraper_runs_total{status="failed"} ${counters.scraperRuns.failed}`,

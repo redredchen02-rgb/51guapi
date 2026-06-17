@@ -15,9 +15,11 @@ import {
 	getApiKey,
 	getBatch,
 	getBatch as getBatchRaw,
+	getExtensionCounters,
 	getSettings,
 	refreshRemoteMappings,
 	saveBatch,
+	saveExtensionCounters,
 } from "../lib/storage";
 
 // Background service worker:生成调度中心(U1:发布/填充机器已拆除)。
@@ -140,6 +142,9 @@ export function createHandlers(deps: BackgroundHandlerDeps) {
 				}
 				await deps.saveBatch(batch);
 			}
+			const ec = await getExtensionCounters();
+			ec.batchesCompleted++;
+			await saveExtensionCounters(ec);
 			return batch;
 		} catch (err) {
 			logger.error("bg", "批量生成失败", {

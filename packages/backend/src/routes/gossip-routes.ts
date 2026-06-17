@@ -20,6 +20,7 @@ import {
 	pendingTopicExistsBySourceUrl,
 	savePendingTopic,
 } from "../scraper/pending-store.js";
+import { recordScraperRun } from "../services/metrics.js";
 import { err } from "../utils/error-response.js";
 import { generateId } from "../utils/generate-id.js";
 import {
@@ -202,6 +203,7 @@ export async function registerGossipRoutes(
 				rawContent = await fetchContent(url);
 			} catch (e) {
 				const msg = e instanceof Error ? e.message : String(e);
+				recordScraperRun(false);
 				return err(reply, 502, `Failed to fetch URL: ${msg}`);
 			}
 
@@ -214,6 +216,7 @@ export async function registerGossipRoutes(
 				});
 			} catch (e) {
 				const msg = e instanceof Error ? e.message : String(e);
+				recordScraperRun(false);
 				return err(reply, 502, `Fact extraction failed: ${msg}`);
 			}
 
@@ -235,8 +238,10 @@ export async function registerGossipRoutes(
 
 			const { inserted } = await savePendingTopic(topic);
 			if (!inserted) {
+				// 409 重复 URL 早退：fetch/提取虽已发生但语义上不是新爬取事件，不计数。
 				return err(reply, 409, "URL already exists in pending topics");
 			}
+			recordScraperRun(true);
 			reply.code(201);
 			return { ok: true, topic };
 		},

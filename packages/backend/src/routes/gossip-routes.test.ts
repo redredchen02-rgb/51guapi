@@ -5,6 +5,7 @@ import Fastify, { type FastifyInstance } from "fastify";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PUBLIC_ROUTES, requireAuth } from "../middleware/auth-middleware.js";
 import { initPendingDb, resetPendingDb } from "../scraper/pending-db.js";
+import { counters, getMetrics } from "../services/metrics.js";
 import { registerGossipRoutes } from "./gossip-routes.js";
 
 // Mock generic-adapter and gossip-fact-extractor
@@ -424,6 +425,154 @@ describe("gossip-routes", () => {
 			payload: { url: "https://gossip.com/article/err", siteName: "站點" },
 		});
 		expect(res.statusCode).toBe(502);
+	});
+});
+
+// ---- U2: recordScraperRun 接线 + /api/v1/metrics HTTP 断言 ----
+
+function resetMetricsCounters() {
+	counters.scraperRuns.success = 0;
+	counters.scraperRuns.failed = 0;
+}
+
+// counters 是模块级单例，app.ts 的 metrics 路由不在本测试的 buildApp 中注册，
+// 故此处单独注册一个等价的 /api/v1/metrics 路由读取同一 counters。
+async function buildAppWithMetrics(): Promise<FastifyInstance> {
+	const app = Fastify({ logger: false });
+	await registerGossipRoutes(app);
+	app.get("/api/v1/metrics", async () => getMetrics());
+	await app.ready();
+	return app;
+}
+
+function scraperSuccessCount(metricsText: string): number {
+	const m = metricsText.match(
+		/publisher_scraper_runs_total\{status="success"\}\s+(\d+)/,
+	);
+	return m ? Number(m[1]) : -1;
+}
+function scraperFailedCount(metricsText: string): number {
+	const m = metricsText.match(
+		/publisher_scraper_runs_total\{status="failed"\}\s+(\d+)/,
+	);
+	return m ? Number(m[1]) : -1;
+}
+
+const MOCK_FACTS = {
+	facts: {
+		當事人: "A",
+		事件摘要: "test",
+		起因: null,
+		經過: null,
+		結果: null,
+		來源連結: null,
+		發生時間: null,
+		熱度標籤: null,
+	},
+	confidence: 0.5,
+	extractionMode: "strict" as const,
+};
+
+describe("gossip-routes — recordScraperRun 接线（U2）", () => {
+	let app: FastifyInstance;
+
+	beforeEach(async () => {
+		resetPendingDb();
+		initPendingDb();
+		resetMetricsCounters();
+		process.env.LLM_ENDPOINT = "https://api.test";
+		process.env.LLM_API_KEY = "test-key";
+		app = await buildAppWithMetrics();
+	});
+
+	afterEach(async () => {
+		await app.close();
+		vi.clearAllMocks();
+	});
+
+	it("成功 from-url → metrics scraper success >= 1", async () => {
+		mockFetchContent.mockResolvedValueOnce({
+			title: "文章",
+			body: "body",
+			url: "https://gossip.com/article/ok",
+		});
+		mockGossipExtractFacts.mockResolvedValueOnce(MOCK_FACTS);
+
+		const post = await app.inject({
+			method: "POST",
+			url: "/api/v1/gossip/topics/from-url",
+			payload: { url: "https://gossip.com/article/ok", siteName: "站點" },
+		});
+		expect(post.statusCode).toBe(201);
+
+		const res = await app.inject({ method: "GET", url: "/api/v1/metrics" });
+		expect(scraperSuccessCount(res.body)).toBeGreaterThanOrEqual(1);
+	});
+
+	it("fetchContent 失败 → metrics scraper failed >= 1", async () => {
+		mockFetchContent.mockRejectedValueOnce(new Error("network error"));
+		const post = await app.inject({
+			method: "POST",
+			url: "/api/v1/gossip/topics/from-url",
+			payload: { url: "https://gossip.com/article/f1", siteName: "站點" },
+		});
+		expect(post.statusCode).toBe(502);
+
+		const res = await app.inject({ method: "GET", url: "/api/v1/metrics" });
+		expect(scraperFailedCount(res.body)).toBeGreaterThanOrEqual(1);
+		expect(scraperSuccessCount(res.body)).toBe(0);
+	});
+
+	it("gossipExtractFacts 失败 → metrics scraper failed >= 1", async () => {
+		mockFetchContent.mockResolvedValueOnce({
+			title: "文章",
+			body: "body",
+			url: "https://gossip.com/article/f2",
+		});
+		mockGossipExtractFacts.mockRejectedValueOnce(new Error("LLM timed out"));
+		const post = await app.inject({
+			method: "POST",
+			url: "/api/v1/gossip/topics/from-url",
+			payload: { url: "https://gossip.com/article/f2", siteName: "站點" },
+		});
+		expect(post.statusCode).toBe(502);
+
+		const res = await app.inject({ method: "GET", url: "/api/v1/metrics" });
+		expect(scraperFailedCount(res.body)).toBeGreaterThanOrEqual(1);
+	});
+
+	it("409 重复 URL → scraper 计数不变（仍为首次成功的 1）", async () => {
+		mockFetchContent.mockResolvedValue({
+			title: "文章",
+			body: "body",
+			url: "https://gossip.com/article/dup2",
+		});
+		mockGossipExtractFacts.mockResolvedValue(MOCK_FACTS);
+
+		const first = await app.inject({
+			method: "POST",
+			url: "/api/v1/gossip/topics/from-url",
+			payload: { url: "https://gossip.com/article/dup2", siteName: "站點" },
+		});
+		expect(first.statusCode).toBe(201);
+
+		const second = await app.inject({
+			method: "POST",
+			url: "/api/v1/gossip/topics/from-url",
+			payload: { url: "https://gossip.com/article/dup2", siteName: "站點" },
+		});
+		expect(second.statusCode).toBe(409);
+
+		const res = await app.inject({ method: "GET", url: "/api/v1/metrics" });
+		// 仅首次成功计数；409 不计 success 也不计 failed
+		expect(scraperSuccessCount(res.body)).toBe(1);
+		expect(scraperFailedCount(res.body)).toBe(0);
+	});
+
+	it("beforeEach 重置后计数从 0 起（隔离）", async () => {
+		const res = await app.inject({ method: "GET", url: "/api/v1/metrics" });
+		expect(scraperSuccessCount(res.body)).toBe(0);
+		expect(scraperFailedCount(res.body)).toBe(0);
 	});
 });
 
