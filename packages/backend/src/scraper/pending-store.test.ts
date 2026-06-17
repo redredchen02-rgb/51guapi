@@ -88,7 +88,12 @@ describe("pending-store (SQLite)", () => {
 			facts: FULL_GOSSIP,
 			confidence: 0.9,
 			coverImageUrl: "https://cdn/x.jpg",
-			rawContent: { title: "t", body: "一段较长的正文内容", url: "https://x/1", metadata: META },
+			rawContent: {
+				title: "t",
+				body: "一段较长的正文内容",
+				url: "https://x/1",
+				metadata: META,
+			},
 		});
 		const sparse = makeTopic({
 			id: "sparse",
@@ -105,7 +110,12 @@ describe("pending-store (SQLite)", () => {
 			},
 			confidence: 0.1,
 			coverImageUrl: "https://cdn/y.jpg",
-			rawContent: { title: "t", body: "一段较长的正文内容", url: "https://x/2", metadata: META },
+			rawContent: {
+				title: "t",
+				body: "一段较长的正文内容",
+				url: "https://x/2",
+				metadata: META,
+			},
 		});
 		const rScore = await scoreOf(rich);
 		const sScore = await scoreOf(sparse);
@@ -117,7 +127,12 @@ describe("pending-store (SQLite)", () => {
 		const base = {
 			facts: FULL_GOSSIP,
 			coverImageUrl: "https://cdn/x.jpg",
-			rawContent: { title: "t", body: "正文", url: "https://x/1", metadata: META },
+			rawContent: {
+				title: "t",
+				body: "正文",
+				url: "https://x/1",
+				metadata: META,
+			},
 		};
 		const hi = makeTopic({
 			...base,
@@ -139,7 +154,12 @@ describe("pending-store (SQLite)", () => {
 			id: "old",
 			facts: FULL_GOSSIP,
 			confidence: 0,
-			rawContent: { title: "t", body: "正文", url: "https://x/1", metadata: META },
+			rawContent: {
+				title: "t",
+				body: "正文",
+				url: "https://x/1",
+				metadata: META,
+			},
 		});
 		expect(await scoreOf(t)).toBeGreaterThan(0);
 	});
@@ -172,7 +192,7 @@ describe("pending-store (SQLite)", () => {
 				metadata: { publishedTime: "2020-01-01T00:00:00.000Z" },
 			},
 		});
-		expect(await scoreOf(fresh)).toBeGreaterThan(await scoreOf(stale) * 5);
+		expect(await scoreOf(fresh)).toBeGreaterThan((await scoreOf(stale)) * 5);
 	});
 
 	it("freshness：无 publishedTime 时退回 facts.發生時間（旧事件 → 低分）", async () => {

@@ -102,11 +102,7 @@ function rowToTopic(row: PendingRow): PendingTopic {
  *   score = fieldCompleteness × freshnessDecay × confidenceFactor
  * - fieldCompleteness: title/body/cover(布尔) + facts 真实非空占比(连续),取均值
  * - confidenceFactor: 0.5 + 0.5×confidence(软化,confidence=0 不归零)
- * - fieldCompleteness: {title, body, facts, coverImageUrl} 中非空字段占比
- * - freshnessDecay: exp(-daysSinceCreation / 7)，半衰期约 5 天
- *
- * (原 publishedPenalty 项已移除:其依赖的 published_posts 表无任何写入者,惩罚恒为 0。
- *  发布回访机制随发布机器一并下线。)
+ * - freshnessDecay: exp(-freshnessDays / 7)，新鲜度按事件/发布时间(见 freshnessDays)
  */
 function computeScore(topic: PendingTopic): number {
 	const hasTitle = topic.title.trim().length > 0 ? 1 : 0;
@@ -116,8 +112,8 @@ function computeScore(topic: PendingTopic): number {
 	// 字段(如恒非空的来源连结)的垃圾草稿与 8 事实全满的优质草稿同分,排序失真。
 	const factsVals = Object.values(topic.facts ?? {});
 	const factsCompleteness = factsVals.length
-		? factsVals.filter((v) => v !== null && v !== undefined && v !== "").length /
-			factsVals.length
+		? factsVals.filter((v) => v !== null && v !== undefined && v !== "")
+				.length / factsVals.length
 		: 0;
 	const fieldCompleteness =
 		(hasTitle + hasBody + hasCover + factsCompleteness) / 4;
