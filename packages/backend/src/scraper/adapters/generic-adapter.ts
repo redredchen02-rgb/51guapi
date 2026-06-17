@@ -439,7 +439,9 @@ export async function fetchContent(url: string): Promise<RawContent> {
 
 	// 流式截断:不只信 content-length,逐块累计超 maxBytes 即中止报错。
 	const html = await readBodyCapped(res, maxBytes);
-	const title = extractH1(html) || extractTitle(html);
+	// 優先 og:title → <title>(extractTitle 內已含此序) → h1。h1 降為末位兜底:
+	// 很多站點 h1 是 logo/站名/欄目名,優先它會讓標題系統性錯成站名。
+	const title = extractTitle(html) || extractH1(html);
 	const body = extractBody(html);
 	const coverImageUrl = extractOgMeta(html, "og:image") || undefined;
 	const publishedTime =

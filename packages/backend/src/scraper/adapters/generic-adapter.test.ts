@@ -237,6 +237,26 @@ describe("generic-adapter.fetchContent", () => {
 		expect(result.body).toContain("正文第二段");
 	});
 
+	it("標題優先 og:title，不取站名 h1（避免欄目/站名污染）", async () => {
+		const html = `<html><head>
+			<meta property="og:title" content="明星A出軌事件深度報導" />
+			<title>明星A出軌事件深度報導 - 某娛樂網</title>
+		</head><body>
+			<h1>娛樂頻道</h1>
+			<div class="post-content"><p>正文</p></div>
+		</body></html>`;
+		mockSafeFetch.mockResolvedValueOnce(makeResponse(html));
+		const result = await fetchContent("https://example.com/gossip/title");
+		expect(result.title).toBe("明星A出軌事件深度報導");
+	});
+
+	it("無 og:title 時退回 <title>，再退回 h1", async () => {
+		const html = `<html><head><title>真文章標題</title></head><body><h1>站名</h1></body></html>`;
+		mockSafeFetch.mockResolvedValueOnce(makeResponse(html));
+		const result = await fetchContent("https://example.com/gossip/title2");
+		expect(result.title).toBe("真文章標題");
+	});
+
 	it("HTTP 4xx 時拋出含狀態碼的 Error", async () => {
 		mockSafeFetch.mockResolvedValueOnce(makeResponse("", 404));
 		await expect(
