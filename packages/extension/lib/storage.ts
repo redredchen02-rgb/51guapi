@@ -171,19 +171,17 @@ export async function saveExtensionCounters(
 
 // ---- Few-shot 范例（R11 一键存为范例）----
 
+/**
+ * 把结构化 fewShotPairs 序列化为 prompt 用的可读文本(单向)。
+ *
+ * 唯一真实来源是 `fewShotPairs`(结构化数组,持久化直接存对象),本函数仅供
+ * prompt-assembly 拼 LLM 提示词。**不可逆**:若 input/output 内含 `\n---\n` 或空行,
+ * 文本边界会与内容碰撞 —— 因此**不要**把本函数输出回存再 parse(历史上的文本往返已移除,
+ * 避免静默数据损坏)。旧 `fewShotExamples` 字符串字段的一次性迁移由后端
+ * prompt-store.ts 的 migratePairs 处理(best-effort,仅在 fewShotPairs 为空时触发)。
+ */
 export function deriveFewShotExamples(pairs: FewShotPair[]): string {
 	return pairs.map((p) => `${p.input}\n---\n${p.output}`).join("\n\n");
-}
-
-export function parseFewShotExamples(raw: string): FewShotPair[] {
-	if (!raw) return [];
-	const blocks = raw.split(/\n\n+/).filter(Boolean);
-	return blocks.map((b) => {
-		const sep = b.indexOf("\n---\n");
-		return sep !== -1
-			? { input: b.slice(0, sep), output: b.slice(sep + 5) }
-			: { input: "", output: b };
-	});
 }
 
 const MAX_FEW_SHOT = 8;

@@ -41,6 +41,9 @@ const promptStore = new JsonFileStore<PromptTemplate>({
 });
 
 // ---- lazy-on-read 遷移：舊 JSON 含 fewShotExamples 字段时，自動 parse 回傳 ----
+// best-effort 一次性迁移:仅在 fewShotPairs 为空且存在旧字符串字段时触发。规范存储
+// 是结构化 fewShotPairs,迁移后即写回结构化,不再走文本往返(见 extension storage.ts
+// deriveFewShotExamples 注释)。旧字符串内含 ---/空行的歧义为历史遗留,无法完美还原。
 
 type RawPrompt = PromptTemplate & { fewShotExamples?: string };
 
