@@ -104,7 +104,7 @@ describe("fetchPendingTopics — 响应解析与 folded 字段", () => {
 	});
 
 	it("后端返回含 folded:true 的选题 → folded 字段保留", async () => {
-		const topic = makeTopic({ folded: true, qualityScore: 0.2 });
+		const topic = makeTopic({ folded: true, score: 0.2 });
 		const { fn } = mockFetch({ ok: true, topics: [topic] });
 		const result = await fetchPendingTopics(undefined, fn);
 		expect(result[0]?.folded).toBe(true);
@@ -154,7 +154,7 @@ it("后端返回 ok:true + topics → 正确返回数组", async () => {
 });
 
 it("后端返回含 folded:true 的选题 → folded 字段保留", async () => {
-	const topic = makeTopic({ folded: true, qualityScore: 0.2 });
+	const topic = makeTopic({ folded: true, score: 0.2 });
 	const { fn } = mockFetch({ ok: true, topics: [topic] });
 	const result = await fetchPendingTopics(undefined, fn);
 	expect(result[0]?.folded).toBe(true);

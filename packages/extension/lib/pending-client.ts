@@ -14,7 +14,7 @@ export interface PendingTopic {
 	};
 	facts: Record<string, string>;
 	confidence: number;
-	qualityScore?: number;
+	score?: number;
 	status: "pending" | "approved" | "rejected";
 	rejectedReason?: string;
 	coverImageUrl?: string;

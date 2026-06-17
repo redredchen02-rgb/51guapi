@@ -404,7 +404,7 @@ export function PendingTopicsView({ onBack, onDraftReady, onError }: Props) {
 						<span className="text-sm text-muted">
 							{topics.length} 条待审核 · 已选 {selected.size} 条
 						</span>
-						{topics.some((t) => (t.qualityScore ?? t.confidence) < 0.3) && (
+						{topics.some((t) => (t.score ?? t.confidence) < 0.3) && (
 							<button
 								type="button"
 								className="btn btn-plain btn-sm"
@@ -419,10 +419,10 @@ export function PendingTopicsView({ onBack, onDraftReady, onError }: Props) {
 					<ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
 						{topics
 							.filter(
-								(t) => !hideLowScore || (t.qualityScore ?? t.confidence) >= 0.3,
+								(t) => !hideLowScore || (t.score ?? t.confidence) >= 0.3,
 							)
 							.map((t) => {
-								const score = t.qualityScore ?? t.confidence;
+								const score = t.score ?? t.confidence;
 								const isHigh = score >= 0.7;
 								const isMed = score >= 0.4 && score < 0.7;
 								return (
