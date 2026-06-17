@@ -60,8 +60,12 @@ export function GossipView({ onBack, onTopicAdded }: Props) {
 	const [genError, setGenError] = useState<Record<string, string>>({});
 
 	const loadSites = useCallback(async () => {
-		const list = await fetchGossipSites();
-		setSites(list);
+		try {
+			const list = await fetchGossipSites();
+			setSites(list);
+		} catch {
+			// 401 / 网络错误时保持现有列表，不崩溃
+		}
 	}, []);
 
 	const loadChannels = useCallback(async () => {
@@ -165,7 +169,10 @@ export function GossipView({ onBack, onTopicAdded }: Props) {
 				return n;
 			});
 		} catch (e) {
-			setAddError(e instanceof Error ? e.message : "刪除失敗");
+			setDiscoverError((p) => ({
+				...p,
+				[id]: e instanceof Error ? e.message : "刪除失敗",
+			}));
 		}
 	}
 

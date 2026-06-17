@@ -327,6 +327,18 @@ describe("GossipView", () => {
 		expect(mockDelete).toHaveBeenCalledWith("site-a");
 	});
 
+	it("删除站点失败 → 错误显示在该站点卡片（discoverError），站点保留", async () => {
+		const { deleteGossipSite } = await import("../../lib/gossip-client");
+		vi.mocked(deleteGossipSite).mockRejectedValueOnce(new Error("删除拒绝"));
+		mockFetchSites.mockResolvedValueOnce([makeSite("site-a", "站點A")]);
+		render(<GossipView onBack={onBack} onTopicAdded={onTopicAdded} />);
+		await waitFor(() => screen.getByText("站點A"));
+		fireEvent.click(screen.getByText("刪除"));
+		await waitFor(() => screen.getByText("⚠ 删除拒绝"));
+		// 站点卡片仍存在
+		expect(screen.getByText("站點A")).toBeDefined();
+	});
+
 	it("生成文章 — DUPLICATE_URL 时同样调用 onTopicAdded 并移除该条目", async () => {
 		mockFetchSites.mockResolvedValueOnce([makeSite("site-a", "站點A")]);
 		mockDiscover.mockResolvedValueOnce([
