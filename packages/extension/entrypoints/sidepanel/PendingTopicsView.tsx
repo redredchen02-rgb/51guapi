@@ -161,7 +161,7 @@ export function PendingTopicsView({ onBack, onDraftReady, onError }: Props) {
 			const selectedTopics = topics.filter((t) => selected.has(t.id));
 			await Promise.all(
 				selectedTopics.map((t) =>
-					updatePendingStatus(t.id, "rejected", "manual reject"),
+					updatePendingStatus(t.id, "rejected", "other"),
 				),
 			);
 			setSelected(new Set());
