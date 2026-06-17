@@ -252,6 +252,41 @@ describe("U6 P0：渠道 path_prefix 强制", () => {
 		expect(result.title).toBe("明星A出軌B事件始末");
 		expect(mockSafeFetch).toHaveBeenCalledOnce();
 	});
+
+	it("Security：prefix /news 不得放行兄弟路径 /newsletter（startsWith 边界越权）", async () => {
+		mockGetChannel.mockReturnValue(channel("/news"));
+		await expect(
+			fetchContent("https://host.example/newsletter/secret"),
+		).rejects.toThrow(/不在渠道.*允许的前缀/);
+		expect(mockSafeFetch).not.toHaveBeenCalled();
+	});
+
+	it("Security：prefix /news 放行自身与其子路径，拒绝 /news-admin", async () => {
+		// 自身
+		mockGetChannel.mockReturnValue(channel("/news"));
+		mockSafeFetch.mockResolvedValueOnce(makeResponse(ARTICLE_HTML));
+		expect((await fetchContent("https://host.example/news")).title).toBe(
+			"明星A出軌B事件始末",
+		);
+		// 子路径
+		mockSafeFetch.mockResolvedValueOnce(makeResponse(ARTICLE_HTML));
+		expect((await fetchContent("https://host.example/news/x")).title).toBe(
+			"明星A出軌B事件始末",
+		);
+		// 兄弟前缀附加
+		mockSafeFetch.mockClear();
+		await expect(
+			fetchContent("https://host.example/news-admin/x"),
+		).rejects.toThrow(/不在渠道.*允许的前缀/);
+		expect(mockSafeFetch).not.toHaveBeenCalled();
+	});
+
+	it("prefix 末尾斜杠归一：/news/ 与 /news 行为一致", async () => {
+		mockGetChannel.mockReturnValue(channel("/news/"));
+		await expect(
+			fetchContent("https://host.example/newsletter"),
+		).rejects.toThrow(/不在渠道.*允许的前缀/);
+	});
 });
 
 describe("U6 P0：流式 max_bytes 截断（不信 content-length）", () => {

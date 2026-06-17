@@ -28,9 +28,12 @@ function enforcePathPrefix(
 ): ReturnType<typeof getChannelByHostname> {
 	const channel = getChannelByHostname(target.hostname);
 	if (!channel) return null; // env-only host,无渠道约束 → 维持现状放行
-	const prefix = channel.pathPrefix || "/";
+	// 归一去尾斜杠后要求分隔符边界:prefix "/news" 只放行 "/news" 与 "/news/...",
+	// 不放行兄弟路径 "/newsletter"、"/news-admin"(startsWith 无边界会越权)。
+	const prefix = (channel.pathPrefix || "/").replace(/\/+$/, "") || "/";
 	const path = target.pathname;
-	const ok = path === prefix || path.startsWith(prefix);
+	const ok =
+		prefix === "/" || path === prefix || path.startsWith(`${prefix}/`);
 	if (!ok) {
 		throw new SsrfError(
 			`URL path ${path} 不在渠道 ${target.hostname} 允许的前缀 ${prefix} 内`,
