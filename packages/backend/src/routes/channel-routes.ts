@@ -7,6 +7,7 @@ import {
 	listChannels,
 	normalizeChannelHost,
 } from "../scraper/channel-store.js";
+import { verifyAdminPassword } from "../services/password.js";
 import { err } from "../utils/error-response.js";
 
 // U6 渠道管理路由 — 操作者持续新增爬取渠道,域名动态进 SSRF allowlist。
@@ -27,6 +28,7 @@ interface CreateBody {
 	channel?: string; // URL 或裸域名
 	displayName?: string;
 	confirm?: boolean;
+	adminPassword?: string; // step-up:管理员口令重验
 	pathPrefix?: string;
 	maxDepth?: number;
 	maxBytes?: number;
@@ -70,6 +72,17 @@ export function registerChannelRoutes(app: FastifyInstance): void {
 				403,
 				"新增渠道需操作者确认手势(缺 x-operator-confirm 头或 confirm 标志)",
 				"confirmation_required",
+			);
+		}
+
+		// 3) 口令 step-up:除 JWT 外须通过管理员口令重验。被窃 token 单独写不了
+		//    allowlist。必须早退——在任何 DNS 解析/写库之前,无权请求不得触发出站解析。
+		if (!verifyAdminPassword(request.body?.adminPassword)) {
+			return err(
+				reply,
+				403,
+				"新增渠道需管理员口令重验(step-up):缺少或错误的 adminPassword",
+				"step_up_required",
 			);
 		}
 

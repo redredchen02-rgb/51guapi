@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import jwt from "jsonwebtoken";
 import { auditLogin } from "../services/audit-log.js";
-import { verifyPassword } from "../services/password.js";
+import { verifyAdminPassword } from "../services/password.js";
 import { err } from "../utils/error-response.js";
 import {
 	LoginBody as LoginBodySchema,
@@ -41,13 +41,15 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
 			}
 
 			const { password } = request.body;
-			if (!verifyPassword(password, adminHash)) {
+			if (!verifyAdminPassword(password)) {
 				auditLogin("invalid_password", request.ip);
 				return err(reply, 401, "invalid password");
 			}
 
 			auditLogin("success", request.ip);
-			const token = jwt.sign({}, secret, {
+			// Stable auditable subject so created_by reflects a real principal
+			// instead of a hardcoded fallback (single-operator tool).
+			const token = jwt.sign({ sub: "operator" }, secret, {
 				expiresIn: "24h",
 				algorithm: "HS256",
 			});

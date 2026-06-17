@@ -4,7 +4,7 @@ import { err } from "../utils/error-response.js";
 
 declare module "fastify" {
 	interface FastifyRequest {
-		user?: { authenticated: boolean };
+		user?: { authenticated: boolean; sub?: string };
 	}
 }
 
@@ -34,8 +34,15 @@ export async function requireAuth(
 	}
 
 	try {
-		jwt.verify(token, secret, { algorithms: ["HS256"], clockTolerance: 30 });
-		request.user = { authenticated: true };
+		const decoded = jwt.verify(token, secret, {
+			algorithms: ["HS256"],
+			clockTolerance: 30,
+		});
+		const sub =
+			typeof decoded === "object" && typeof decoded.sub === "string"
+				? decoded.sub
+				: undefined;
+		request.user = { authenticated: true, sub };
 	} catch {
 		return err(reply, 401, "unauthorized");
 	}

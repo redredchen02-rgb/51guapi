@@ -35,10 +35,12 @@ export async function fetchChannels(
 export interface CreateChannelOptions {
 	displayName?: string;
 	reason?: string;
+	/** 管理员口令重验(step-up)。后端要求,缺/错回 403。 */
+	adminPassword?: string;
 }
 
 /**
- * 新增渠道。必带操作者确认手势(header + body),否则后端回 403。
+ * 新增渠道。必带操作者确认手势(header + body)+ 管理员口令 step-up,否则后端回 403。
  * 返回新增(或去重命中)的渠道。
  */
 export async function createChannel(
@@ -58,6 +60,7 @@ export async function createChannel(
 			displayName: opts.displayName,
 			reason: opts.reason,
 			confirm: true,
+			adminPassword: opts.adminPassword,
 		}),
 		fetchFn,
 		timeoutMs: 15_000,
