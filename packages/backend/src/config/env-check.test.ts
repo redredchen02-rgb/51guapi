@@ -50,12 +50,4 @@ describe("env-check", () => {
 		expect(errors.some((e) => e.includes("TG_BOT_TOKEN"))).toBe(true);
 		expect(errors.some((e) => e.includes("TG_CHAT_ID"))).toBe(true);
 	});
-
-	it("reports error when REVISIT_ALLOWED_HOSTS is wildcard", () => {
-		const errors = checkEnv({
-			...ENV_OK,
-			REVISIT_ALLOWED_HOSTS: "*",
-		});
-		expect(errors.some((e) => e.includes("REVISIT_ALLOWED_HOSTS"))).toBe(true);
-	});
 });

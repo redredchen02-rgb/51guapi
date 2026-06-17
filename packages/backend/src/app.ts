@@ -23,7 +23,6 @@ import {
 	rewriteDraftLlm,
 } from "./services/llm.js";
 import { getMetrics, recordDraft } from "./services/metrics.js";
-import { startRevisitJob } from "./services/revisit-job.js";
 import { err } from "./utils/error-response.js";
 import { getLlmConfig, validateLlmConfig } from "./utils/llm-config.js";
 import {
@@ -347,6 +346,4 @@ export function startBackgroundJobs(app: FastifyInstance): void {
 	} else {
 		app.log.info("[scheduler] Skipped (LLM_ENDPOINT/LLM_API_KEY not set)");
 	}
-	startRevisitJob({ logger: app.log });
-	app.log.info("[revisit] Revisit job started");
 }
