@@ -190,9 +190,14 @@ export function PendingTopicsView({ onBack, onDraftReady, onError }: Props) {
 				setQuickDraftStatus("待审池暂无选题，请先抓取");
 				return;
 			}
-			const top = sorted.slice(0, 3);
+			// 每次只生成一篇草稿(取最高分选题)
+			const top = sorted[0];
+			if (!top) {
+				setQuickDraftStatus("待审池暂无选题，请先抓取");
+				return;
+			}
 			setQuickDraftStatus("");
-			setQuickDraftConfirm({ topics: top });
+			setQuickDraftConfirm({ topics: [top] });
 		} catch {
 			setQuickDraftStatus("获取选题失败，请重试");
 		}
@@ -325,7 +330,7 @@ export function PendingTopicsView({ onBack, onDraftReady, onError }: Props) {
 						className="font-semibold"
 						style={{ marginBottom: "var(--space-lg)" }}
 					>
-						将生成 {quickDraftConfirm.topics.length} 篇草稿：
+						将为最高分选题生成草稿：
 					</div>
 					<ul
 						style={{
