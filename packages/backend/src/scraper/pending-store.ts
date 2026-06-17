@@ -5,6 +5,10 @@ import type { EnrichedContext } from "./web-enricher.js";
 
 export type PendingStatus = "pending" | "approved" | "rejected";
 
+// 机械字段:来源连结=原文 URL,几乎恒非空,算进 facts 完整度等于白送分。与
+// gossip-fact-extractor 的 confidence 口径保持一致(两处都剔除)。
+const MECHANICAL_FACT_KEYS = new Set<string>(["來源連結"]);
+
 const VALID_STATUSES: Set<string> = new Set([
 	"pending",
 	"approved",
@@ -109,11 +113,14 @@ function computeScore(topic: PendingTopic): number {
 	const hasBody = topic.rawContent?.body?.trim() ? 1 : 0;
 	const hasCover = topic.coverImageUrl ? 1 : 0;
 	// facts 完整度用「真实非空占比」(0..1) 而非「任一非空即满分」——否则只填 1 个
-	// 字段(如恒非空的来源连结)的垃圾草稿与 8 事实全满的优质草稿同分,排序失真。
-	const factsVals = Object.values(topic.facts ?? {});
-	const factsCompleteness = factsVals.length
-		? factsVals.filter((v) => v !== null && v !== undefined && v !== "")
-				.length / factsVals.length
+	// 字段的垃圾草稿与 8 事实全满的优质草稿同分,排序失真。剔除机械字段(来源连结=原文
+	// URL,LLM 几乎恒能填),与 gossip-fact-extractor 的 confidence 口径一致,避免白送分。
+	const factsEntries = Object.entries(topic.facts ?? {}).filter(
+		([k]) => !MECHANICAL_FACT_KEYS.has(k),
+	);
+	const factsCompleteness = factsEntries.length
+		? factsEntries.filter(([, v]) => v !== null && v !== undefined && v !== "")
+				.length / factsEntries.length
 		: 0;
 	const fieldCompleteness =
 		(hasTitle + hasBody + hasCover + factsCompleteness) / 4;
