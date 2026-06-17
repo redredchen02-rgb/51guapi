@@ -53,7 +53,7 @@ describe("gossipExtractFacts", () => {
 		expect(result.coverImageUrl).toBe("https://cdn.example.com/cover.jpg");
 	});
 
-	it("strict 模式 400 → fallback to json_object，confidence ≤ 0.3", async () => {
+	it("strict 模式 400 → fallback to json_object（少字段 → confidence 仍低）", async () => {
 		const factsJson = JSON.stringify({
 			當事人: "明星A",
 			事件摘要: "出軌",
@@ -78,6 +78,55 @@ describe("gossipExtractFacts", () => {
 		});
 		expect(result.extractionMode).toBe("fallback");
 		expect(result.confidence).toBeLessThanOrEqual(0.3);
+	});
+
+	it("機械字段：只填來源連結（原文 URL）→ confidence 0（不白送分）", async () => {
+		const onlyUrl = JSON.stringify({
+			當事人: null,
+			事件摘要: null,
+			起因: null,
+			經過: null,
+			結果: null,
+			來源連結: "https://example.com/gossip/123",
+			發生時間: null,
+			熱度標籤: null,
+		});
+		const fetchFn = mockFetch(llmResponse(onlyUrl));
+		const result = await gossipExtractFacts(SAMPLE_CONTENT, {
+			...OPTS,
+			fetchFn,
+		});
+		// 來源連結從 confidence 分母剔除：只填它 → 0/7 = 0
+		expect(result.confidence).toBe(0);
+	});
+
+	it("fallback 不再被腰斬到 0.3：6 個非機械字段 → confidence > 0.3（封頂 0.6）", async () => {
+		const richFacts = JSON.stringify({
+			當事人: "明星A",
+			事件摘要: "出軌事件",
+			起因: "被拍私會",
+			經過: "前任發文",
+			結果: "已分手",
+			來源連結: "https://example.com/gossip/123",
+			發生時間: "2024-08",
+			熱度標籤: null,
+		});
+		const fetchFn = vi
+			.fn()
+			.mockResolvedValueOnce({ ok: false, status: 400, json: async () => ({}) })
+			.mockResolvedValueOnce({
+				ok: true,
+				status: 200,
+				json: async () => llmResponse(richFacts),
+			});
+		const result = await gossipExtractFacts(SAMPLE_CONTENT, {
+			...OPTS,
+			fetchFn,
+		});
+		expect(result.extractionMode).toBe("fallback");
+		// 6/7 ≈ 0.857，封頂 0.6 → 远高于旧的 0.3 腰斩
+		expect(result.confidence).toBeGreaterThan(0.3);
+		expect(result.confidence).toBeLessThanOrEqual(0.6);
 	});
 
 	it("所有欄位為 null → confidence 接近 0", async () => {
