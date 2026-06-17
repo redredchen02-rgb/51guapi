@@ -158,11 +158,13 @@ export async function registerGossipRoutes(
 				}
 			}
 
-			const page = fresh.slice(0, 20);
+			// 回全部 fresh:fetchListPaged 内部已有 MAX_PAGED_URLS=200 硬上限兜底。
+			// 不再 slice(0,20)——旧实现把第 21+ 条发现静默丢弃且无游标可续取
+			// (maxDepth>1 翻页成果白算)。discover 是「待选素材」预览,呈现全部已发现项。
 			return {
 				ok: true,
-				discovered: page,
-				hasMore: fresh.length > 20,
+				discovered: fresh,
+				hasMore: false,
 				total: fresh.length,
 			};
 		},
