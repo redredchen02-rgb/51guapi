@@ -70,7 +70,7 @@ ALTER TABLE pending_topics ADD COLUMN domain TEXT NOT NULL DEFAULT 'acg'
 CREATE INDEX IF NOT EXISTS idx_pending_domain ON pending_topics(domain);`,
 	// U6 多渠道:操作者新增的爬取渠道域名。运行时与 env ALLOWED_HOSTS 取并集喂给 SSRF allowlist。
 	// hostname 存 punycode(ASCII)形态;path_prefix/max_bytes 为单渠道越权/放大兜底(已在
-	// generic-adapter 抓取时强制);max_depth 为 reserved —— v0.1 无递归多页爬取,字段存而未强制。
+	// generic-adapter 抓取时强制);max_depth 为翻页页数上限(list-discovery 跟随「下一页」最多 N 页,预设 1=单页)。
 	// created_by/created_at/reason 为审计栏位。
 	"009-channels.sql": `\
 CREATE TABLE IF NOT EXISTS channels (

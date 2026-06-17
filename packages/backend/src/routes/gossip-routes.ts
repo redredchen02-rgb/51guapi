@@ -1,8 +1,9 @@
 import type { FastifyInstance } from "fastify";
 import {
 	fetchContent,
-	fetchList,
+	fetchListPaged,
 } from "../scraper/adapters/generic-adapter.js";
+import { getChannelByHostname } from "../scraper/channel-store.js";
 import {
 	type ExtractedGossipFacts,
 	gossipExtractFacts,
@@ -131,11 +132,20 @@ export async function registerGossipRoutes(
 			if (!site) return err(reply, 404, "Site not found");
 			if (!site.enabled) return err(reply, 400, "Site is disabled");
 
-			let discovered: Awaited<ReturnType<typeof fetchList>>;
+			// 翻页页数上限取自 listUrl host 对应渠道的 maxDepth；无渠道则 1（单页，与 v0.1 等价）。
+			let maxPages = 1;
 			try {
-				discovered = await fetchList(site.listUrl);
+				const hostname = new URL(site.listUrl).hostname;
+				maxPages = getChannelByHostname(hostname)?.maxDepth ?? 1;
+			} catch {
+				maxPages = 1;
+			}
+
+			let discovered: Awaited<ReturnType<typeof fetchListPaged>>;
+			try {
+				discovered = await fetchListPaged(site.listUrl, maxPages);
 			} catch (e) {
-				request.log.error(e, "fetchList failed");
+				request.log.error(e, "fetchListPaged failed");
 				return err(reply, 500, "Failed to fetch list");
 			}
 

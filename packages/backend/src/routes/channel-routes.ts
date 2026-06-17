@@ -18,7 +18,7 @@ import { err } from "../utils/error-response.js";
 // 1) 入库即解析校验:assertHostResolvesPublic 当场 DNS 解析 + 私网/元数据 IP 拒。
 // 4) 钉死 https/拒通配/IDN punycode + 拒同形:由 normalizeChannelHost 把关,记审计栏位。
 // 5) 单渠道路径前缀/体积上限:随渠道存储,generic-adapter 抓取时强制(U6 P0)。
-//    maxDepth 为 reserved —— v0.1 无递归多页爬取,接受写入但抓取路径不强制。
+//    maxDepth 为翻页页数上限:list-discovery 跟随「下一页」最多 N 页(预设 1=单页),scheduler 与 discover 路由生效。
 // 6) fail-closed + 数量上限:insertChannel 内 MAX_CHANNELS 守。
 
 const CONFIRM_HEADER = "x-operator-confirm";

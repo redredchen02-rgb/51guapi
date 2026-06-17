@@ -3,6 +3,7 @@ import cron from "node-cron";
 import { recordScraperRun } from "../services/metrics.js";
 import { sendAlert } from "../services/telegram.js";
 import { generateId } from "../utils/generate-id.js";
+import { getChannelByHostname } from "./channel-store.js";
 import { tryEnrich } from "./enrichment-utils.js";
 import { extractFacts } from "./fact-extractor.js";
 import {
@@ -148,6 +149,19 @@ async function runSingleUrl(
 	}
 }
 
+/**
+ * 取 listUrl host 对应渠道的 maxDepth（翻页页数上限）。
+ * 无渠道记录或 URL 非法 → 1（单页，退化为 v0.1 行为，不回归）。
+ */
+function resolveMaxDepth(listUrl: string): number {
+	try {
+		const hostname = new URL(listUrl).hostname;
+		return getChannelByHostname(hostname)?.maxDepth ?? 1;
+	} catch {
+		return 1;
+	}
+}
+
 /** 列表发现模式：从列表页批量发现详情页 URL。 */
 async function runListDiscovery(
 	site: ScraperSiteConfig,
@@ -168,7 +182,11 @@ async function runListDiscovery(
 		`[scheduler] List-discovery start: ${site.siteName} listUrl=${site.listUrl}`,
 	);
 
-	const candidateUrls = (await adapter.fetchList?.(site.listUrl)) ?? [];
+	// 翻页页数上限取自 listUrl host 对应渠道的 maxDepth；无渠道记录退化为 1（单页，与 v0.1 等价）。
+	const maxPages = resolveMaxDepth(site.listUrl);
+	const candidateUrls = adapter.fetchListPaged
+		? await adapter.fetchListPaged(site.listUrl, maxPages)
+		: ((await adapter.fetchList?.(site.listUrl)) ?? []);
 
 	// Session-level dedup（防止同一次 run 内重复抓取同一 URL）
 	const sessionSet = new Set<string>();
