@@ -14,6 +14,7 @@ import { ProgressBar } from "./components/ProgressBar";
 import { Toast } from "./components/Toast";
 import { DraftPreview } from "./DraftPreview";
 import { GossipView } from "./GossipView";
+import { MetricsView } from "./MetricsView";
 import { useAutoSave } from "./hooks/useAutoSave";
 import { useErrorHandler } from "./hooks/useErrorHandler";
 import { useErrorLogger } from "./hooks/useErrorLogger";
@@ -28,7 +29,7 @@ type Mode = "empty" | "generating" | "draft";
 
 export function App() {
 	const [view, setView] = useState<
-		"main" | "settings" | "pending" | "auth" | "gossip"
+		"main" | "settings" | "pending" | "auth" | "gossip" | "metrics"
 	>("main");
 	const [mode, setMode] = useState<Mode>("empty");
 	const [topic, setTopic] = useState("");
@@ -196,6 +197,12 @@ export function App() {
 				/>
 			</Wrap>
 		);
+	if (view === "metrics")
+		return (
+			<Wrap>
+				<MetricsView onBack={() => setView("main")} />
+			</Wrap>
+		);
 
 	const busy = mode === "generating";
 
@@ -266,6 +273,16 @@ export function App() {
 					>
 						<span className="workflow-card-title">待审池</span>
 						<span className="workflow-card-desc">补事实、挑选进入批量生成</span>
+					</button>
+					<button
+						type="button"
+						onClick={() => setView("metrics")}
+						className="workflow-card"
+					>
+						<span className="workflow-card-title">数据指标</span>
+						<span className="workflow-card-desc">
+							抓取成功率、草稿生成率、批次完成数
+						</span>
 					</button>
 				</nav>
 			</header>
