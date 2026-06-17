@@ -71,28 +71,27 @@ function rowToChannel(r: ChannelRow): Channel {
 	};
 }
 
-/** 返回 true 当 label 含来自多个 Unicode 脚本的字符(homograph 同形攻击信号)。 */
-function isMixedScript(label: string): boolean {
-	let hasLatin = false;
-	let hasCyrillic = false;
-	let hasGreek = false;
-	let hasOtherNonAscii = false;
+/**
+ * 脚本白名单:允许 ASCII(U+0000-U+007F) 与 CJK(Han/Hiragana/Katakana/Hangul),
+ * 拒绝其余非 ASCII 脚本(Cyrillic/Greek/Armenian/Cherokee/Coptic 等)。
+ * 纯单一非拉丁脚本同形(如纯西里尔 субер.com)也被拒，修复 isMixedScript 的漏洞。
+ * 返回 true = 含不允许脚本字符(应拒绝)。
+ */
+function hasDisallowedScript(label: string): boolean {
 	for (const ch of label) {
 		const cp = ch.codePointAt(0) ?? 0;
-		if (cp < 0x80) {
-			if (/[a-z]/i.test(ch)) hasLatin = true;
-			continue;
-		}
-		if (cp >= 0x0400 && cp <= 0x04ff) hasCyrillic = true;
-		else if (cp >= 0x0370 && cp <= 0x03ff) hasGreek = true;
-		else hasOtherNonAscii = true;
+		if (cp < 0x80) continue; // ASCII
+		if (cp >= 0x4e00 && cp <= 0x9fff) continue; // CJK 统一表意
+		if (cp >= 0x3400 && cp <= 0x4dbf) continue; // CJK 扩展 A
+		if (cp >= 0x20000 && cp <= 0x2ceaf) continue; // CJK 扩展 B-E
+		if (cp >= 0xf900 && cp <= 0xfaff) continue; // CJK 兼容
+		if (cp >= 0x3040 && cp <= 0x309f) continue; // Hiragana
+		if (cp >= 0x30a0 && cp <= 0x30ff) continue; // Katakana
+		if (cp >= 0xac00 && cp <= 0xd7af) continue; // Hangul 音节
+		if (cp >= 0x1100 && cp <= 0x11ff) continue; // Hangul 字母
+		return true; // 其余非 ASCII 脚本 → 不允许
 	}
-	const scripts = [hasCyrillic, hasGreek, hasOtherNonAscii].filter(
-		Boolean,
-	).length;
-	// 拉丁 + 任一非拉丁脚本混用 → 同形风险;或同时出现两种非拉丁脚本。
-	if (hasLatin && scripts >= 1) return true;
-	return scripts >= 2;
+	return false;
 }
 
 export interface NormalizeResult {
@@ -146,12 +145,11 @@ export function normalizeChannelHost(raw: string): NormalizeResult {
 		return { error: "禁止 IP 字面量,请用域名" };
 	}
 
-	// IDN 同形检查:对每个 label 在转 punycode 前检测混合脚本。
+	// IDN 脚本白名单:允许 ASCII + CJK，拒绝 Cyrillic/Greek 等可混淆脚本(含纯单一非拉丁)。
 	for (const label of hostname.split(".")) {
-		// biome-ignore lint/suspicious/noControlCharactersInRegex: 检测非 ASCII 用
-		if (/[^\x00-]/.test(label) && isMixedScript(label)) {
+		if (hasDisallowedScript(label)) {
 			return {
-				error: "拒绝混合脚本/同形域名(疑似 IDN homograph)",
+				error: "拒绝不支持脚本/同形域名(疑似 IDN homograph)",
 			};
 		}
 	}
