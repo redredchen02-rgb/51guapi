@@ -99,7 +99,10 @@ export function PendingTopicsView({ onBack, onDraftReady, onError }: Props) {
 			lines.length > 0
 				? `\n\n【吃瓜事实】（只能使用以下事实，严禁编造）：\n${lines.join("\n")}`
 				: "";
-		return `${topic.title || topic.sourceUrl}${factsBlock}`;
+		const enrichBlock = topic.enrichmentText
+			? `\n\n【参考资料】（辅助背景，不得超出事实块的信息）：\n${topic.enrichmentText}`
+			: "";
+		return `${topic.title || topic.sourceUrl}${factsBlock}${enrichBlock}`;
 	}
 
 	async function handleApproveSelected() {
