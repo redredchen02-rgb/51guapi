@@ -195,6 +195,48 @@ describe("generic-adapter.fetchContent", () => {
 		expect(result.metadata?.publishedTime).toBe("2024-08-15");
 	});
 
+	it("正文容器嵌套 div：不在首個 </div> 截斷，抓到尾段", async () => {
+		const html = `<html><head>
+			<meta property="og:description" content="短摘要一句" />
+		</head><body>
+			<div class="post-content">
+				<p>正文第一段內容</p>
+				<div class="ad-box">廣告</div>
+				<p>正文最後一段尾巴</p>
+			</div>
+		</body></html>`;
+		mockSafeFetch.mockResolvedValueOnce(makeResponse(html));
+		const result = await fetchContent("https://example.com/gossip/nested");
+		// 括號配平：尾段不被首個 </div>(廣告塊)截斷
+		expect(result.body).toContain("正文第一段內容");
+		expect(result.body).toContain("正文最後一段尾巴");
+	});
+
+	it("正文容器存在時優先於 og:description（不再被一句摘要腰斬）", async () => {
+		const html = `<html><head>
+			<meta property="og:description" content="只有一句營銷摘要" />
+		</head><body>
+			<article class="article-content"><p>完整正文第一段，比摘要長得多</p><p>第二段補充細節</p></article>
+		</body></html>`;
+		mockSafeFetch.mockResolvedValueOnce(makeResponse(html));
+		const result = await fetchContent("https://example.com/gossip/container");
+		expect(result.body).toContain("完整正文第一段");
+		expect(result.body).toContain("第二段補充細節");
+		expect(result.body).not.toBe("只有一句營銷摘要");
+	});
+
+	it("無 og、無已知容器 → 文本密度兜底聚合 <p> 段落", async () => {
+		const html = `<html><head><title>標題</title></head><body>
+			<nav>導航</nav>
+			<p>這是正文第一段，內容足夠長以通過密度門檻判定。</p>
+			<p>這是正文第二段，繼續補充事件細節與經過。</p>
+		</body></html>`;
+		mockSafeFetch.mockResolvedValueOnce(makeResponse(html));
+		const result = await fetchContent("https://example.com/gossip/density");
+		expect(result.body).toContain("正文第一段");
+		expect(result.body).toContain("正文第二段");
+	});
+
 	it("HTTP 4xx 時拋出含狀態碼的 Error", async () => {
 		mockSafeFetch.mockResolvedValueOnce(makeResponse("", 404));
 		await expect(

@@ -133,21 +133,74 @@ function extractH1(html: string): string {
 	return m ? m[1].replace(/<[^>]*>/g, "").trim() : "";
 }
 
+// 常見正文容器 class/id 關鍵詞。
+const CONTENT_CONTAINER_KEYWORDS =
+	"post-content|article-content|entry-content|content-detail|main-content|article-body|post-body|rich_media_content";
+
+/** 去除 script/style 後剝光標籤、歸一空白。 */
+function stripTagsToText(htmlFragment: string): string {
+	return htmlFragment
+		.replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi, " ")
+		.replace(/<[^>]*>/g, " ")
+		.replace(/\s+/g, " ")
+		.trim();
+}
+
+/**
+ * 提取正文容器文本：定位 class/id 命中關鍵詞的 div/article/section 開標籤後,
+ * **括號配平**找到對應閉合標籤（而非貪婪到首個同類閉合,否則嵌套容器會被腰斬）。
+ */
+function extractContainerText(html: string): string {
+	const openRe = new RegExp(
+		`<(div|article|section)\\b[^>]*\\b(?:class|id)=["'][^"']*(?:${CONTENT_CONTAINER_KEYWORDS})[^"']*["'][^>]*>`,
+		"i",
+	);
+	const m = openRe.exec(html);
+	if (!m) return "";
+	const tag = m[1].toLowerCase();
+	const start = m.index + m[0].length;
+	// 從容器內部起,對同類標籤開/閉計數,深度歸 0 處即對應閉合標籤。
+	const tokenRe = new RegExp(`<(/?)${tag}\\b`, "gi");
+	tokenRe.lastIndex = start;
+	let depth = 1;
+	let endIdx = html.length;
+	for (let mm = tokenRe.exec(html); mm; mm = tokenRe.exec(html)) {
+		depth += mm[1] === "/" ? -1 : 1;
+		if (depth === 0) {
+			endIdx = mm.index;
+			break;
+		}
+	}
+	return stripTagsToText(html.slice(start, endIdx));
+}
+
+/** 文本密度兜底：聚合所有 <p> 段落文本;不足則剝光 <body>。 */
+function extractByDensity(html: string): string {
+	const paras = [...html.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi)]
+		.map((m) => stripTagsToText(m[1]))
+		.filter((s) => s.length > 0);
+	const joined = paras.join(" ").trim();
+	if (joined.length >= 40) return joined;
+	const bodyM = html.match(/<body\b[^>]*>([\s\S]*?)<\/body>/i);
+	return stripTagsToText(bodyM ? bodyM[1] : html);
+}
+
+/**
+ * 正文提取（質量優先序）：
+ *   1. 正文容器（括號配平,抓全嵌套內容）
+ *   2. og:description / meta description（營銷摘要,僅作容器為空時兜底）
+ *   3. 文本密度（聚合 <p> 段落）
+ * 舊實現把 og:description 放第一優先,導致絕大多數有 og 的站點正文被截成一句話,
+ * LLM 只能從標題+一句摘要提煉 → 起因/經過/結果 幾乎必空。
+ */
 function extractBody(html: string): string {
+	const container = extractContainerText(html);
+	if (container) return container;
 	const og = extractOgMeta(html, "og:description");
 	if (og) return og;
 	const desc = extractMetaName(html, "description");
 	if (desc) return desc;
-	// 嘗試常見正文容器
-	const bodyRe =
-		/<(?:div|article|section)[^>]+(?:class|id)=["'][^"']*(?:post-content|article-content|entry-content|content-detail|main-content)[^"']*["'][^>]*>([\s\S]*?)<\/(?:div|article|section)>/i;
-	const m = html.match(bodyRe);
-	if (m)
-		return m[1]
-			.replace(/<[^>]*>/g, " ")
-			.replace(/\s+/g, " ")
-			.trim();
-	return "";
+	return extractByDensity(html);
 }
 
 /**
