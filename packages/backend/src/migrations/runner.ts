@@ -85,6 +85,11 @@ CREATE TABLE IF NOT EXISTS channels (
   created_at    TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_channels_hostname ON channels(hostname);`,
+	// 移除发布时代残留:published_posts 表无任何写入者(发布机器已删除),其回访
+	// 机制(revisit-job)与「不发布、不写回」硬约束矛盾,一并下线。DROP IF EXISTS
+	// 对全新 DB 是 no-op(003 create-then-drop),对既有 DB 清掉空表。
+	"010-drop-published-posts.sql": `\
+DROP TABLE IF EXISTS published_posts;`,
 };
 
 export function runMigrations(dbPath: string): void {

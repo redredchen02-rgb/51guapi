@@ -27,7 +27,6 @@ vi.mock("./scraper/scheduler.js", async (importOriginal) => {
 		await importOriginal<typeof import("./scraper/scheduler.js")>();
 	return { ...actual, startScheduler: vi.fn() };
 });
-vi.mock("./services/revisit-job.js", () => ({ startRevisitJob: vi.fn() }));
 
 import { buildApp, registerDraftRoutes, startBackgroundJobs } from "./app.js";
 import { resetPendingDb } from "./scraper/pending-db.js";

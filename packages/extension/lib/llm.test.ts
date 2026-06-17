@@ -44,7 +44,6 @@ const settings: Settings = {
 	fallbackModel: "",
 	promptTemplate: "test template",
 	fewShotPairs: [],
-	fieldMapping: {},
 };
 
 describe("Extension LLM client proxy", () => {

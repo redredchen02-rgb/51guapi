@@ -1,4 +1,4 @@
-import type { FewShotPair, FieldMapping } from "@51guapi/shared";
+import type { FewShotPair } from "@51guapi/shared";
 import { useCallback, useRef, useState } from "react";
 import type { ConnectionTestResult } from "../../../lib/connection-test";
 import { testConnection as runTestConnection } from "../../../lib/connection-test";
@@ -21,7 +21,6 @@ export interface SettingsFormValues {
 	promptTemplate: string;
 	fewShotPairs: FewShotPair[];
 	tagsText: string;
-	mappingText: string;
 	fallbackModel: string;
 	backendUrl: string;
 	reviewCriteriaPrompt: string;
@@ -58,7 +57,6 @@ export function useSettingsForm(): UseSettingsFormReturn {
 		promptTemplate: "",
 		fewShotPairs: [],
 		tagsText: "",
-		mappingText: "",
 		fallbackModel: "",
 		backendUrl: "",
 		reviewCriteriaPrompt: "",
@@ -101,7 +99,6 @@ export function useSettingsForm(): UseSettingsFormReturn {
 			promptTemplate: s.promptTemplate,
 			fewShotPairs: s.fewShotPairs ?? [],
 			tagsText: (s.recommendedTags ?? []).join("\n"),
-			mappingText: JSON.stringify(s.fieldMapping, null, 2),
 			fallbackModel: s.fallbackModel ?? "",
 			backendUrl: s.backendUrl ?? "",
 			reviewCriteriaPrompt: s.reviewCriteriaPrompt ?? "",
@@ -114,18 +111,11 @@ export function useSettingsForm(): UseSettingsFormReturn {
 	const save = useCallback(async (): Promise<string | null> => {
 		const validationErr = validateSettingsForm({
 			endpoint: formValues.endpoint,
-			mappingText: formValues.mappingText,
 			backendUrl: formValues.backendUrl,
 		});
 		if (validationErr) return validationErr;
 
 		const existing = await getSettings();
-		let fieldMappingParsed: FieldMapping;
-		try {
-			fieldMappingParsed = JSON.parse(formValues.mappingText) as FieldMapping;
-		} catch {
-			return "字段映射 JSON 解析失败。";
-		}
 
 		await saveSettings({
 			...existing,
@@ -134,7 +124,6 @@ export function useSettingsForm(): UseSettingsFormReturn {
 			promptTemplate: formValues.promptTemplate,
 			fewShotPairs: formValues.fewShotPairs,
 			recommendedTags: parseTagsText(formValues.tagsText),
-			fieldMapping: fieldMappingParsed,
 			fallbackModel: formValues.fallbackModel || undefined,
 			backendUrl: formValues.backendUrl || undefined,
 			reviewCriteriaPrompt: formValues.reviewCriteriaPrompt || undefined,

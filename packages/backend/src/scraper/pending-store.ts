@@ -1,9 +1,5 @@
 import type { FactsBlock, GossipFactsBlock } from "@51guapi/shared";
-import {
-	type BetterSqlite3DB,
-	getDb,
-	pendingWriteQueue,
-} from "./pending-db.js";
+import { getDb, pendingWriteQueue } from "./pending-db.js";
 import type { RawContent } from "./site-adapter.js";
 import type { EnrichedContext } from "./web-enricher.js";
 
@@ -103,12 +99,14 @@ function rowToTopic(row: PendingRow): PendingTopic {
 
 /**
  * 计算选题质量分 (0–1):
- *   score = fieldCompleteness × freshnessDecay × (1 − publishedPenalty)
+ *   score = fieldCompleteness × freshnessDecay
  * - fieldCompleteness: {title, body, facts, coverImageUrl} 中非空字段占比
  * - freshnessDecay: exp(-daysSinceCreation / 7)，半衰期约 5 天
- * - publishedPenalty: 0.8（已发布 source_title 匹配），否则 0
+ *
+ * (原 publishedPenalty 项已移除:其依赖的 published_posts 表无任何写入者,惩罚恒为 0。
+ *  发布回访机制随发布机器一并下线。)
  */
-function computeScore(topic: PendingTopic, db: BetterSqlite3DB): number {
+function computeScore(topic: PendingTopic): number {
 	const hasTitle = topic.title.trim().length > 0;
 	const hasBody = !!topic.rawContent?.body?.trim();
 	const hasFacts = Object.values(topic.facts ?? {}).some(
@@ -124,38 +122,7 @@ function computeScore(topic: PendingTopic, db: BetterSqlite3DB): number {
 		: (Date.now() - parsedTs) / (1000 * 60 * 60 * 24);
 	const freshnessDecay = Math.exp(-daysSince / 7);
 
-	let publishedPenalty = 0;
-	try {
-		const publishedTitles = getPublishedTitles(db);
-		if (publishedTitles.has(topic.title)) publishedPenalty = 0.8;
-	} catch {
-		// 旧版 DB 不含 published_posts 表，跳过惩罚项
-	}
-
-	return fieldCompleteness * freshnessDecay * (1 - publishedPenalty);
-}
-
-// 缓存已发布的标题，避免 N+1 查询
-let _publishedTitlesCache: Set<string> | null = null;
-
-function getPublishedTitles(db: BetterSqlite3DB): Set<string> {
-	if (_publishedTitlesCache) return _publishedTitlesCache;
-	try {
-		const rows = db
-			.prepare("SELECT DISTINCT source_title FROM published_posts")
-			.all() as { source_title: string }[];
-		_publishedTitlesCache = new Set(
-			rows.map((r) => r.source_title).filter(Boolean),
-		);
-	} catch {
-		// published_posts 表可能不存在
-		_publishedTitlesCache = new Set();
-	}
-	return _publishedTitlesCache;
-}
-
-export function invalidatePublishedTitlesCache(): void {
-	_publishedTitlesCache = null;
+	return fieldCompleteness * freshnessDecay;
 }
 
 export async function pendingTopicExistsBySourceUrl(
@@ -193,7 +160,7 @@ export async function savePendingTopic(
 			return { inserted: false };
 		}
 
-		const score = computeScore(topic, db);
+		const score = computeScore(topic);
 
 		try {
 			db.prepare(

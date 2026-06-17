@@ -45,9 +45,6 @@ const DEFAULT_SETTINGS_MOCK = {
 	promptTemplate: "Write a post about {topic}",
 	fewShotPairs: [],
 	recommendedTags: ["漢化", "無修正"],
-	fieldMapping: {
-		title: { selector: 'input[name="title"]', fieldType: "text" },
-	},
 	fallbackModel: undefined,
 	backendUrl: "http://localhost:3001",
 	reviewCriteriaPrompt: "",

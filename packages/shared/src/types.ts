@@ -42,41 +42,6 @@ export interface ContentDraft {
 	enrichment?: string;
 }
 
-/** 字段填充策略类型。U0 确认本后台用到 text/textarea/quill/native-select/checkbox-multi/date。 */
-export type FieldType =
-	| "text"
-	| "textarea"
-	| "quill"
-	| "native-select"
-	| "checkbox-multi"
-	| "date"
-	| "custom-dropdown"
-	| "tag-input";
-
-/** 单个字段:稳定选择器 + 填充类型。 */
-export interface FieldDefinition {
-	selector: string;
-	fieldType: FieldType;
-	label?: string;
-}
-
-/** 草稿字段 → 页面元素的映射。键为 ContentDraft 的可填字段。 */
-export type FieldMapping = Partial<
-	Record<
-		| "title"
-		| "subtitle"
-		| "category"
-		| "body"
-		| "tags"
-		| "description"
-		| "postStatus"
-		| "publishedAt"
-		| "mediaId"
-		| "coverUrl",
-		FieldDefinition
-	>
->;
-
 /** 用户可配置的设置(API key 单独存取,不在此对象内)。 */
 export interface Settings {
 	/** 大模型 endpoint(OpenAI 兼容 chat/completions),须为 https。 */
@@ -91,8 +56,6 @@ export interface Settings {
 	fewShotPairs?: FewShotPair[];
 	/** 运营者维护的推荐标签子集(~20-50 条);注入 prompt 约束,防模型造词(R5-R6)。 */
 	recommendedTags?: string[];
-	/** 字段映射(可在设置页编辑)。 */
-	fieldMapping: FieldMapping;
 	/** 吃瓜小帮手 后端 URL（http://localhost:3001 等）;空=不启用后端双写。 */
 	backendUrl?: string;
 	/** AI 评审标准 prompt（Phase 3）;空时使用内置四维默认标准。 */
@@ -104,13 +67,6 @@ export interface Settings {
 }
 
 // ---- 消息协议(side panel ↔ background ↔ content script) ----
-
-/** 单字段填充结果。 */
-export interface FieldFillResult {
-	field: string;
-	status: "filled" | "skipped" | "degraded";
-	note?: string;
-}
 
 /** 拒绝原因枚举值（路由层校验；DB 列保留 TEXT 存储字符串值）。 */
 export type RejectionReason =

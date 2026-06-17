@@ -19,7 +19,6 @@ vi.mock("../../lib/storage", () => ({
 		model: "gpt-4o-mini",
 		promptTemplate: "{{topic}}",
 		recommendedTags: ["漢化"],
-		fieldMapping: {},
 		backendUrl: "",
 		reviewCriteriaPrompt: "",
 		dailyBatchSize: 5,

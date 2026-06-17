@@ -13,7 +13,6 @@ import {
 	getBatch,
 	getExtensionCounters,
 	getSettings,
-	parseFewShotExamples,
 	removeLastFewShotPair,
 	saveApiKey,
 	saveBackendToken,
@@ -46,8 +45,6 @@ describe("storage", () => {
 	it("storage 为空时 getSettings 返回完整默认对象", async () => {
 		const s = await getSettings();
 		expect(s.endpoint).toBe(DEFAULT_SETTINGS.endpoint);
-		expect(s.fieldMapping.title?.selector).toBe('input[name="title"]');
-		expect(s.fieldMapping.body?.fieldType).toBe("quill");
 		expect(s.recommendedTags).toEqual([]);
 		expect(s.fewShotPairs).toEqual([]);
 	});
@@ -72,16 +69,6 @@ describe("storage", () => {
 		const got = await getSettings();
 		expect(got.endpoint).toBe("https://api.example.com/v1/chat/completions");
 		expect(got.model).toBe("gpt-4o");
-	});
-
-	it("部分设置与默认 fieldMapping 合并(缺省项回落)", async () => {
-		await saveSettings({
-			...DEFAULT_SETTINGS,
-			fieldMapping: { title: { selector: "#custom-title", fieldType: "text" } },
-		});
-		const got = await getSettings();
-		expect(got.fieldMapping.title?.selector).toBe("#custom-title");
-		expect(got.fieldMapping.body?.selector).toBe("#editor");
 	});
 
 	it("getApiKey 未设置时返回空字符串而非崩溃", async () => {
@@ -287,40 +274,24 @@ describe("storage", () => {
 		});
 	});
 
-	describe("parseFewShotExamples / deriveFewShotExamples", () => {
-		it("happy path: 單條帶分隔符 → [{input, output}]", () => {
-			expect(parseFewShotExamples("A\n---\nB")).toEqual([
-				{ input: "A", output: "B" },
-			]);
+	describe("deriveFewShotExamples(单向序列化,内容含分隔符不再回 parse)", () => {
+		it("pairs → 可读文本,input/output 以 \\n---\\n 连接,pair 间空行", () => {
+			expect(
+				deriveFewShotExamples([
+					{ input: "Q1", output: "A1" },
+					{ input: "Q2", output: "A2" },
+				]),
+			).toBe("Q1\n---\nA1\n\nQ2\n---\nA2");
 		});
 
-		it("happy path: 兩條以 \\n\\n 分隔 → 兩個 pair", () => {
-			expect(parseFewShotExamples("A\n---\nB\n\nC\n---\nD")).toEqual([
-				{ input: "A", output: "B" },
-				{ input: "C", output: "D" },
-			]);
+		it("空列表 → 空串", () => {
+			expect(deriveFewShotExamples([])).toBe("");
 		});
 
-		it("edge case: 無分隔符的 block → {input: '', output: block}", () => {
-			expect(parseFewShotExamples("no separator here")).toEqual([
-				{ input: "", output: "no separator here" },
-			]);
-		});
-
-		it("edge case: 空字串 → []", () => {
-			expect(parseFewShotExamples("")).toEqual([]);
-		});
-
-		it("edge case: 只有空白行 → []", () => {
-			expect(parseFewShotExamples("\n\n\n")).toEqual([]);
-		});
-
-		it("round-trip: derive → parse 還原相同 pairs", () => {
-			const pairs = [
-				{ input: "Q1", output: "A1" },
-				{ input: "Q2", output: "A2" },
-			];
-			expect(parseFewShotExamples(deriveFewShotExamples(pairs))).toEqual(pairs);
+		it("内容含 --- / 空行也照常序列化(不再有 parse 往返损坏风险)", () => {
+			expect(
+				deriveFewShotExamples([{ input: "Q", output: "l1\n---\nl2\n\nl3" }]),
+			).toBe("Q\n---\nl1\n---\nl2\n\nl3");
 		});
 	});
 });

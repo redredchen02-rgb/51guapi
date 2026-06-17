@@ -3,7 +3,7 @@ import { applyPromptTemplate, type FactsBlock } from "@51guapi/shared";
 import { browser } from "#imports";
 import type { Batch } from "./batch";
 import type { RuntimeMessage } from "./messages";
-import { DEFAULT_RECIPE } from "./recipe";
+import { ADMIN_PAGE_HOST } from "./recipe";
 
 // MV3 Service Worker 随时可能被回收。sendMessage 若 SW 死亡可能永久 pending。
 // sendMsg 包一层 race，超时则 reject → withBusy catch 显示"请重试"而非卡死。
@@ -62,7 +62,7 @@ export function pickAdminTabId(
 
 /** 解析后台页所在 tab id(优先活动 tab,否则按 host 在所有窗口里找)。 */
 export async function resolveAdminTabId(): Promise<number | null> {
-	const host = DEFAULT_RECIPE.host;
+	const host = ADMIN_PAGE_HOST;
 	const [active] = await browser.tabs.query({
 		active: true,
 		currentWindow: true,

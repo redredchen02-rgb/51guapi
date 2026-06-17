@@ -72,7 +72,7 @@ export function DraftPreview({
 					onChange={(e) => set({ description: e.target.value })}
 				/>
 			</Field>
-			<Field label="正文(HTML,填充前自动消毒)">
+			<Field label="正文(HTML 源码)">
 				<textarea
 					className="field-input"
 					style={{ minHeight: 120, fontFamily: "monospace" }}

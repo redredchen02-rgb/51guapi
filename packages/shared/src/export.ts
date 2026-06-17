@@ -78,10 +78,19 @@ const CSV_META_HEADERS = [
 	"createdAt",
 ] as const;
 
-/** 轉義單個 CSV 格:含 , " 或換行時用雙引號包裹並把 " → ""。null/undefined → 空串。 */
+/**
+ * 轉義單個 CSV 格:含 , " 或換行時用雙引號包裹並把 " → ""。null/undefined → 空串。
+ *
+ * Security(CSV 公式注入):不可信外站內容若以 = + - @ Tab CR 起首,在 Excel/Sheets
+ * 打開時會被當公式求值(資料外洩/DDE)。對「字串」值前置單引號中和;數字列
+ * (confidence/score)不受影響,避免誤傷。
+ */
 export function escapeCsv(val: string | number | null | undefined): string {
 	if (val == null) return "";
-	const s = String(val);
+	let s = String(val);
+	if (typeof val === "string" && /^[=+\-@\t\r]/.test(s)) {
+		s = `'${s}`;
+	}
 	if (/[",\r\n]/.test(s)) {
 		return `"${s.replace(/"/g, '""')}"`;
 	}

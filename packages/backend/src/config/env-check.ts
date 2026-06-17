@@ -54,15 +54,6 @@ export function checkEnv(env: NodeJS.ProcessEnv = process.env): string[] {
 		}
 	}
 
-	// Revisit job: REVISIT_ALLOWED_HOSTS must not be wildcard when set
-	const revisitHosts = (env.REVISIT_ALLOWED_HOSTS ?? "").trim();
-	if (revisitHosts === "*") {
-		errors.push(
-			"REVISIT_ALLOWED_HOSTS must not be '*'. Set it to the specific hostname(s) of your self-hosted " +
-				"admin panel (comma-separated). Empty = fail-closed (revisit job skips all rows).",
-		);
-	}
-
 	if (env.TG_ENABLED === "true") {
 		const token = (env.TG_BOT_TOKEN ?? "").trim();
 		if (!token) {

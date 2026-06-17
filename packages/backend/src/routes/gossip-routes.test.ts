@@ -152,7 +152,7 @@ describe("gossip-routes", () => {
 
 	// ---- POST /gossip/sites/:id/discover ----
 
-	it("discover：mock fetchList 返回 25 條 → response 截斷為 20", async () => {
+	it("discover：mock fetchList 返回 25 條 → 全部返回（不再丟棄第 21+ 條）", async () => {
 		const createRes = await app.inject({
 			method: "POST",
 			url: "/api/v1/gossip/sites",
@@ -172,7 +172,9 @@ describe("gossip-routes", () => {
 			url: `/api/v1/gossip/sites/${site.id}/discover`,
 		});
 		expect(res.statusCode).toBe(200);
-		expect(res.json().discovered).toHaveLength(20);
+		expect(res.json().discovered).toHaveLength(25);
+		expect(res.json().hasMore).toBe(false);
+		expect(res.json().total).toBe(25);
 	});
 
 	it("discover：5 條 URL 已在 pending → 被過濾", async () => {

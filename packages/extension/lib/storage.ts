@@ -1,10 +1,8 @@
 import type { ContentDraft, FewShotPair, Settings } from "@51guapi/shared";
-import { DEFAULT_FIELD_MAPPING } from "@51guapi/shared";
 import { storage } from "#imports";
 import { clearBackendUrlCache } from "./backend-url";
 import type { Batch } from "./batch";
 import { recoverBatch } from "./batch";
-import { fetchRemoteMappings } from "./config-client";
 
 const SETTINGS_KEY = "local:settings";
 const API_KEY = "local:apiKey";
@@ -13,7 +11,7 @@ const CURRENT_DRAFT_KEY = "local:currentDraft";
 const BATCH_KEY = "local:batch";
 const EXTENSION_COUNTERS_KEY = "local:extensionCounters";
 
-/** 默认设置。字段映射拆到 lib/field-mapping.ts(不依赖 #imports,供测试复用)。 */
+/** 默认设置(API key 单独存取,不在此对象内)。 */
 export const DEFAULT_SETTINGS: Settings = {
 	endpoint: "",
 	model: "gpt-4o-mini",
@@ -45,7 +43,6 @@ export const DEFAULT_SETTINGS: Settings = {
 	].join("\n"),
 	fewShotPairs: [] as FewShotPair[],
 	recommendedTags: [] as string[],
-	fieldMapping: DEFAULT_FIELD_MAPPING,
 	dailyBatchSize: 5,
 };
 
@@ -62,10 +59,6 @@ export async function getSettings(): Promise<Settings> {
 	const merged: Settings = {
 		...DEFAULT_SETTINGS,
 		...stored,
-		fieldMapping: {
-			...DEFAULT_SETTINGS.fieldMapping,
-			...(stored.fieldMapping ?? {}),
-		},
 	};
 	merged.dailyBatchSize = clampDailyBatchSize(merged.dailyBatchSize);
 	return merged;
@@ -171,19 +164,17 @@ export async function saveExtensionCounters(
 
 // ---- Few-shot 范例（R11 一键存为范例）----
 
+/**
+ * 把结构化 fewShotPairs 序列化为 prompt 用的可读文本(单向)。
+ *
+ * 唯一真实来源是 `fewShotPairs`(结构化数组,持久化直接存对象),本函数仅供
+ * prompt-assembly 拼 LLM 提示词。**不可逆**:若 input/output 内含 `\n---\n` 或空行,
+ * 文本边界会与内容碰撞 —— 因此**不要**把本函数输出回存再 parse(历史上的文本往返已移除,
+ * 避免静默数据损坏)。旧 `fewShotExamples` 字符串字段的一次性迁移由后端
+ * prompt-store.ts 的 migratePairs 处理(best-effort,仅在 fewShotPairs 为空时触发)。
+ */
 export function deriveFewShotExamples(pairs: FewShotPair[]): string {
 	return pairs.map((p) => `${p.input}\n---\n${p.output}`).join("\n\n");
-}
-
-export function parseFewShotExamples(raw: string): FewShotPair[] {
-	if (!raw) return [];
-	const blocks = raw.split(/\n\n+/).filter(Boolean);
-	return blocks.map((b) => {
-		const sep = b.indexOf("\n---\n");
-		return sep !== -1
-			? { input: b.slice(0, sep), output: b.slice(sep + 5) }
-			: { input: "", output: b };
-	});
 }
 
 const MAX_FEW_SHOT = 8;
@@ -213,21 +204,4 @@ export async function removeLastFewShotPair(): Promise<void> {
 	if (current.length === 0) return;
 	const next = current.slice(0, -1);
 	await saveSettings({ ...settings, fewShotPairs: next });
-}
-
-// ---- 远程配置热刷新 ----
-
-/**
- * 拉取后端最新字段映射并写入本地 settings。
- * 供 Background Service Worker 启动时调用,实现选择器配置云端热更新。
- * 后端不可达时 fail-closed,保留本地已有映射(不覆盖)。
- */
-export async function refreshRemoteMappings(): Promise<{ remote: boolean }> {
-	const { mappings, remote } = await fetchRemoteMappings();
-	if (!remote) return { remote: false };
-
-	const settings = await getSettings();
-	settings.fieldMapping = { ...DEFAULT_FIELD_MAPPING, ...mappings };
-	await saveSettings(settings);
-	return { remote: true };
 }
