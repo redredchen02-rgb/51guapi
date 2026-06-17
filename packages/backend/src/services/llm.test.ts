@@ -19,7 +19,6 @@ const DEFAULT_SETTINGS: Settings = {
 	fallbackModel: "",
 	promptTemplate: "test template",
 	fewShotPairs: [],
-	fieldMapping: {},
 };
 
 const settings: Settings = {

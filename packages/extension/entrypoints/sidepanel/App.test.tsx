@@ -43,7 +43,6 @@ vi.mock("../../lib/storage", () => ({
 		promptTemplate: "{{topic}}",
 		endpoint: "",
 		model: "",
-		fieldMapping: {},
 	}),
 	getCurrentDraft: async () => null,
 	saveCurrentDraft: saveCurrentDraftMock,

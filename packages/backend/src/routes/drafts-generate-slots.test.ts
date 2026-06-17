@@ -39,7 +39,6 @@ async function buildApp(fetchFn: typeof fetch): Promise<FastifyInstance> {
 					fallbackModel: "",
 					promptTemplate: "t",
 					fewShotPairs: [],
-					fieldMapping: {},
 				},
 				apiKey: "k",
 				facts: { 作品名: "作品X", 集数: "2期", 简介: "梗概" },

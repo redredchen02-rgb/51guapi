@@ -45,8 +45,6 @@ describe("storage", () => {
 	it("storage 为空时 getSettings 返回完整默认对象", async () => {
 		const s = await getSettings();
 		expect(s.endpoint).toBe(DEFAULT_SETTINGS.endpoint);
-		expect(s.fieldMapping.title?.selector).toBe('input[name="title"]');
-		expect(s.fieldMapping.body?.fieldType).toBe("quill");
 		expect(s.recommendedTags).toEqual([]);
 		expect(s.fewShotPairs).toEqual([]);
 	});
@@ -73,15 +71,6 @@ describe("storage", () => {
 		expect(got.model).toBe("gpt-4o");
 	});
 
-	it("部分设置与默认 fieldMapping 合并(缺省项回落)", async () => {
-		await saveSettings({
-			...DEFAULT_SETTINGS,
-			fieldMapping: { title: { selector: "#custom-title", fieldType: "text" } },
-		});
-		const got = await getSettings();
-		expect(got.fieldMapping.title?.selector).toBe("#custom-title");
-		expect(got.fieldMapping.body?.selector).toBe("#editor");
-	});
 
 	it("getApiKey 未设置时返回空字符串而非崩溃", async () => {
 		expect(await getApiKey()).toBe("");

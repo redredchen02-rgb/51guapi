@@ -8,7 +8,6 @@ const BASE: Settings = {
 	endpoint: "https://api.example.com",
 	model: "gpt-4o-mini",
 	promptTemplate: "Write about {{topic}}",
-	fieldMapping: {},
 };
 
 const FACTS: FactsBlock = { 作品名: "海角", 集数: "12" };

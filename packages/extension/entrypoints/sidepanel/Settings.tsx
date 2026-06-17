@@ -1,9 +1,6 @@
-import { isValidFieldMapping, VALID_FIELD_TYPES } from "@51guapi/shared";
 import { useEffect, useState } from "react";
 import { logger } from "../../lib/logger";
-import { DEFAULT_SETTINGS } from "../../lib/storage";
 import { BackendSection } from "./components/BackendSection";
-import { FieldMappingSection } from "./components/FieldMappingSection";
 import { LLMSection } from "./components/LLMSection";
 import { PromptSection } from "./components/PromptSection";
 import { TagsSection } from "./components/TagsSection";
@@ -17,51 +14,17 @@ export function parseTagsText(text: string): string[] {
 		.filter(Boolean);
 }
 
-export function validateMapping(text: string): string | null {
-	let parsed: unknown;
-	try {
-		parsed = JSON.parse(text);
-	} catch (e) {
-		return `JSON 格式错误:${(e as Error).message}`;
-	}
-	if (!isValidFieldMapping(parsed)) {
-		if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
-			return "字段映射必须是一个对象。";
-		for (const [key, def] of Object.entries(
-			parsed as Record<string, unknown>,
-		)) {
-			if (!def || typeof def !== "object") return `字段 ${key} 必须是对象。`;
-			const d = def as Record<string, unknown>;
-			if (typeof d.selector !== "string" || !d.selector)
-				return `字段 ${key} 缺少有效的 selector。`;
-			if (
-				typeof d.fieldType !== "string" ||
-				!(VALID_FIELD_TYPES as readonly string[]).includes(d.fieldType)
-			) {
-				return `字段 ${key} 的 fieldType 非法(应为:${VALID_FIELD_TYPES.join(" / ")})。`;
-			}
-		}
-		return "字段映射校验失败。";
-	}
-	return null;
-}
-
 export interface SettingsValidationValues {
 	endpoint: string;
-	mappingText: string;
 	backendUrl: string;
 }
 
 export function validateSettingsForm(
 	values: SettingsValidationValues,
 ): string | null {
-	const { endpoint, mappingText, backendUrl } = values;
+	const { endpoint, backendUrl } = values;
 	if (endpoint && !/^https:\/\//i.test(endpoint)) {
 		return "endpoint 必须是 https:// 地址(API key 会发往此处)。";
-	}
-	if (mappingText) {
-		const mapErr = validateMapping(mappingText);
-		if (mapErr) return mapErr;
 	}
 	if (
 		backendUrl &&
@@ -161,17 +124,6 @@ export function Settings({ onClose }: { onClose: () => void }) {
 				reviewCriteriaPrompt={formValues.reviewCriteriaPrompt}
 				setTagsText={(v) => setFormValue("tagsText", v)}
 				setReviewCriteriaPrompt={(v) => setFormValue("reviewCriteriaPrompt", v)}
-			/>
-
-			<FieldMappingSection
-				mappingText={formValues.mappingText}
-				setMappingText={(v) => setFormValue("mappingText", v)}
-				onResetMapping={() =>
-					setFormValue(
-						"mappingText",
-						JSON.stringify(DEFAULT_SETTINGS.fieldMapping, null, 2),
-					)
-				}
 			/>
 
 			{error && (

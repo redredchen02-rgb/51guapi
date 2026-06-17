@@ -17,7 +17,6 @@ import {
 	getBatch as getBatchRaw,
 	getExtensionCounters,
 	getSettings,
-	refreshRemoteMappings,
 	saveBatch,
 	saveExtensionCounters,
 } from "../lib/storage";
@@ -204,18 +203,6 @@ export default defineBackground(() => {
 
 	// SW 启动恢复:将上次 SW 被杀时卡在 generating 状态的条目标记为 error。
 	void runStartupGeneratingRecovery();
-
-	// 启动时拉取后端最新字段映射(选择器配置热更新)。后端不可达时 fail-closed。
-	refreshRemoteMappings()
-		.then(({ remote }) => {
-			if (remote) logger.debug("bg", "远程映射配置已刷新");
-			else logger.debug("bg", "使用本地默认映射(后端不可达)");
-		})
-		.catch((e) =>
-			logger.warn("bg", "刷新远程映射失败", {
-				err: e instanceof Error ? e.message : String(e),
-			}),
-		);
 
 	// SW Keep-Alive:定时唤醒,防止超大批次时背景因闲置被杀。
 	if (browser.alarms) {

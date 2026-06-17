@@ -1,10 +1,8 @@
 import type { ContentDraft, FewShotPair, Settings } from "@51guapi/shared";
-import { DEFAULT_FIELD_MAPPING } from "@51guapi/shared";
 import { storage } from "#imports";
 import { clearBackendUrlCache } from "./backend-url";
 import type { Batch } from "./batch";
 import { recoverBatch } from "./batch";
-import { fetchRemoteMappings } from "./config-client";
 
 const SETTINGS_KEY = "local:settings";
 const API_KEY = "local:apiKey";
@@ -45,7 +43,6 @@ export const DEFAULT_SETTINGS: Settings = {
 	].join("\n"),
 	fewShotPairs: [] as FewShotPair[],
 	recommendedTags: [] as string[],
-	fieldMapping: DEFAULT_FIELD_MAPPING,
 	dailyBatchSize: 5,
 };
 
@@ -62,10 +59,6 @@ export async function getSettings(): Promise<Settings> {
 	const merged: Settings = {
 		...DEFAULT_SETTINGS,
 		...stored,
-		fieldMapping: {
-			...DEFAULT_SETTINGS.fieldMapping,
-			...(stored.fieldMapping ?? {}),
-		},
 	};
 	merged.dailyBatchSize = clampDailyBatchSize(merged.dailyBatchSize);
 	return merged;
@@ -213,19 +206,3 @@ export async function removeLastFewShotPair(): Promise<void> {
 	await saveSettings({ ...settings, fewShotPairs: next });
 }
 
-// ---- 远程配置热刷新 ----
-
-/**
- * 拉取后端最新字段映射并写入本地 settings。
- * 供 Background Service Worker 启动时调用,实现选择器配置云端热更新。
- * 后端不可达时 fail-closed,保留本地已有映射(不覆盖)。
- */
-export async function refreshRemoteMappings(): Promise<{ remote: boolean }> {
-	const { mappings, remote } = await fetchRemoteMappings();
-	if (!remote) return { remote: false };
-
-	const settings = await getSettings();
-	settings.fieldMapping = { ...DEFAULT_FIELD_MAPPING, ...mappings };
-	await saveSettings(settings);
-	return { remote: true };
-}
