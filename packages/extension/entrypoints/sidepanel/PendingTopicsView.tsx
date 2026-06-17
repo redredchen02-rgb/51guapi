@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
+import { downloadFile, exportTopicsAsCSV } from "../../lib/export";
 import { resolveAdminTabId, runBatch } from "../../lib/messaging";
 import {
 	fetchAdapters,
@@ -153,6 +154,13 @@ export function PendingTopicsView({ onBack, onBatchStarted, onError }: Props) {
 		}
 	}
 
+	function handleExportCsv() {
+		if (topics.length === 0) return;
+		const csv = exportTopicsAsCSV(topics);
+		const date = new Date().toISOString().slice(0, 10);
+		downloadFile(`topics-${date}.csv`, csv, "text/csv");
+	}
+
 	async function handleQuickDraft() {
 		setQuickDraftStatus("备稿中…");
 		setQuickDraftConfirm(null);
@@ -260,6 +268,14 @@ export function PendingTopicsView({ onBack, onBatchStarted, onError }: Props) {
 						}}
 					>
 						⚡ 立即抓取
+					</button>
+					<button
+						type="button"
+						disabled={topics.length === 0}
+						onClick={handleExportCsv}
+						className="btn btn-plain btn-sm"
+					>
+						导出 CSV
 					</button>
 					<button
 						type="button"

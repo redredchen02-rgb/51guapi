@@ -1,8 +1,10 @@
 import {
 	assembleDraftJSON,
 	assembleDraftMarkdown,
+	assembleTopicsCSV,
 	type ContentDraft,
 	type GossipFactsBlock,
+	type TopicForCSV,
 } from "@51guapi/shared";
 
 /** 把草稿序列化為格式化 JSON 字串。 */
@@ -19,6 +21,11 @@ export function exportDraftAsMarkdown(
 	facts?: GossipFactsBlock | null,
 ): string {
 	return assembleDraftMarkdown(draft, facts);
+}
+
+/** 把待審池整批組裝為 CSV 字串(元資料 + 8 個吃瓜事實欄)。包裝 shared 純函式。 */
+export function exportTopicsAsCSV(topics: TopicForCSV[]): string {
+	return assembleTopicsCSV(topics);
 }
 
 /** 寫入系統剪貼板。瀏覽器環境用 navigator.clipboard;測試可 mock。 */

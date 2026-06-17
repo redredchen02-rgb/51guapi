@@ -1,11 +1,13 @@
 // Shared types and utilities for 吃瓜小帮手 (51guapi) monorepo
 
 export { toDraft } from "./draft.js";
-export type { ExportedDraft, ExportFormat } from "./export.js";
+export type { ExportedDraft, ExportFormat, TopicForCSV } from "./export.js";
 export {
 	assembleDraftJSON,
 	assembleDraftMarkdown,
+	assembleTopicsCSV,
 	EXPORT_SCHEMA_VERSION,
+	escapeCsv,
 } from "./export.js";
 export type { FactKey, FactsBlock, FactTarget, ParsedTopic } from "./facts.js";
 export {

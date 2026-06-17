@@ -52,6 +52,69 @@ export function assembleDraftJSON(
 	};
 }
 
+/** CSV 批量導出用的選題形狀(待審池子集);facts 為 key→值的字典,缺項即空。 */
+export interface TopicForCSV {
+	id: string;
+	title: string;
+	siteName: string;
+	sourceUrl: string;
+	confidence: number;
+	/** 質量分(可選);無則該欄輸出空。 */
+	qualityScore?: number;
+	domain?: string;
+	createdAt: string;
+	facts: Record<string, string | null | undefined>;
+}
+
+/** CSV 元資料欄(吃瓜事實 8 欄之前的列頭)。 */
+const CSV_META_HEADERS = [
+	"id",
+	"title",
+	"siteName",
+	"sourceUrl",
+	"confidence",
+	"score",
+	"domain",
+	"createdAt",
+] as const;
+
+/** 轉義單個 CSV 格:含 , " 或換行時用雙引號包裹並把 " → ""。null/undefined → 空串。 */
+export function escapeCsv(val: string | number | null | undefined): string {
+	if (val == null) return "";
+	const s = String(val);
+	if (/[",\r\n]/.test(s)) {
+		return `"${s.replace(/"/g, '""')}"`;
+	}
+	return s;
+}
+
+/**
+ * 把待審池組裝成 CSV 字串(表頭 + 逐 topic 一列)。純函式。
+ * 欄位 = 8 個元資料欄 + 8 個吃瓜事實欄(GOSSIP_FACT_KEYS,從 topic.facts 取,缺即空)。
+ * 行以 CRLF 分隔(CSV 標準);空列表只輸出表頭行。
+ */
+export function assembleTopicsCSV(topics: TopicForCSV[]): string {
+	const headers = [...CSV_META_HEADERS, ...GOSSIP_FACT_KEYS];
+	const rows: string[] = [headers.map(escapeCsv).join(",")];
+
+	for (const t of topics) {
+		const cells: (string | number | null | undefined)[] = [
+			t.id,
+			t.title,
+			t.siteName,
+			t.sourceUrl,
+			t.confidence,
+			t.qualityScore,
+			t.domain,
+			t.createdAt,
+			...GOSSIP_FACT_KEYS.map((k) => t.facts?.[k] ?? ""),
+		];
+		rows.push(cells.map(escapeCsv).join(","));
+	}
+
+	return rows.join("\r\n");
+}
+
 /** 轉義 Markdown 行內特殊字元(# | * _ ` [ ] 反斜線);換行統一為 \n。 */
 function escMd(s: string): string {
 	return s

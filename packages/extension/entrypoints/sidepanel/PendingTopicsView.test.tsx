@@ -26,6 +26,13 @@ vi.mock("../../lib/messaging", () => ({
 	runBatch: vi.fn(async () => null),
 }));
 
+vi.mock("../../lib/export", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("../../lib/export")>();
+	return { ...actual, downloadFile: vi.fn() };
+});
+
+import { downloadFile } from "../../lib/export";
+
 import {
 	fetchAdapters,
 	fetchPendingTopics,
@@ -215,6 +222,46 @@ describe("R2 — cover thumbnail", () => {
 		await waitFor(() => screen.getByText("选题 t1"));
 		fireEvent.click(screen.getByText("详情"));
 		expect(document.querySelector('img[alt="封面"]')).toBeNull();
+	});
+});
+
+// ================================================================
+// R4 — CSV export button
+// ================================================================
+
+describe("R4 — CSV export button", () => {
+	it("点「导出 CSV」→ downloadFile 以 text/csv 与正确内容调用", async () => {
+		vi.mocked(fetchPendingTopics).mockResolvedValue([makeTopic("t1")]);
+		render(
+			<PendingTopicsView
+				onBack={vi.fn()}
+				onBatchStarted={vi.fn()}
+				onError={vi.fn()}
+			/>,
+		);
+		await waitFor(() => screen.getByText("选题 t1"));
+		fireEvent.click(screen.getByText("导出 CSV"));
+		expect(downloadFile).toHaveBeenCalledTimes(1);
+		const [filename, content, mime] = vi.mocked(downloadFile).mock.calls[0]!;
+		expect(filename).toMatch(/^topics-\d{4}-\d{2}-\d{2}\.csv$/);
+		expect(mime).toBe("text/csv");
+		expect(content).toContain("id,title,siteName");
+		expect(content).toContain("选题 t1");
+	});
+
+	it("空列表时导出按钮禁用", async () => {
+		vi.mocked(fetchPendingTopics).mockResolvedValue([]);
+		render(
+			<PendingTopicsView
+				onBack={vi.fn()}
+				onBatchStarted={vi.fn()}
+				onError={vi.fn()}
+			/>,
+		);
+		await waitFor(() => screen.getByText("暂无待审核选题。"));
+		expect((screen.getByText("导出 CSV") as HTMLButtonElement).disabled).toBe(
+			true,
+		);
 	});
 });
 
