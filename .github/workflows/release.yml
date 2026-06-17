@@ -44,12 +44,9 @@ jobs:
       - name: Prepare extension artifact
         run: cp packages/extension/.output/publisher-fill-assistant-*.zip ./extension.zip
 
-      - name: Build Docker image
-        run: docker build -f packages/backend/Dockerfile -t 51guapi-backend .
-
-      - name: Export Docker image
-        if: success()
-        run: docker save 51guapi-backend | gzip > 51guapi-backend.tar.gz
+      # backend Docker 打包延后到 v0.2:runtime 阶段 npm install 不认 workspace: 协议,
+      # 需改 pnpm deploy / 复制 prod node_modules,在可本地验证的环境下再处理。
+      # 见 docs/v0.2-backlog.md。v0.1 release 产物为扩展 zip。
 
       - name: Upload extension artifact
         uses: actions/upload-artifact@v4
@@ -57,14 +54,6 @@ jobs:
           name: extension-zip
           path: extension.zip
           if-no-files-found: error
-
-      - name: Upload Docker artifact
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: docker-image
-          path: 51guapi-backend.tar.gz
-          if-no-files-found: ignore
 
   release:
     needs: build-and-verify
@@ -76,17 +65,9 @@ jobs:
           name: extension-zip
           path: artifacts/
 
-      - name: Download Docker artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: docker-image
-          path: artifacts/
-          if-no-files-found: ignore
-
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
           files: |
             artifacts/*.zip
-            artifacts/*.tar.gz
