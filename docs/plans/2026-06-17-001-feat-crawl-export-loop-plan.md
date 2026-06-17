@@ -1,7 +1,7 @@
 ---
 title: "feat: v0.2 完成爬取→導出閉環（遞歸多頁爬取 + CSV 批量導出）"
 type: feat
-status: active
+status: completed
 date: 2026-06-17
 origin: docs/v0.2-backlog.md
 ---
@@ -205,3 +205,21 @@ graph TB
 - SSRF：`ssrf-guard.ts`、`ssrf-allowlist.ts`
 - 導出：`packages/shared/src/export.ts`、`packages/extension/lib/export.ts`、`PendingTopicsView.tsx`
 - 前序計畫：`docs/plans/2026-06-16-003-feat-guapi-v0.1-rebrand-plan.md`（U6/U7）
+
+## Execution Summary (2026-06-17)
+
+U1–U3 完成 + 安全複查抓到的 P1 已修。全包 compile / test（backend 450 + extension 430）/ lint:ci / build:extension 全綠。相對 main：18 檔 +984/−21。
+
+| 單元 | commit | 狀態 |
+|------|--------|------|
+| U1 generic-adapter 翻頁能力 | 91b53d99 | ✅ |
+| U3 CSV 批量導出 | 57d4211c | ✅ |
+| U2 maxDepth 端到端生效 | 6c43e9ba | ✅ |
+| U2 P1 安全修（翻頁請求數硬上限 + maxDepth clamp + 協議白名單） | e1f359e7 | ✅ |
+| NUL 修（channel-store IDN 正則裸 NUL → \x00，v0.1 隱患） | 4cb49707 | ✅ |
+
+**安全複查結論**：問題 1（翻頁 pathPrefix 強制）確認無旁路；同 host 精確比對、非 http 協議被攔安全。P1（放大器封頂）已修：`fetchListPaged` 加 `MAX_PAGES=50` 不信任配置的硬上限（測試斷言 maxPages=10000 時實際 fetch 恰 50 次）+ 寫入 clamp `maxDepth` 1..50 + `resolveSameHost` 協議白名單。
+
+**執行期插曲**：P1 修復 agent 誤用 `git stash` 把別分支（metrics 功能）的 `background.ts` 改動洩進工作樹，已 `git checkout --` 還原，未進任何 commit。
+
+**殘留（記錄，未阻塞）**：DNS rebinding TOCTOU（maxDepth 增大使同 host 重複解析增多，rebind 命中機會線性上升）——歸入 v0.2-backlog 的 DNS pinning 項。下一頁 pattern 僅支援 `rel=next` + `?page=N`/`/page/N`，其餘站維持單頁。
