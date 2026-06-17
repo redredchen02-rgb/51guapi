@@ -5,6 +5,10 @@ import type { EnrichedContext } from "./web-enricher.js";
 
 export type PendingStatus = "pending" | "approved" | "rejected";
 
+// 机械字段:来源连结=原文 URL,几乎恒非空,算进 facts 完整度等于白送分。与
+// gossip-fact-extractor 的 confidence 口径保持一致(两处都剔除)。
+const MECHANICAL_FACT_KEYS = new Set<string>(["來源連結"]);
+
 const VALID_STATUSES: Set<string> = new Set([
 	"pending",
 	"approved",
@@ -99,30 +103,63 @@ function rowToTopic(row: PendingRow): PendingTopic {
 
 /**
  * 计算选题质量分 (0–1):
- *   score = fieldCompleteness × freshnessDecay
- * - fieldCompleteness: {title, body, facts, coverImageUrl} 中非空字段占比
- * - freshnessDecay: exp(-daysSinceCreation / 7)，半衰期约 5 天
- *
- * (原 publishedPenalty 项已移除:其依赖的 published_posts 表无任何写入者,惩罚恒为 0。
- *  发布回访机制随发布机器一并下线。)
+ *   score = fieldCompleteness × freshnessDecay × confidenceFactor
+ * - fieldCompleteness: title/body/cover(布尔) + facts 真实非空占比(连续),取均值
+ * - confidenceFactor: 0.5 + 0.5×confidence(软化,confidence=0 不归零)
+ * - freshnessDecay: exp(-freshnessDays / 7)，新鲜度按事件/发布时间(见 freshnessDays)
  */
 function computeScore(topic: PendingTopic): number {
-	const hasTitle = topic.title.trim().length > 0;
-	const hasBody = !!topic.rawContent?.body?.trim();
-	const hasFacts = Object.values(topic.facts ?? {}).some(
-		(v) => v !== null && v !== undefined && v !== "",
+	const hasTitle = topic.title.trim().length > 0 ? 1 : 0;
+	const hasBody = topic.rawContent?.body?.trim() ? 1 : 0;
+	const hasCover = topic.coverImageUrl ? 1 : 0;
+	// facts 完整度用「真实非空占比」(0..1) 而非「任一非空即满分」——否则只填 1 个
+	// 字段的垃圾草稿与 8 事实全满的优质草稿同分,排序失真。剔除机械字段(来源连结=原文
+	// URL,LLM 几乎恒能填),与 gossip-fact-extractor 的 confidence 口径一致,避免白送分。
+	const factsEntries = Object.entries(topic.facts ?? {}).filter(
+		([k]) => !MECHANICAL_FACT_KEYS.has(k),
 	);
-	const hasCover = !!topic.coverImageUrl;
+	const factsCompleteness = factsEntries.length
+		? factsEntries.filter(([, v]) => v !== null && v !== undefined && v !== "")
+				.length / factsEntries.length
+		: 0;
 	const fieldCompleteness =
-		[hasTitle, hasBody, hasFacts, hasCover].filter(Boolean).length / 4;
+		(hasTitle + hasBody + hasCover + factsCompleteness) / 4;
 
-	const parsedTs = Date.parse(topic.createdAt);
-	const daysSince = Number.isNaN(parsedTs)
-		? 0
-		: (Date.now() - parsedTs) / (1000 * 60 * 60 * 24);
-	const freshnessDecay = Math.exp(-daysSince / 7);
+	const freshnessDecay = Math.exp(-freshnessDays(topic) / 7);
 
-	return fieldCompleteness * freshnessDecay;
+	// confidence 因子:把提炼置信度纳入排序,但用 0.5+0.5×confidence 软化——confidence=0
+	// 的旧数据不被归零(仍按完整度计分),高 confidence 则获加成。
+	const confidenceFactor = 0.5 + 0.5 * clamp01(topic.confidence);
+
+	return fieldCompleteness * freshnessDecay * confidenceFactor;
+}
+
+function clamp01(n: number): number {
+	if (Number.isNaN(n)) return 0;
+	return Math.max(0, Math.min(1, n));
+}
+
+/**
+ * 新鲜度参照「天数」:优先事件/发布时间,createdAt(入库时间)仅兜底。
+ * 否则刚爬的 3 年前旧瓜会因 createdAt≈now 恒判新鲜。基准依序取:
+ *   rawContent.metadata.publishedTime → facts.發生時間 → createdAt。
+ * 任一不可解析(如「2024年5月」)即跳到下一个;全失败退回 createdAt。负值(未来时间)归 0。
+ */
+function freshnessDays(topic: PendingTopic): number {
+	const facts = topic.facts as Record<string, unknown> | undefined;
+	const candidates = [
+		topic.rawContent?.metadata?.publishedTime,
+		typeof facts?.發生時間 === "string" ? facts.發生時間 : undefined,
+		topic.createdAt,
+	];
+	for (const c of candidates) {
+		if (!c) continue;
+		const ts = Date.parse(c);
+		if (!Number.isNaN(ts)) {
+			return Math.max(0, (Date.now() - ts) / (1000 * 60 * 60 * 24));
+		}
+	}
+	return 0;
 }
 
 export async function pendingTopicExistsBySourceUrl(

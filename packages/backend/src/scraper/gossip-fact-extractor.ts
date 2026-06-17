@@ -30,7 +30,17 @@ const GOSSIP_PROMPT = `你是一個吃瓜（娛樂八卦）內容分析助手。
 - 熱度標籤反映事件性質，從原文情緒和關鍵詞推斷
 - 字段如找不到對應內容則設為 null`;
 
-const FALLBACK_CONFIDENCE_CAP = 0.3;
+// fallback 与 strict 用同一 prompt/解析/校验,提炼质量未必差,差别只是 OpenAI
+// structured-output 保证。旧的 0.3 腰斩会把很多兼容端点(恒走 fallback)的草稿系统性
+// 压到底部,故放宽到 0.6;真实质量信号(字段空/解析失败)仍由 rawConfidence 反映。
+const FALLBACK_CONFIDENCE_CAP = 0.6;
+
+// confidence 计算时剔除的「机械字段」:來源連結 就是原文 URL,LLM 几乎总能 verbatim 填,
+// 算进分母等于白送分,不反映提炼质量。剔除后分母为剩余 7 个需从内容推断的字段。
+const MECHANICAL_FACT_KEYS = new Set<string>(["來源連結"]);
+const SCORED_FACT_KEYS = GOSSIP_FACT_KEYS.filter(
+	(k) => !MECHANICAL_FACT_KEYS.has(k),
+);
 
 export interface ExtractedGossipFacts {
 	facts: GossipFactsBlock;
@@ -147,11 +157,12 @@ export async function gossipExtractFacts(
 				: "";
 
 			const facts = parseGossipFacts(content);
-			const filled = GOSSIP_FACT_KEYS.filter(
+			// 只数非机械字段:來源連結 不计入(见 MECHANICAL_FACT_KEYS)。
+			const filled = SCORED_FACT_KEYS.filter(
 				(k) => facts[k] !== null && str(facts[k]),
 			).length;
 			const rawConfidence =
-				GOSSIP_FACT_KEYS.length > 0 ? filled / GOSSIP_FACT_KEYS.length : 0;
+				SCORED_FACT_KEYS.length > 0 ? filled / SCORED_FACT_KEYS.length : 0;
 			const extractionMode = useSchema ? "strict" : "fallback";
 			const confidence =
 				extractionMode === "fallback"
