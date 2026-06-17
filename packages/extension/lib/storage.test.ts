@@ -71,7 +71,6 @@ describe("storage", () => {
 		expect(got.model).toBe("gpt-4o");
 	});
 
-
 	it("getApiKey 未设置时返回空字符串而非崩溃", async () => {
 		expect(await getApiKey()).toBe("");
 	});

@@ -11,7 +11,7 @@ const CURRENT_DRAFT_KEY = "local:currentDraft";
 const BATCH_KEY = "local:batch";
 const EXTENSION_COUNTERS_KEY = "local:extensionCounters";
 
-/** 默认设置。字段映射拆到 lib/field-mapping.ts(不依赖 #imports,供测试复用)。 */
+/** 默认设置(API key 单独存取,不在此对象内)。 */
 export const DEFAULT_SETTINGS: Settings = {
 	endpoint: "",
 	model: "gpt-4o-mini",
@@ -205,4 +205,3 @@ export async function removeLastFewShotPair(): Promise<void> {
 	const next = current.slice(0, -1);
 	await saveSettings({ ...settings, fewShotPairs: next });
 }
-

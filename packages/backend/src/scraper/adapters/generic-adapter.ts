@@ -32,8 +32,7 @@ function enforcePathPrefix(
 	// 不放行兄弟路径 "/newsletter"、"/news-admin"(startsWith 无边界会越权)。
 	const prefix = (channel.pathPrefix || "/").replace(/\/+$/, "") || "/";
 	const path = target.pathname;
-	const ok =
-		prefix === "/" || path === prefix || path.startsWith(`${prefix}/`);
+	const ok = prefix === "/" || path === prefix || path.startsWith(`${prefix}/`);
 	if (!ok) {
 		throw new SsrfError(
 			`URL path ${path} 不在渠道 ${target.hostname} 允许的前缀 ${prefix} 内`,
