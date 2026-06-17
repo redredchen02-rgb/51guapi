@@ -270,7 +270,7 @@ describe("R4 — CSV export button", () => {
 // ================================================================
 
 describe("R3 — scraper trigger button", () => {
-	it("有适配器时点击触发按钮调用 triggerScrape", async () => {
+	it("有适配器时点击触发按钮调用 triggerScrape，完成后状态清空", async () => {
 		vi.mocked(fetchAdapters).mockResolvedValue(["test-adapter"]);
 		vi.mocked(fetchPendingTopics).mockResolvedValue([]);
 		render(
@@ -282,9 +282,26 @@ describe("R3 — scraper trigger button", () => {
 		);
 		await waitFor(() => expect(fetchAdapters).toHaveBeenCalled());
 		fireEvent.click(screen.getByText("⚡ 立即抓取"));
-		// 点击→triggerScrape 为异步:适配器状态落定前同步断言会偶发「0 调用」,故包进 waitFor。
 		await waitFor(() =>
 			expect(triggerScrape).toHaveBeenCalledWith("test-adapter"),
 		);
+		// handleTriggerScrape awaits refresh() before clearing status — deterministic settle
+		await waitFor(() => expect(screen.queryByText("抓取中…")).toBeNull());
+	});
+
+	it("无适配器时触发按钮禁用", async () => {
+		vi.mocked(fetchAdapters).mockResolvedValue([]);
+		vi.mocked(fetchPendingTopics).mockResolvedValue([]);
+		render(
+			<PendingTopicsView
+				onBack={vi.fn()}
+				onBatchStarted={vi.fn()}
+				onError={vi.fn()}
+			/>,
+		);
+		await waitFor(() => expect(fetchAdapters).toHaveBeenCalled());
+		expect(
+			(screen.getByText("⚡ 立即抓取") as HTMLButtonElement).disabled,
+		).toBe(true);
 	});
 });
