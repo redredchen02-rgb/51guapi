@@ -90,4 +90,22 @@ publisher_drafts_total{status="failed"} 0
 		expect(screen.getAllByText("—")).toHaveLength(2);
 		screen.getByText("0");
 	});
+
+	it("仅有失败计数(零成功)时不显示暂无数据,草稿卡片显示 0%", async () => {
+		mockPrometheus(`
+publisher_scraper_runs_total{status="success"} 0
+publisher_scraper_runs_total{status="failed"} 0
+publisher_drafts_total{status="success"} 0
+publisher_drafts_total{status="failed"} 3
+`);
+		mockGetCounters.mockResolvedValue({
+			publishAttempts: { success: 0, failed: 0 },
+			batchesCompleted: 0,
+		});
+
+		render(<MetricsView onBack={vi.fn()} />);
+
+		await waitFor(() => screen.getByText("0%")); // 草稿 0/(0+3)
+		expect(screen.queryByText(/暂无数据/)).toBeNull();
+	});
 });

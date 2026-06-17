@@ -152,6 +152,7 @@ export function MetricsView({ onBack }: Props) {
 				backend.scraperSuccess === 0 &&
 				backend.scraperFailed === 0 &&
 				backend.draftsSuccess === 0 &&
+				backend.draftsFailed === 0 &&
 				(!counters || counters.batchesCompleted === 0) && (
 					<p
 						style={{
