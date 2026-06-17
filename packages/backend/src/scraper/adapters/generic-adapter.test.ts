@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fetchContent, fetchList } from "./generic-adapter.js";
+import { fetchContent, fetchList, fetchListPaged } from "./generic-adapter.js";
 
 // Mock safeFetch（保留真 SsrfError，path-prefix 强制依赖它）
 vi.mock("../ssrf-guard.js", async (importOriginal) => ({
@@ -289,5 +289,168 @@ describe("U6 P0：流式 max_bytes 截断（不信 content-length）", () => {
 		await expect(fetchContent("https://env-only.example/a")).rejects.toThrow(
 			/too large/,
 		);
+	});
+});
+
+// 構造一個帶 rel="next" link 的列表頁。
+function listHtmlWithNext(detailIds: number[], nextHref?: string): string {
+	const links = detailIds
+		.map((id) => `<a href="/gossip/${id}">標題${id}</a>`)
+		.join("\n");
+	const next = nextHref ? `<link rel="next" href="${nextHref}" />` : "";
+	return `<html><head>${next}</head><body>${links}</body></html>`;
+}
+
+describe("generic-adapter.fetchListPaged（U1 翻頁能力）", () => {
+	it("Happy：兩頁列表，page1 rel=next 指向同 host page2 → 合併去重後回兩頁詳情 URL", async () => {
+		mockSafeFetch
+			.mockResolvedValueOnce(
+				makeResponse(
+					listHtmlWithNext([1, 2], "https://example.com/latest?page=2"),
+				),
+			)
+			.mockResolvedValueOnce(makeResponse(listHtmlWithNext([2, 3])));
+		const results = await fetchListPaged("https://example.com/latest", 2);
+		const urls = results.map((r) => r.url);
+		expect(urls).toContain("https://example.com/gossip/1");
+		expect(urls).toContain("https://example.com/gossip/2");
+		expect(urls).toContain("https://example.com/gossip/3");
+		// gossip/2 跨頁重複只出現一次
+		expect(urls.filter((u) => u.endsWith("/gossip/2"))).toHaveLength(1);
+		expect(mockSafeFetch).toHaveBeenCalledTimes(2);
+	});
+
+	it("Edge：maxPages=1 只抓首頁，即使有 next 也不跟隨", async () => {
+		mockSafeFetch.mockResolvedValueOnce(
+			makeResponse(
+				listHtmlWithNext([1, 2], "https://example.com/latest?page=2"),
+			),
+		);
+		const results = await fetchListPaged("https://example.com/latest", 1);
+		expect(results.map((r) => r.url)).toEqual([
+			"https://example.com/gossip/1",
+			"https://example.com/gossip/2",
+		]);
+		expect(mockSafeFetch).toHaveBeenCalledOnce();
+	});
+
+	it("Edge：無 next 標記時，即使 maxPages>1 也只抓一頁", async () => {
+		mockSafeFetch.mockResolvedValueOnce(makeResponse(listHtmlWithNext([1, 2])));
+		const results = await fetchListPaged("https://example.com/latest", 5);
+		expect(results).toHaveLength(2);
+		expect(mockSafeFetch).toHaveBeenCalledOnce();
+	});
+
+	it("Edge：next 指回已訪問頁 → visited 阻止迴圈", async () => {
+		// page1 的 next 指向 page1 自身（已訪問）
+		mockSafeFetch
+			.mockResolvedValueOnce(
+				makeResponse(listHtmlWithNext([1], "https://example.com/latest")),
+			)
+			.mockResolvedValueOnce(
+				makeResponse(listHtmlWithNext([2], "https://example.com/latest")),
+			);
+		const results = await fetchListPaged("https://example.com/latest", 5);
+		// 起始 URL = next URL → 第二輪即被 visited 攔下，只抓一頁
+		expect(results).toHaveLength(1);
+		expect(mockSafeFetch).toHaveBeenCalledOnce();
+	});
+
+	it("Security：next 指向不同 host → 不跟隨（不發第二次請求）", async () => {
+		mockSafeFetch.mockResolvedValueOnce(
+			makeResponse(listHtmlWithNext([1], "https://evil.com/latest?page=2")),
+		);
+		const results = await fetchListPaged("https://example.com/latest", 5);
+		expect(results).toHaveLength(1);
+		expect(mockSafeFetch).toHaveBeenCalledOnce();
+	});
+
+	it("Security：next 路徑不符 channel pathPrefix → enforcePathPrefix 拒該頁，保留已抓", async () => {
+		mockGetChannel.mockReturnValue(channel("/public/"));
+		// page1 在 prefix 內，next 指向 prefix 外
+		mockSafeFetch.mockResolvedValueOnce(
+			makeResponse(
+				`<html><head><link rel="next" href="https://host.example/internal/list" /></head><body><a href="/public/12345">x</a></body></html>`,
+			),
+		);
+		const results = await fetchListPaged("https://host.example/public/list", 5);
+		// 第二頁越權 → fetchListPage 回空頁、無 next → 整體停止，僅保留 page1
+		expect(results.map((r) => r.url)).toEqual([
+			"https://host.example/public/12345",
+		]);
+		// page1 抓取 + page2 enforcePathPrefix 在 fetch 前攔下（不 safeFetch）
+		expect(mockSafeFetch).toHaveBeenCalledOnce();
+	});
+
+	it("Edge：累積詳情 URL 超上限（200）時截斷", async () => {
+		// 每頁 20 條 + 永遠有同 host next → 靠 MAX_PAGED_URLS 截斷
+		let page = 1;
+		mockSafeFetch.mockImplementation(async () => {
+			const base = (page - 1) * 20;
+			const ids = Array.from({ length: 20 }, (_, i) => base + i + 1);
+			const next = `https://example.com/latest?page=${page + 1}`;
+			page += 1;
+			return makeResponse(listHtmlWithNext(ids, next));
+		});
+		const results = await fetchListPaged("https://example.com/latest", 1000);
+		expect(results.length).toBe(200);
+	});
+
+	it("?page=N pattern：無 rel=next 時用 <a href ?page=> 偵測下一頁", async () => {
+		mockSafeFetch
+			.mockResolvedValueOnce(
+				makeResponse(
+					`<html><body><a href="/gossip/1">x</a><a href="https://example.com/latest?page=2">下一頁</a></body></html>`,
+				),
+			)
+			.mockResolvedValueOnce(
+				makeResponse(`<html><body><a href="/gossip/2">y</a></body></html>`),
+			);
+		const results = await fetchListPaged(
+			"https://example.com/latest?page=1",
+			3,
+		);
+		expect(results.map((r) => r.url)).toEqual([
+			"https://example.com/gossip/1",
+			"https://example.com/gossip/2",
+		]);
+		expect(mockSafeFetch).toHaveBeenCalledTimes(2);
+	});
+
+	it("Security：maxPages 極大 + 詳情 URL 稀疏 + 每頁都有 next → 請求次數封頂 MAX_PAGES(50)", async () => {
+		// 每頁僅 1 條詳情 URL（稀疏，MAX_PAGED_URLS=200 封不住），且永遠有同 host next。
+		// 唯一硬閘是 MAX_PAGES：底層 list-fetch 實際調用次數必須 ≤ 50。
+		let page = 1;
+		mockSafeFetch.mockImplementation(async () => {
+			const id = page;
+			const next = `https://example.com/latest?page=${page + 1}`;
+			page += 1;
+			return makeResponse(listHtmlWithNext([id], next));
+		});
+		const results = await fetchListPaged("https://example.com/latest", 10000);
+		// 請求次數封頂（不是只看累積 URL ≤ 200）
+		expect(mockSafeFetch).toHaveBeenCalledTimes(50);
+		expect(results).toHaveLength(50);
+	});
+
+	it("Security：next 為 javascript:/file:/data: → resolveSameHost 協議白名單拒，不跟隨", async () => {
+		for (const evil of [
+			"javascript:alert(1)",
+			"file:///etc/passwd",
+			"data:text/html,<a href=/gossip/9>x</a>",
+		]) {
+			mockSafeFetch.mockReset();
+			mockSafeFetch.mockResolvedValueOnce(
+				makeResponse(
+					`<html><head><link rel="next" href="${evil}" /></head><body><a href="/gossip/1">x</a></body></html>`,
+				),
+			);
+			const results = await fetchListPaged("https://example.com/latest", 5);
+			// 協議白名單在 resolveSameHost 即拒 → 無下一頁 → 只發一次請求
+			expect(mockSafeFetch).toHaveBeenCalledOnce();
+			expect(results.map((r) => r.url)).toEqual([
+				"https://example.com/gossip/1",
+			]);
+		}
 	});
 });

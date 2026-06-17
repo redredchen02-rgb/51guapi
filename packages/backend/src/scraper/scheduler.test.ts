@@ -33,6 +33,10 @@ vi.mock("../services/telegram.js", () => ({
 	sendAlert: vi.fn(async () => undefined),
 }));
 
+vi.mock("./channel-store.js", () => ({
+	getChannelByHostname: vi.fn(() => null),
+}));
+
 // ---- helpers ----
 
 const MOCK_RAW: RawContent = {
@@ -312,5 +316,102 @@ describe("startScheduler — list-discovery mode (U4)", () => {
 		expect(vi.mocked(savePendingTopic).mock.calls[0][0].sourceUrl).toBe(
 			currentUrl,
 		);
+	});
+});
+
+// ================================================================
+// U2: maxDepth 驱动翻页（scheduler 路径）
+// ================================================================
+
+import { getChannelByHostname } from "./channel-store.js";
+
+function makePagedAdapter(
+	name: string,
+	paged: (listUrl: string, maxPages: number) => Promise<string[]>,
+	listFallback: string[] = [],
+): SiteAdapter {
+	return {
+		name,
+		fetchContent: vi.fn(async (_url: string): Promise<RawContent> => MOCK_RAW),
+		fetchList: vi.fn(async () => listFallback),
+		fetchListPaged: paged,
+	};
+}
+
+function startPagedJob(adapter: SiteAdapter): () => Promise<void> {
+	scraperConfig.registerAdapter(adapter);
+	scraperConfig.addSiteConfig({
+		siteName: currentSite,
+		adapterName: adapter.name,
+		url: currentUrl,
+		listUrl: LIST_URL,
+		cron: "0 * * * *",
+		enabled: true,
+	});
+	startScheduler(DEPS);
+	const calls = vi.mocked(cron.schedule).mock.calls;
+	expect(calls).toHaveLength(1);
+	return calls[0][1] as () => Promise<void>;
+}
+
+describe("startScheduler — maxDepth drives pagination (U2)", () => {
+	beforeEach(() => {
+		delete process.env.SCRAPER_LIST_BUDGET;
+		vi.mocked(getChannelByHostname).mockReturnValue(null);
+		vi.mocked(pendingTopicExistsBySourceUrl).mockResolvedValue(false);
+		vi.mocked(savePendingTopic).mockResolvedValue({ inserted: true });
+		vi.mocked(extractFacts).mockResolvedValue({
+			facts: { 作品名: "测试" },
+			confidence: 0.85,
+			coverImageUrl: undefined,
+			extractionMode: "strict",
+		});
+	});
+
+	it("Happy：渠道 maxDepth=3 → fetchListPaged 以 maxPages=3 调用", async () => {
+		// biome-ignore lint/suspicious/noExplicitAny: 测试桩仅取 maxDepth 字段
+		vi.mocked(getChannelByHostname).mockReturnValue({ maxDepth: 3 } as any);
+		const paged = vi.fn(async () => [
+			"https://test-site.example.com/acg/1",
+			"https://test-site.example.com/acg/2",
+		]);
+		const adapter = makePagedAdapter(`paged-3-${testId}`, paged);
+		await startPagedJob(adapter)();
+
+		expect(paged).toHaveBeenCalledWith(LIST_URL, 3);
+		expect(vi.mocked(savePendingTopic).mock.calls).toHaveLength(2);
+	});
+
+	it("无渠道记录 → maxPages=1（单页退化，不回归）", async () => {
+		vi.mocked(getChannelByHostname).mockReturnValue(null);
+		const paged = vi.fn(async () => ["https://test-site.example.com/acg/1"]);
+		const adapter = makePagedAdapter(`paged-default-${testId}`, paged);
+		await startPagedJob(adapter)();
+
+		expect(paged).toHaveBeenCalledWith(LIST_URL, 1);
+	});
+
+	it("adapter 仅有 fetchList（无 fetchListPaged）→ 回退单页，不回归", async () => {
+		// 复用 U4 的 fetchList-only adapter：不应崩，按单页处理
+		const job = startListJob(["https://test-site.example.com/acg/legacy"]);
+		await job();
+		expect(vi.mocked(savePendingTopic).mock.calls).toHaveLength(1);
+	});
+
+	it("Edge：多页累积结果仍受 SCRAPER_LIST_BUDGET 封顶", async () => {
+		// biome-ignore lint/suspicious/noExplicitAny: 测试桩仅取 maxDepth 字段
+		vi.mocked(getChannelByHostname).mockReturnValue({ maxDepth: 5 } as any);
+		const urls = Array.from(
+			{ length: 10 },
+			(_, i) => `https://test-site.example.com/acg/${i + 1}`,
+		);
+		const paged = vi.fn(async () => urls);
+		process.env.SCRAPER_LIST_BUDGET = "3";
+		const adapter = makePagedAdapter(`paged-budget-${testId}`, paged);
+		await startPagedJob(adapter)();
+
+		expect(paged).toHaveBeenCalledWith(LIST_URL, 5);
+		expect(vi.mocked(savePendingTopic).mock.calls).toHaveLength(3);
+		delete process.env.SCRAPER_LIST_BUDGET;
 	});
 });

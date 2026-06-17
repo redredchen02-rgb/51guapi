@@ -83,6 +83,24 @@ export interface DiscoveredUrl {
 	title?: string;
 }
 
+/** fetchListPage 的內部回傳：本頁詳情 URL + 偵測到的下一頁 URL（同 host、絕對化後）。 */
+interface ListPageResult {
+	urls: DiscoveredUrl[];
+	/** 偵測到的下一頁 URL（已絕對化、已校驗同 host）；無則 undefined。 */
+	nextPageUrl?: string;
+}
+
+/** fetchListPaged 累積詳情 URL 的硬上限，防止被誘導成無限翻頁放大器。 */
+const MAX_PAGED_URLS = 200;
+
+/**
+ * fetchListPaged 翻頁「請求次數」的常量硬上限（纵深防御閘）。
+ * maxPages 來自操作者寫入的 channel.maxDepth，代碼側不信任其上界——即使配置寫成
+ * 極大值，這裡在消費點封頂，確保單次 discover 的出站 list-fetch 次數 ≤ MAX_PAGES。
+ * MAX_PAGED_URLS 只封累積 URL 數，封不住「詳情 URL 稀疏時的請求次數」，故另設此閘。
+ */
+const MAX_PAGES = 50;
+
 function extractOgMeta(html: string, property: string): string {
 	const re = new RegExp(
 		`<meta[^>]+property=["']${property}["'][^>]+content=["']([^"']*)["']|<meta[^>]+content=["']([^"']*)["'][^>]+property=["']${property}["']`,
@@ -131,16 +149,78 @@ function extractBody(html: string): string {
 }
 
 /**
- * 從清單頁 HTML 提取詳情頁 URL，帶 anchor text 作為 title。
- * 最多返回 20 條，不重複，同 hostname。
+ * 從清單頁 HTML 偵測「下一頁」URL。v0.2 保守支援：
+ *   1. `<link rel="next" href=...>` 或 `<a ... rel="next" ...>`（HTML 標準）
+ *   2. 常見分頁 pattern：`?page=N` / `?p=N` query、`/page/N` 路徑段
+ * 偵測到的 URL 會絕對化並校驗「與當前頁同 host」；跨 host 一律不回傳（不跟隨）。
+ * 偵測不到即回 undefined（呼叫方據此停止翻頁，不報錯）。
  */
-export async function fetchList(listUrl: string): Promise<DiscoveredUrl[]> {
+function detectNextPageUrl(html: string, base: URL): string | undefined {
+	// 1. rel="next"（link 或 a，rel 與 href 順序不限）
+	const relNextRe =
+		/<(?:a|link)\s[^>]*(?:rel=["'][^"']*\bnext\b[^"']*["'][^>]*href=["']([^"'#][^"']*)["']|href=["']([^"'#][^"']*)["'][^>]*rel=["'][^"']*\bnext\b[^"']*["'])/i;
+	const relMatch = html.match(relNextRe);
+	const relHref = relMatch?.[1] ?? relMatch?.[2];
+	if (relHref) {
+		const resolved = resolveSameHost(relHref.trim(), base);
+		if (resolved) return resolved;
+	}
+
+	// 2. 常見分頁 pattern：href 指向 ?page=/?p= 或 /page/N，且頁碼大於當前頁
+	const currentPage = currentPageNumber(base);
+	const pagedRe =
+		/<a\s[^>]*href=["']([^"'#][^"']*(?:[?&](?:page|p)=\d+|\/page\/\d+)[^"']*)["']/gi;
+	let best: { url: string; n: number } | undefined;
+	for (let m = pagedRe.exec(html); m !== null; m = pagedRe.exec(html)) {
+		const candidate = resolveSameHost(m[1].trim(), base);
+		if (!candidate) continue;
+		const n = currentPageNumber(new URL(candidate));
+		// 只跟隨「下一頁」：頁碼 = 當前頁 + 1（保守，避免跳到末頁或亂序）
+		if (n === currentPage + 1 && (!best || n < best.n)) {
+			best = { url: candidate, n };
+		}
+	}
+	return best?.url;
+}
+
+/** 解析 href 為絕對 URL 並要求同 host；否則回 undefined。 */
+function resolveSameHost(href: string, base: URL): string | undefined {
+	let absolute: URL;
+	try {
+		absolute = new URL(href, base);
+	} catch {
+		return undefined;
+	}
+	// 协议白名单化（纵深防御）：只允许 http(s)，不依赖远端 safeFetch 这唯一一道。
+	// 非 http(s) 的 next（file:/javascript:/data:）在此即不跟随。
+	if (absolute.protocol !== "http:" && absolute.protocol !== "https:") {
+		return undefined;
+	}
+	if (absolute.hostname !== base.hostname) return undefined;
+	return absolute.toString();
+}
+
+/** 從 URL 推斷當前頁碼（?page=/?p= 或 /page/N），預設 1。 */
+function currentPageNumber(u: URL): number {
+	const q = u.searchParams.get("page") ?? u.searchParams.get("p");
+	if (q && /^\d+$/.test(q)) return Number(q);
+	const m = u.pathname.match(/\/page\/(\d+)/);
+	if (m) return Number(m[1]);
+	return 1;
+}
+
+/**
+ * 抓取單一清單頁：返回本頁詳情 URL（≤20，同 host，去重）+ 偵測到的下一頁 URL。
+ * 共用既有 enforcePathPrefix + safeFetch({allowlistCheck}) + readBodyCapped。
+ * 對任何錯誤（越權/網路/非 200/超 byteCap）一律返回空頁（urls=[]、無 next）。
+ */
+async function fetchListPage(listUrl: string): Promise<ListPageResult> {
 	// U6 P0:抓取前按目标 hostname 强制单渠道 path_prefix。
 	let channel: ReturnType<typeof getChannelByHostname>;
 	try {
 		channel = enforcePathPrefix(new URL(listUrl));
 	} catch {
-		return []; // 路径越权或非法 URL → 视同抓取失败(fetchList 对错误一律返回空)
+		return { urls: [] }; // 路径越权或非法 URL → 视同抓取失败
 	}
 	const maxBytes = channel?.maxBytes ?? DEFAULT_MAX_BYTES;
 
@@ -158,16 +238,16 @@ export async function fetchList(listUrl: string): Promise<DiscoveredUrl[]> {
 			{ allowlistCheck },
 		);
 	} catch {
-		return [];
+		return { urls: [] };
 	}
-	if (!res.ok) return [];
+	if (!res.ok) return { urls: [] };
 
 	// 流式截断:不只信 content-length,逐块累计超 maxBytes 即中止。
 	let html: string;
 	try {
 		html = await readBodyCapped(res, maxBytes);
 	} catch {
-		return [];
+		return { urls: [] };
 	}
 	const base = new URL(listUrl);
 	const seen = new Set<string>();
@@ -202,7 +282,78 @@ export async function fetchList(listUrl: string): Promise<DiscoveredUrl[]> {
 
 		results.push({ url: normalized, title: anchorText || undefined });
 	}
-	return results;
+
+	const nextPageUrl = detectNextPageUrl(html, base);
+	return { urls: results, nextPageUrl };
+}
+
+/**
+ * 從清單頁 HTML 提取詳情頁 URL，帶 anchor text 作為 title。
+ * 最多返回 20 條，不重複，同 hostname。單頁——既有呼叫方相容入口。
+ */
+export async function fetchList(listUrl: string): Promise<DiscoveredUrl[]> {
+	const { urls } = await fetchListPage(listUrl);
+	return urls;
+}
+
+/**
+ * 有界的「跟隨翻頁」抓取：從 listUrl 起，最多跟隨 maxPages 個清單頁，
+ * 累積各頁詳情 URL（跨頁去重）。每頁都經 fetchListPage 既有的
+ * enforcePathPrefix + safeFetch({allowlistCheck}) + readBodyCapped（不開旁路）。
+ *
+ * 停止條件（任一即止）：
+ *   - 已抓 maxPages 頁；
+ *   - 本頁無下一頁 URL（偵測不到即停，深度未滿也停）；
+ *   - 下一頁與起始 listUrl 不同 host（跨 host 不跟隨）；
+ *   - 下一頁已在 visited set（防迴圈）；
+ *   - 累積詳情 URL 達 MAX_PAGED_URLS 上限（截斷）。
+ *
+ * 對單頁錯誤降級為「停止翻頁、保留已抓」，不拋出（沿用 fetchList 的錯誤語義）。
+ */
+export async function fetchListPaged(
+	listUrl: string,
+	maxPages: number,
+): Promise<DiscoveredUrl[]> {
+	// 消费点封顶：无论 maxPages（= 不信任的 channel.maxDepth）多大，翻页请求次数 ≤ MAX_PAGES。
+	const pages = Math.min(Math.max(1, Math.floor(maxPages) || 1), MAX_PAGES);
+	let startHost: string;
+	try {
+		startHost = new URL(listUrl).hostname;
+	} catch {
+		return [];
+	}
+
+	const visited = new Set<string>();
+	const seenDetail = new Set<string>();
+	const accumulated: DiscoveredUrl[] = [];
+	let current: string | undefined = listUrl;
+
+	for (let i = 0; i < pages && current; i++) {
+		if (visited.has(current)) break; // 防迴圈
+		visited.add(current);
+
+		const { urls, nextPageUrl }: ListPageResult = await fetchListPage(current);
+		for (const item of urls) {
+			if (seenDetail.has(item.url)) continue;
+			seenDetail.add(item.url);
+			accumulated.push(item);
+			if (accumulated.length >= MAX_PAGED_URLS) return accumulated; // 上限截斷
+		}
+
+		// 下一頁：須同 host（與起始 listUrl）且未訪問過，否則停。
+		if (!nextPageUrl) break;
+		let nextHost: string;
+		try {
+			nextHost = new URL(nextPageUrl).hostname;
+		} catch {
+			break;
+		}
+		if (nextHost !== startHost) break; // 跨 host 不跟隨
+		if (visited.has(nextPageUrl)) break; // 防迴圈
+		current = nextPageUrl;
+	}
+
+	return accumulated;
 }
 
 /**

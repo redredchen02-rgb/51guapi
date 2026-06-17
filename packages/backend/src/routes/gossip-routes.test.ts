@@ -9,7 +9,7 @@ import { registerGossipRoutes } from "./gossip-routes.js";
 
 // Mock generic-adapter and gossip-fact-extractor
 vi.mock("../scraper/adapters/generic-adapter.js", () => ({
-	fetchList: vi.fn(),
+	fetchListPaged: vi.fn(),
 	fetchContent: vi.fn(),
 }));
 
@@ -17,13 +17,19 @@ vi.mock("../scraper/gossip-fact-extractor.js", () => ({
 	gossipExtractFacts: vi.fn(),
 }));
 
+vi.mock("../scraper/channel-store.js", () => ({
+	getChannelByHostname: vi.fn(() => null),
+}));
+
 import {
 	fetchContent,
-	fetchList,
+	fetchListPaged,
 } from "../scraper/adapters/generic-adapter.js";
+import { getChannelByHostname } from "../scraper/channel-store.js";
 import { gossipExtractFacts } from "../scraper/gossip-fact-extractor.js";
 
-const mockFetchList = vi.mocked(fetchList);
+const mockFetchList = vi.mocked(fetchListPaged);
+const mockGetChannel = vi.mocked(getChannelByHostname);
 const mockFetchContent = vi.mocked(fetchContent);
 const mockGossipExtractFacts = vi.mocked(gossipExtractFacts);
 
@@ -345,6 +351,50 @@ describe("gossip-routes", () => {
 			url: `/api/v1/gossip/sites/${site.id}/discover`,
 		});
 		expect(res.statusCode).toBe(500);
+	});
+
+	it("discover（U2）：渠道 maxDepth=3 → fetchListPaged 以 maxPages=3 调用", async () => {
+		const createRes = await app.inject({
+			method: "POST",
+			url: "/api/v1/gossip/sites",
+			payload: { name: "站點", listUrl: "https://gossip.com/latest" },
+		});
+		const { site } = createRes.json();
+
+		// biome-ignore lint/suspicious/noExplicitAny: 测试桩仅取 maxDepth 字段
+		mockGetChannel.mockReturnValueOnce({ maxDepth: 3 } as any);
+		mockFetchList.mockResolvedValueOnce([
+			{ url: "https://gossip.com/article/u2-depth3", title: "a" },
+		]);
+
+		const res = await app.inject({
+			method: "POST",
+			url: `/api/v1/gossip/sites/${site.id}/discover`,
+		});
+		expect(res.statusCode).toBe(200);
+		expect(mockFetchList).toHaveBeenCalledWith("https://gossip.com/latest", 3);
+		expect(res.json().total).toBe(1);
+	});
+
+	it("discover（U2）：无渠道记录 → maxPages=1（单页退化，不回归）", async () => {
+		const createRes = await app.inject({
+			method: "POST",
+			url: "/api/v1/gossip/sites",
+			payload: { name: "站點", listUrl: "https://gossip.com/latest" },
+		});
+		const { site } = createRes.json();
+
+		mockGetChannel.mockReturnValueOnce(null);
+		mockFetchList.mockResolvedValueOnce([
+			{ url: "https://gossip.com/article/9", title: "a" },
+		]);
+
+		const res = await app.inject({
+			method: "POST",
+			url: `/api/v1/gossip/sites/${site.id}/discover`,
+		});
+		expect(res.statusCode).toBe(200);
+		expect(mockFetchList).toHaveBeenCalledWith("https://gossip.com/latest", 1);
 	});
 
 	it("from-url：fetchContent 拋出 → 502", async () => {

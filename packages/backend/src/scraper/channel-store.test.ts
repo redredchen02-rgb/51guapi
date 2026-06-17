@@ -7,6 +7,7 @@ import {
 	insertChannel,
 	listChannels,
 	MAX_CHANNELS,
+	MAX_DEPTH,
 	normalizeChannelHost,
 } from "./channel-store.js";
 import { getDb, initPendingDb, resetPendingDb } from "./pending-db.js";
@@ -176,6 +177,35 @@ describe("channel store (SQLite)", () => {
 		expect(r.channel?.pathPrefix).toBe("/");
 		expect(r.channel?.maxDepth).toBe(1);
 		expect(r.channel?.maxBytes).toBe(5 * 1024 * 1024);
+	});
+
+	it("maxDepth 超大值 clamp 到 MAX_DEPTH 上限", () => {
+		const r = insertChannel({
+			hostname: "big.com",
+			displayName: "big",
+			maxDepth: 99999,
+			createdBy: "op",
+		});
+		expect(r.channel?.maxDepth).toBe(MAX_DEPTH);
+		// 读回持久化值也已 clamp
+		expect(getChannelByHostname("big.com")?.maxDepth).toBe(MAX_DEPTH);
+	});
+
+	it("maxDepth=0/负值/非整数 收敛到 1", () => {
+		const zero = insertChannel({
+			hostname: "z.com",
+			displayName: "z",
+			maxDepth: 0,
+			createdBy: "op",
+		});
+		expect(zero.channel?.maxDepth).toBe(1);
+		const neg = insertChannel({
+			hostname: "n.com",
+			displayName: "n",
+			maxDepth: -5,
+			createdBy: "op",
+		});
+		expect(neg.channel?.maxDepth).toBe(1);
 	});
 
 	it("数量上限 MAX_CHANNELS 拒绝", () => {

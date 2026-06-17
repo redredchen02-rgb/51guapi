@@ -1,13 +1,42 @@
 // @vitest-environment jsdom
-import type { ContentDraft, GossipFactsBlock } from "@51guapi/shared";
+import type {
+	ContentDraft,
+	GossipFactsBlock,
+	TopicForCSV,
+} from "@51guapi/shared";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	copyToClipboard,
 	downloadFile,
 	exportDraftAsJSON,
 	exportDraftAsMarkdown,
+	exportTopicsAsCSV,
 	safeFilename,
 } from "./export.js";
+
+function makeTopic(overrides: Partial<TopicForCSV> = {}): TopicForCSV {
+	return {
+		id: "t1",
+		title: "吃瓜标题",
+		siteName: "示例站",
+		sourceUrl: "https://example.com/post/1",
+		confidence: 0.8,
+		qualityScore: 0.75,
+		domain: "gossip",
+		createdAt: "2026-06-15T00:00:00Z",
+		facts: {
+			當事人: "A,B",
+			事件摘要: "两人疑似分手",
+			起因: "起因内容",
+			經過: "经过内容",
+			結果: "结果内容",
+			來源連結: "https://example.com/post/1",
+			發生時間: "2026-06",
+			熱度標籤: "分手",
+		},
+		...overrides,
+	};
+}
 
 function makeDraft(overrides: Partial<ContentDraft> = {}): ContentDraft {
 	return {
@@ -113,6 +142,70 @@ describe("copyToClipboard", () => {
 		Object.assign(navigator, { clipboard: { writeText } });
 		await copyToClipboard("hello");
 		expect(writeText).toHaveBeenCalledWith("hello");
+	});
+});
+
+describe("exportTopicsAsCSV", () => {
+	it("Happy: 3 条完整 facts → 表头 + 3 列,对齐吃瓜事实 8 栏", () => {
+		const csv = exportTopicsAsCSV([makeTopic(), makeTopic(), makeTopic()]);
+		const lines = csv.split("\r\n");
+		expect(lines).toHaveLength(4); // 表头 + 3 列
+		const header = lines[0]!.split(",");
+		// 8 元资料 + 8 事实 = 16 栏
+		expect(header).toHaveLength(16);
+		expect(header.slice(0, 8)).toEqual([
+			"id",
+			"title",
+			"siteName",
+			"sourceUrl",
+			"confidence",
+			"score",
+			"domain",
+			"createdAt",
+		]);
+		expect(header.slice(8)).toEqual([
+			"當事人",
+			"事件摘要",
+			"起因",
+			"經過",
+			"結果",
+			"來源連結",
+			"發生時間",
+			"熱度標籤",
+		]);
+		// score 取自 qualityScore
+		expect(lines[1]!.split(",")[5]).toBe("0.75");
+	});
+
+	it("Edge: facts 部分为 null/缺失 → 对应格为空不报错", () => {
+		const csv = exportTopicsAsCSV([
+			makeTopic({
+				qualityScore: undefined,
+				facts: { 當事人: "C", 來源連結: null },
+			}),
+		]);
+		const cells = csv.split("\r\n")[1]!.split(",");
+		expect(cells[5]).toBe(""); // score 缺失
+		expect(cells[8]).toBe("C"); // 當事人
+		expect(cells[9]).toBe(""); // 事件摘要 缺失
+		expect(cells[13]).toBe(""); // 來源連結 为 null
+	});
+
+	it("Edge: 标题含逗号/双引号/换行 → 正确转义", () => {
+		const csv = exportTopicsAsCSV([
+			makeTopic({ title: 'a,b "quoted"\nline2', facts: {} }),
+		]);
+		const lines = csv.split("\r\n");
+		// 整列含特殊字符:用双引号包裹,内部 " → ""
+		expect(lines[1]!).toContain('"a,b ""quoted""\nline2"');
+		// 表头本身无特殊字符,不受影响
+		expect(lines[0]!).toContain("title");
+	});
+
+	it("Edge: 空列表 → 只有表头一行", () => {
+		const csv = exportTopicsAsCSV([]);
+		expect(csv.split("\r\n")).toHaveLength(1);
+		expect(csv).toContain("id,title,siteName");
 	});
 });
 

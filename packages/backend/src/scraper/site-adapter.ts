@@ -17,6 +17,11 @@ export interface SiteAdapter {
 	fetchContent(url: string): Promise<RawContent>;
 	/** 从列表页发现详情页 URL。可选；缺失时调度器回退到单条 URL 模式。*/
 	fetchList?(listUrl: string): Promise<string[]>;
+	/**
+	 * 有界翻页发现：从列表页起跟随「下一页」最多 maxPages 页，累积去重后的详情 URL。
+	 * maxPages = 渠道 maxDepth（翻页页数上限）。可选；缺失时调度器回退到单页 fetchList。
+	 */
+	fetchListPaged?(listUrl: string, maxPages: number): Promise<string[]>;
 }
 
 /** 站点配置。 */
