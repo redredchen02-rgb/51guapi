@@ -12,9 +12,7 @@
 		"test": "vitest run",
 		"coverage": "vitest run --coverage",
 		"test:watch": "vitest",
-		"test:e2e": "vitest run --config vitest.e2e.config.ts",
 		"check:fixtures": "bash scripts/check-fixture-secrets.sh",
-		"check:fixture-drift": "vitest run --config vitest.e2e.config.ts tests/e2e/fixture-contract.test.ts",
 		"postinstall": "wxt prepare || true"
 	},
 	"dependencies": {
