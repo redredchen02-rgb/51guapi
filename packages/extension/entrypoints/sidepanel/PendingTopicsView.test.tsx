@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import type { GenerateDraftResponse } from "@51guapi/shared";
 import {
 	cleanup,
 	fireEvent,
@@ -45,10 +46,34 @@ import {
 	updatePendingStatus,
 } from "../../lib/pending-client";
 
+// 完整 GenerateDraftResponse(satisfies 守门防缺字段);内容对所有用例无关,
+// 仅满足 useDraftGeneration hook 透传的类型契约(R5 只断言调用次数 + onDraftReady)。
+function makeGenerateResponse(): GenerateDraftResponse {
+	return {
+		ok: true,
+		draft: {
+			id: "draft-1",
+			title: "",
+			subtitle: "",
+			category: "",
+			coverImageUrl: "",
+			body: "",
+			tags: [],
+			description: "",
+			postStatus: "1",
+			publishedAt: "",
+			mediaId: "",
+			status: "draft",
+			createdAt: "2026-01-01T00:00:00.000Z",
+		},
+	} satisfies GenerateDraftResponse;
+}
+
 function makeTopic(
 	id: string,
 	overrides: Partial<PendingTopic> = {},
 ): PendingTopic {
+	// satisfies PendingTopic 防缺字段(mock 队列泄漏教训配套)。
 	return {
 		id,
 		sourceUrl: `https://example.com/${id}`,
@@ -69,10 +94,22 @@ function makeTopic(
 		createdAt: "2026-01-01T00:00:00.000Z",
 		updatedAt: "2026-01-01T00:00:00.000Z",
 		...overrides,
-	};
+	} satisfies PendingTopic;
 }
 
 beforeEach(async () => {
+	// resetAllMocks 排空 *Once FIFO 队列(clearAllMocks 不排空 → 跨用例泄漏:
+	// docs/solutions/test-failures/vitest-mock-queue-leak-and-stale-mocks-after-refactor)。
+	// 代价:也清掉 vi.mock 工厂里 mock 的实现,故下方重建安全默认值,
+	// 让不显式设 mock 的用例(R1/R2/R4)仍拿到原工厂默认。
+	vi.resetAllMocks();
+	vi.mocked(fetchPendingTopics).mockResolvedValue([]);
+	vi.mocked(updatePendingStatus).mockResolvedValue(true);
+	vi.mocked(patchPendingTopic).mockResolvedValue(true);
+	vi.mocked(triggerScrape).mockResolvedValue(true);
+	vi.mocked(fetchAdapters).mockResolvedValue([]);
+	vi.mocked(requestGenerate).mockResolvedValue(makeGenerateResponse());
+
 	fakeBrowser.reset();
 	// Create a fake active tab so browser.tabs.query returns a tab with an id.
 	await fakeBrowser.tabs.create({ url: "https://example.com", active: true });
@@ -80,7 +117,6 @@ beforeEach(async () => {
 
 afterEach(() => {
 	cleanup();
-	vi.clearAllMocks();
 });
 
 // ================================================================
