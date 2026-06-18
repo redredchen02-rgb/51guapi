@@ -49,11 +49,11 @@ describe("Auth Routes", () => {
 	});
 
 	describe("POST /api/v1/auth/login", () => {
-		it("issues a 24h HS256 token for the correct password", async () => {
+		it("issues a 24h HS256 token (passwordless self-use mode)", async () => {
 			const res = await app.inject({
 				method: "POST",
 				url: "/api/v1/auth/login",
-				payload: { password: PASSWORD },
+				payload: {},
 			});
 			expect(res.statusCode).toBe(200);
 			const body = res.json();
@@ -61,55 +61,59 @@ describe("Auth Routes", () => {
 			const decoded = jwt.verify(body.token, SECRET, {
 				algorithms: ["HS256"],
 			}) as jwt.JwtPayload;
+			expect(decoded.sub).toBe("operator");
 			// exp - iat should be ~24h (86400s).
 			expect((decoded.exp ?? 0) - (decoded.iat ?? 0)).toBe(86400);
 			expect(lastAuditLine().result).toBe("success");
 		});
 
-		it("audits an invalid password attempt without logging the password", async () => {
-			await app.inject({
+		// 防坑:U3 会清除 JWT_ADMIN_PASSWORD_HASH;此用例钉死「无 hash 但有 secret →
+		// 仍签出 token」,防止 /login 漏删 !adminHash 分支导致永久 500。
+		it("issues a token when JWT_ADMIN_PASSWORD_HASH is absent (only JWT_SECRET needed)", async () => {
+			delete process.env.JWT_ADMIN_PASSWORD_HASH;
+			const res = await app.inject({
 				method: "POST",
 				url: "/api/v1/auth/login",
-				payload: { password: "definitely-wrong-secret-xyz" },
+				payload: {},
 			});
-			const raw = readFileSync(AUDIT_LOG_PATH, "utf8");
-			expect(lastAuditLine().result).toBe("invalid_password");
-			expect(raw).not.toContain("definitely-wrong-secret-xyz");
+			expect(res.statusCode).toBe(200);
+			expect(res.json().ok).toBe(true);
+			expect(typeof res.json().token).toBe("string");
+		});
+
+		it("ignores any password in the body and still issues a token", async () => {
+			const res = await app.inject({
+				method: "POST",
+				url: "/api/v1/auth/login",
+				payload: { password: "whatever" },
+			});
+			expect(res.statusCode).toBe(200);
+			expect(res.json().ok).toBe(true);
 		});
 
 		it("rate-limits after 10 attempts and audits the 429", async () => {
 			let last = await app.inject({
 				method: "POST",
 				url: "/api/v1/auth/login",
-				payload: { password: "x" },
+				payload: {},
 			});
 			for (let i = 0; i < 10; i++) {
 				last = await app.inject({
 					method: "POST",
 					url: "/api/v1/auth/login",
-					payload: { password: "x" },
+					payload: {},
 				});
 			}
 			expect(last.statusCode).toBe(429);
 			expect(lastAuditLine().result).toBe("rate_limited");
 		});
 
-		it("rejects a wrong password with 401", async () => {
+		it("returns 500 when JWT_SECRET is not configured", async () => {
+			delete process.env.JWT_SECRET;
 			const res = await app.inject({
 				method: "POST",
 				url: "/api/v1/auth/login",
-				payload: { password: "not-the-password" },
-			});
-			expect(res.statusCode).toBe(401);
-			expect(res.json().ok).toBe(false);
-		});
-
-		it("returns 500 when admin hash is not configured", async () => {
-			delete process.env.JWT_ADMIN_PASSWORD_HASH;
-			const res = await app.inject({
-				method: "POST",
-				url: "/api/v1/auth/login",
-				payload: { password: PASSWORD },
+				payload: {},
 			});
 			expect(res.statusCode).toBe(500);
 		});

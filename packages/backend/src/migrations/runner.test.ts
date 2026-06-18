@@ -37,6 +37,19 @@ function appliedMigrations(path: string): Set<string> {
 	return new Set(rows.map((r) => r.name));
 }
 
+function channelRows(path: string): Record<string, unknown>[] {
+	const db = new Database(path, { readonly: true });
+	const rows = db.prepare("SELECT * FROM channels").all() as Record<
+		string,
+		unknown
+	>[];
+	db.close();
+	return rows;
+}
+
+const INSERT_CHANNEL =
+	"INSERT INTO channels (id, hostname, display_name, path_prefix, max_depth, max_bytes, created_by, reason, created_at) VALUES (?,?,?,?,?,?,?,?,?)";
+
 describe("migration runner", () => {
 	afterEach(() => {
 		if (dbPath) {
@@ -74,5 +87,69 @@ describe("migration runner", () => {
 		expect(() => runMigrations(path)).not.toThrow();
 		const second = appliedMigrations(path);
 		expect(second).toEqual(first);
+	});
+
+	it("种子:全新 DB 跑完迁移后 channels 恰有一条 51cg1.com", () => {
+		const path = freshDbPath();
+		runMigrations(path);
+		const rows = channelRows(path);
+		expect(rows).toHaveLength(1);
+		expect(rows[0]).toMatchObject({
+			hostname: "51cg1.com",
+			display_name: "51cg1",
+			path_prefix: "/",
+			max_depth: 1,
+			max_bytes: 5242880,
+			created_by: "seed",
+		});
+	});
+
+	it("种子重置:既有垃圾域名被一次性清除,只留 51cg1.com", () => {
+		const path = freshDbPath();
+		runMigrations(path);
+		// 模拟运行时积累的垃圾,并让 014 重跑(从 _migrations 移除)以验证 DELETE 清场。
+		const db = new Database(path);
+		db.prepare(INSERT_CHANNEL).run(
+			"junk1",
+			"h96.com",
+			"h96",
+			"/",
+			1,
+			5242880,
+			"operator",
+			"",
+			"now",
+		);
+		db.prepare("DELETE FROM _migrations WHERE name = ?").run(
+			"014-seed-channels.sql",
+		);
+		db.close();
+		runMigrations(path);
+		expect(channelRows(path).map((r) => r.hostname)).toEqual(["51cg1.com"]);
+	});
+
+	it("幂等:014 应用后用户新增渠道在重跑时不被重置", () => {
+		const path = freshDbPath();
+		runMigrations(path);
+		const db = new Database(path);
+		db.prepare(INSERT_CHANNEL).run(
+			"u1",
+			"added-by-user.com",
+			"added",
+			"/",
+			1,
+			5242880,
+			"operator",
+			"",
+			"now",
+		);
+		db.close();
+		// 014 已记入 _migrations → 重跑不应再执行 DELETE,用户渠道保留。
+		runMigrations(path);
+		expect(
+			channelRows(path)
+				.map((r) => r.hostname)
+				.sort(),
+		).toEqual(["51cg1.com", "added-by-user.com"].sort());
 	});
 });

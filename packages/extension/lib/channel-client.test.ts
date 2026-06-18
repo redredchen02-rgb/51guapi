@@ -62,36 +62,23 @@ describe("channel-client — createChannel", () => {
 		await setToken("tok");
 	});
 
-	it("Happy: POST 命中 URL,带确认手势 header + body confirm", async () => {
+	it("Happy(自用模式): POST 命中 URL,无手势头/无口令/无 confirm", async () => {
 		const { capturedUrls, capturedInits, fn } = mockFetch({
 			ok: true,
 			channel: CHANNEL,
 		});
-		const result = await createChannel(
-			"51cg1.com",
-			{ reason: "吃瓜源", adminPassword: "pw" },
-			fn,
-		);
+		const result = await createChannel("51cg1.com", { reason: "吃瓜源" }, fn);
 		expect(result.hostname).toBe("51cg1.com");
 		expect(capturedUrls[0]).toContain("/api/v1/channels");
 		expect(capturedInits[0]?.method).toBe("POST");
 		const headers = capturedInits[0]?.headers as Record<string, string>;
-		expect(headers["x-operator-confirm"]).toBe("1");
+		// 自用模式:不再发确认手势头。
+		expect(headers["x-operator-confirm"]).toBeUndefined();
 		const body = JSON.parse(capturedInits[0]?.body as string);
-		expect(body.confirm).toBe(true);
 		expect(body.channel).toBe("51cg1.com");
 		expect(body.reason).toBe("吃瓜源");
-		// step-up:口令随 body 上送,后端比对 JWT_ADMIN_PASSWORD_HASH。
-		expect(body.adminPassword).toBe("pw");
-	});
-
-	it("Error 403(无口令被后端 step-up 拒)→ 抛 error", async () => {
-		const { capturedInits, fn } = mockFetch(
-			{ error: "需管理员口令重验", kind: "step_up_required" },
-			403,
-		);
-		await expect(createChannel("x.com", {}, fn)).rejects.toThrow(/口令/);
-		const body = JSON.parse(capturedInits[0]?.body as string);
+		// 不再上送 confirm / adminPassword。
+		expect(body.confirm).toBeUndefined();
 		expect(body.adminPassword).toBeUndefined();
 	});
 
@@ -100,9 +87,11 @@ describe("channel-client — createChannel", () => {
 		await expect(createChannel("аpple.com", {}, fn)).rejects.toThrow(/同形/);
 	});
 
-	it("Error 403(缺手势被后端拒)→ 抛 error", async () => {
-		const { fn } = mockFetch({ error: "需操作者确认手势" }, 403);
-		await expect(createChannel("x.com", {}, fn)).rejects.toThrow(/手势/);
+	it("Error 401 → clearToken + 抛 Unauthorized", async () => {
+		const { fn } = mockFetch({}, 401);
+		await expect(createChannel("x.com", {}, fn)).rejects.toThrow(
+			"Unauthorized",
+		);
 	});
 });
 

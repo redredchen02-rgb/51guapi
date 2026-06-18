@@ -35,10 +35,9 @@ export function GossipView({ onBack, onTopicAdded }: Props) {
 		proceed: () => Promise<void>;
 	} | null>(null);
 
-	// U6 渠道白名单(动态 SSRF allowlist)。
+	// 渠道白名单(动态 SSRF allowlist)。自用模式:加渠道无需口令。
 	const [channels, setChannels] = useState<Channel[]>([]);
 	const [newChannel, setNewChannel] = useState("");
-	const [chanPassword, setChanPassword] = useState("");
 	const [chanError, setChanError] = useState("");
 	const [chanBusy, setChanBusy] = useState(false);
 
@@ -82,16 +81,11 @@ export function GossipView({ onBack, onTopicAdded }: Props) {
 			setChanError("请填写渠道域名");
 			return;
 		}
-		if (!chanPassword) {
-			setChanError("新增渠道需管理员口令重验");
-			return;
-		}
 		setChanBusy(true);
 		setChanError("");
 		try {
-			await createChannel(newChannel.trim(), { adminPassword: chanPassword });
+			await createChannel(newChannel.trim());
 			setNewChannel("");
-			setChanPassword("");
 			await loadChannels();
 		} catch (e) {
 			setChanError(e instanceof Error ? e.message : "新增渠道失败");
@@ -246,11 +240,9 @@ export function GossipView({ onBack, onTopicAdded }: Props) {
 			<ChannelWhitelistPanel
 				channels={channels}
 				newChannel={newChannel}
-				chanPassword={chanPassword}
 				chanError={chanError}
 				chanBusy={chanBusy}
 				onNewChannelChange={setNewChannel}
-				onChanPasswordChange={setChanPassword}
 				onAddChannel={() => void handleAddChannel()}
 				onDeleteChannel={(id) => void handleDeleteChannel(id)}
 			/>

@@ -4,8 +4,6 @@ import { checkEnv } from "./env-check.js";
 describe("env-check", () => {
 	const ENV_OK = {
 		JWT_SECRET: "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1", // gitleaks:allow
-		JWT_ADMIN_PASSWORD_HASH:
-			"2587dfc53fd18c0195f15d615fd84f8f:d7f7f7dd3adea64d92cc5aceff2988cd2324835fc8ea2c34f3a0b873672c9013a2692bfbbde70c68449ca8e9ead0051a2303a52ecddc4aed70b2c1c468451242",
 		CORS_ORIGIN: "chrome-extension://abc123",
 	};
 
@@ -17,14 +15,10 @@ describe("env-check", () => {
 		expect(errors.some((e) => e.includes("JWT_SECRET"))).toBe(true);
 	});
 
-	it("reports error when JWT_ADMIN_PASSWORD_HASH is missing", () => {
-		const errors = checkEnv({
-			...ENV_OK,
-			JWT_ADMIN_PASSWORD_HASH: "",
-		});
-		expect(errors.some((e) => e.includes("JWT_ADMIN_PASSWORD_HASH"))).toBe(
-			true,
-		);
+	// 自用模式:JWT_ADMIN_PASSWORD_HASH 不再被校验,缺失不应报错。
+	it("does not require JWT_ADMIN_PASSWORD_HASH (passwordless mode)", () => {
+		const errors = checkEnv(ENV_OK); // ENV_OK 不含 hash
+		expect(errors).toEqual([]);
 	});
 
 	it("reports error when CORS_ORIGIN is wildcard", () => {

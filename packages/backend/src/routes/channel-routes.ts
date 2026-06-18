@@ -7,7 +7,6 @@ import {
 	listChannels,
 	normalizeChannelHost,
 } from "../scraper/channel-store.js";
-import { verifyAdminPassword } from "../services/password.js";
 import { err } from "../utils/error-response.js";
 import {
 	CreateChannelResponse,
@@ -15,25 +14,23 @@ import {
 	ListChannelsResponse,
 } from "../utils/schemas.js";
 
-// U6 渠道管理路由 — 操作者持续新增爬取渠道,域名动态进 SSRF allowlist。
+// 渠道管理路由 — 操作者持续新增爬取渠道,域名动态进 SSRF allowlist。
 //
-// 安全约束(对应计画 6 条):
-// 2) 写入需人手确认手势:POST 须带 header `x-operator-confirm: 1` + body `confirm: true`。
-//    LLM/爬取管线即便能发 HTTP 也不带此手势(它们走 generic-adapter,从不调本路由)。
-//    本路由不入 PUBLIC_ROUTES → 仍受全局 JWT preHandler 保护。
+// 自用模式(2026-06-18,plan docs/plans/2026-06-18-003):有意移除「确认手势 + 管理员
+// 口令 step-up」两道写入闸,加渠道只需有效 JWT。这是对 2026-06-17-002 R3 越权防线的
+// **有意撤除**(单操作者自用工具),**勿当 bug 加回**。本路由不入 PUBLIC_ROUTES → 仍受
+// 全局 JWT preHandler 保护。
+//
+// 保留的写入校验:
 // 1) 入库即解析校验:assertHostResolvesPublic 当场 DNS 解析 + 私网/元数据 IP 拒。
-// 4) 钉死 https/拒通配/IDN punycode + 拒同形:由 normalizeChannelHost 把关,记审计栏位。
-// 5) 单渠道路径前缀/体积上限:随渠道存储,generic-adapter 抓取时强制(U6 P0)。
-//    maxDepth 为翻页页数上限:list-discovery 跟随「下一页」最多 N 页(预设 1=单页),scheduler 与 discover 路由生效。
-// 6) fail-closed + 数量上限:insertChannel 内 MAX_CHANNELS 守。
-
-const CONFIRM_HEADER = "x-operator-confirm";
+// 2) 钉死 https/拒通配/IDN punycode + 拒同形:由 normalizeChannelHost 把关,记审计栏位。
+// 3) 单渠道路径前缀/体积上限随渠道存储,generic-adapter 抓取时强制(maxDepth 为翻页页数
+//    上限,预设 1=单页);fail-closed + 数量上限:insertChannel 内 MAX_CHANNELS 守。
+// 4) 读取时完整 SSRF 守卫(safeFetch/resolveAndPin)对每条渠道全程生效,不受本次改动影响。
 
 interface CreateBody {
 	channel?: string; // URL 或裸域名
 	displayName?: string;
-	confirm?: boolean;
-	adminPassword?: string; // step-up:管理员口令重验
 	pathPrefix?: string;
 	maxDepth?: number;
 	maxBytes?: number;
@@ -77,31 +74,8 @@ export function registerChannelRoutes(app: FastifyInstance): void {
 			},
 		},
 		async (request, reply) => {
-			// 2) 人手确认手势:header + body 双重,缺一即拒。爬取管线/LLM 不会带。
-			const headerConfirm = request.headers[CONFIRM_HEADER];
-			const confirmed =
-				(headerConfirm === "1" || headerConfirm === "true") &&
-				request.body?.confirm === true;
-			if (!confirmed) {
-				return err(
-					reply,
-					403,
-					"新增渠道需操作者确认手势(缺 x-operator-confirm 头或 confirm 标志)",
-					"confirmation_required",
-				);
-			}
-
-			// 3) 口令 step-up:除 JWT 外须通过管理员口令重验。被窃 token 单独写不了
-			//    allowlist。必须早退——在任何 DNS 解析/写库之前,无权请求不得触发出站解析。
-			if (!verifyAdminPassword(request.body?.adminPassword)) {
-				return err(
-					reply,
-					403,
-					"新增渠道需管理员口令重验(step-up):缺少或错误的 adminPassword",
-					"step_up_required",
-				);
-			}
-
+			// 自用模式:写入两道闸(确认手势 + 口令 step-up)已移除,加渠道只需有效 JWT。
+			// 仍保留下方的归一 + DNS 公网解析校验作为入库防线。
 			const { channel, displayName, pathPrefix, maxDepth, maxBytes, reason } =
 				request.body ?? {};
 			if (!channel || typeof channel !== "string") {

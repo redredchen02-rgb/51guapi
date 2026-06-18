@@ -13,7 +13,7 @@
  */
 
 import { execSync, spawn } from "node:child_process";
-import { randomBytes, scryptSync } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import {
 	existsSync,
 	readdirSync,
@@ -195,28 +195,7 @@ if (!existsSync(ENV_FILE)) {
 	env = env.replace(/JWT_SECRET=.*/, `JWT_SECRET=${jwtSecret}`);
 	ok("JWT_SECRET 已自动生成 ✓");
 
-	// JWT_ADMIN_PASSWORD_HASH — interactive
-	console.log("\n  设置管理员密码（用于登录后端 API，至少 8 位）。");
-	let adminPw = "";
-	while (true) {
-		adminPw = await prompt("  Admin 密码: ", { hidden: true });
-		const adminPw2 = await prompt("  确认密码:   ", { hidden: true });
-		if (adminPw !== adminPw2) {
-			warn("两次密码不一致，请重新输入。");
-		} else if (adminPw.length < 8) {
-			warn("密码至少 8 位，请重新输入。");
-		} else {
-			break;
-		}
-	}
-	const salt = randomBytes(16);
-	const dk = scryptSync(adminPw, salt, 64);
-	const hash = `${salt.toString("hex")}:${dk.toString("hex")}`;
-	env = env.replace(
-		/JWT_ADMIN_PASSWORD_HASH=.*/,
-		`JWT_ADMIN_PASSWORD_HASH=${hash}`,
-	);
-	ok("JWT_ADMIN_PASSWORD_HASH 已写入 ✓");
+	// 自用模式(plan 2026-06-18-003):免密登入,不再设置管理员密码 / JWT_ADMIN_PASSWORD_HASH。
 
 	writeFileSync(ENV_FILE, env, "utf8");
 	ok(`.env 初始化完成 → ${ENV_FILE}`);

@@ -258,15 +258,10 @@ describe("GossipView", () => {
 		fireEvent.change(screen.getByPlaceholderText(/钉死 https/), {
 			target: { value: "news-a.com" },
 		});
-		// step-up:新增渠道须输入管理员口令。
-		fireEvent.change(screen.getByPlaceholderText(/管理员口令/), {
-			target: { value: "pw" },
-		});
+		// 自用模式:无需口令,填域名即可新增。
 		fireEvent.click(screen.getByText("确认新增"));
 		await waitFor(() =>
-			expect(mockCreateChannel).toHaveBeenCalledWith("news-a.com", {
-				adminPassword: "pw",
-			}),
+			expect(mockCreateChannel).toHaveBeenCalledWith("news-a.com"),
 		);
 		await waitFor(() => expect(screen.getByText("news-a.com")).toBeDefined());
 	});
@@ -279,9 +274,6 @@ describe("GossipView", () => {
 		await waitFor(() => screen.getByPlaceholderText(/钉死 https/));
 		fireEvent.change(screen.getByPlaceholderText(/钉死 https/), {
 			target: { value: "аpple.com" },
-		});
-		fireEvent.change(screen.getByPlaceholderText(/管理员口令/), {
-			target: { value: "pw" },
 		});
 		fireEvent.click(screen.getByText("确认新增"));
 		await waitFor(() => expect(screen.getByText(/同形/)).toBeDefined());
@@ -299,18 +291,15 @@ describe("GossipView", () => {
 		expect(mockCreateSite).not.toHaveBeenCalled();
 	});
 
-	it("新增渠道 — 未填口令显示验证错误，不调 createChannel", async () => {
+	it("新增渠道 — 未填域名显示验证错误，不调 createChannel", async () => {
 		mockFetchSites.mockResolvedValue([]);
 		mockFetchChannels.mockResolvedValue([]);
 		render(<GossipView onBack={onBack} onTopicAdded={onTopicAdded} />);
 		await waitFor(() => screen.getByPlaceholderText(/钉死 https/));
-		fireEvent.change(screen.getByPlaceholderText(/钉死 https/), {
-			target: { value: "example.com" },
-		});
-		// 故意不填口令
+		// 故意不填域名
 		fireEvent.click(screen.getByText("确认新增"));
 		await waitFor(() =>
-			expect(screen.getByText(/管理员口令重验/)).toBeDefined(),
+			expect(screen.getByText(/请填写渠道域名/)).toBeDefined(),
 		);
 		expect(mockCreateChannel).not.toHaveBeenCalled();
 	});
