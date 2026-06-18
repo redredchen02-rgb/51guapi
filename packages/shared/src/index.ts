@@ -49,6 +49,7 @@ export type {
 	DraftStatus,
 	FewShotPair,
 	GenerateDraftResponse,
+	PendingTopic,
 	RejectionReason,
 	ReviewDimension,
 	ReviewResult,

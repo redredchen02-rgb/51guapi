@@ -1,32 +1,9 @@
-import type { RejectionReason } from "@51guapi/shared";
+import type { PendingTopic, RejectionReason } from "@51guapi/shared";
 import { apiFetch } from "./api-fetch";
 import { logger } from "./logger";
 
-export interface PendingTopic {
-	id: string;
-	sourceUrl: string;
-	siteName: string;
-	title: string;
-	rawContent?: {
-		title: string;
-		body: string;
-		url: string;
-		metadata?: Record<string, string>;
-	};
-	facts: Record<string, string>;
-	confidence: number;
-	score?: number;
-	status: "pending" | "approved" | "rejected";
-	rejectedReason?: RejectionReason;
-	coverImageUrl?: string;
-	/** 质量分低于 fold_threshold 时后端标记为折叠（低优先级）。 */
-	folded?: boolean;
-	/** 预格式化的 web 搜索富化文本，可直接注入 LLM prompt（后端 formatEnrichmentForPrompt 输出）。 */
-	enrichmentText?: string;
-	domain?: "gossip";
-	createdAt: string;
-	updatedAt: string;
-}
+// PendingTopic 现为 @51guapi/shared 的 canonical 契约;此处 re-export 保持既有 import 路径。
+export type { PendingTopic };
 
 export interface FetchPendingTopicsOptions {
 	status?: string;
