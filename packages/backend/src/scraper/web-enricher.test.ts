@@ -1,9 +1,15 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+	__clearForTest,
 	type EnrichedContext,
 	enrichContext,
 	formatEnrichmentForPrompt,
 } from "./web-enricher.js";
+
+// 修补原本缺失的隔离：每用例清空内存缓存（不碰 table flag，见 __clearForTest 注释）。
+beforeEach(() => {
+	__clearForTest();
+});
 
 function makeFetch(responses: Array<{ ok: boolean; text: string }>) {
 	let idx = 0;
@@ -80,6 +86,116 @@ describe("enrichContext", () => {
 			timeoutMs: 5000,
 		});
 		expect(ctx.queryResults).toHaveLength(2);
+	});
+});
+
+// ---- Characterization 测试（拆分前置 gate；显式净增，钉死缓存语义）----
+describe("enrichContext 缓存语义（characterization）", () => {
+	it("内存缓存命中：同 facts 连调两次，fetchFn 只调一次", async () => {
+		const fetchFn = makeFetch([{ ok: true, text: PIXIV_PAGE }]);
+		const facts = { 制作: "缓存画师" };
+
+		const first = await enrichContext({ facts, fetchFn, maxQueries: 1 });
+		const second = await enrichContext({ facts, fetchFn, maxQueries: 1 });
+
+		// 第二次命中内存缓存，不再 fetch；返回同一份数据。
+		expect(fetchFn).toHaveBeenCalledTimes(1);
+		expect(second).toBe(first);
+	});
+
+	it("LRU 驱逐：超 MEMORY_CACHE_SIZE 后最旧条目被逐（再查会重新 fetch）", async () => {
+		// 每次调用注入“一次性”fetch（命中缓存则不消耗）。
+		const callFetch = () => makeFetch([{ ok: true, text: PIXIV_PAGE }]);
+		const SIZE = 500; // 与 web-enricher.ts MEMORY_CACHE_SIZE 对齐
+
+		// 填满到 SIZE 个不同 key（key0 最先写入 = 最旧）。
+		for (let i = 0; i < SIZE; i++) {
+			await enrichContext({
+				facts: { 制作: `画师${i}` },
+				fetchFn: callFetch(),
+				maxQueries: 1,
+			});
+		}
+
+		// 再塞一个新 key，触发 size>=SIZE 的 LRU 驱逐，逐掉最旧的 key0。
+		await enrichContext({
+			facts: { 制作: "画师新" },
+			fetchFn: callFetch(),
+			maxQueries: 1,
+		});
+
+		// 现在重新查 key0：若被逐，会重新 fetch（fetchFn 被调用）。
+		const refetch = callFetch();
+		await enrichContext({
+			facts: { 制作: "画师0" },
+			fetchFn: refetch,
+			maxQueries: 1,
+		});
+		expect(refetch).toHaveBeenCalledTimes(1);
+
+		// 反证：一个仍在缓存内的近期 key（画师新）再查不会 fetch。
+		const cachedRefetch = callFetch();
+		await enrichContext({
+			facts: { 制作: "画师新" },
+			fetchFn: cachedRefetch,
+			maxQueries: 1,
+		});
+		expect(cachedRefetch).not.toHaveBeenCalled();
+	});
+
+	it("_enrichmentTableReady 幂等：多次经 enrichContext 触发建表不报错", async () => {
+		// loadFromDbCache/saveToDbCache 内部调 initEnrichmentCacheTable；
+		// 多次 enrichContext（不同 key、清缓存后）都应平稳走过 DB 路径不抛。
+		const facts1 = { 制作: "建表测试A" };
+		const facts2 = { 制作: "建表测试B" };
+		await expect(
+			enrichContext({
+				facts: facts1,
+				fetchFn: makeFetch([{ ok: true, text: PIXIV_PAGE }]),
+				maxQueries: 1,
+			}),
+		).resolves.toBeDefined();
+		__clearForTest();
+		await expect(
+			enrichContext({
+				facts: facts2,
+				fetchFn: makeFetch([{ ok: true, text: PIXIV_PAGE }]),
+				maxQueries: 1,
+			}),
+		).resolves.toBeDefined();
+	});
+});
+
+// ---- 安全 characterization：Jina 固定出口前缀不被 query 污染 ----
+describe("Jina 出口安全（characterization）", () => {
+	it("按作者搜索：fetch 的 URL startsWith(JINA_PREFIX)", async () => {
+		const seen: string[] = [];
+		const fetchFn = vi.fn(async (url: string) => {
+			seen.push(url);
+			return { ok: true, text: async () => PIXIV_PAGE } as Response;
+		}) as unknown as typeof fetch;
+		await enrichContext({
+			facts: { 制作: "出口画师/../etc" },
+			fetchFn,
+			maxQueries: 1,
+		});
+		expect(seen).toHaveLength(1);
+		expect(seen[0].startsWith("https://r.jina.ai/")).toBe(true);
+	});
+
+	it("按作品名搜索：fetch 的 URL startsWith(JINA_PREFIX)", async () => {
+		const seen: string[] = [];
+		const fetchFn = vi.fn(async (url: string) => {
+			seen.push(url);
+			return { ok: true, text: async () => PIXIV_PAGE } as Response;
+		}) as unknown as typeof fetch;
+		await enrichContext({
+			facts: { 作品名: "作品 https://evil.example/x" },
+			fetchFn,
+			maxQueries: 1,
+		});
+		expect(seen).toHaveLength(1);
+		expect(seen[0].startsWith("https://r.jina.ai/")).toBe(true);
 	});
 });
 
