@@ -1,16 +1,16 @@
 import { appendFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { dataDirEnv } from "../config/data-dir.js";
 
 // Append-only authentication audit log. Records ONLY time / ip / result —
 // never the submitted password or any token, so there is nothing to redact.
-// Lives outside data/ (which tests wipe); tests redirect via PUBLISHER_DATA_DIR.
-// Retention: single-operator localhost keeps all records; operator archives
-// manually if the file grows large (no rotation in this deployment form).
+// Lives outside data/ (which tests wipe); tests redirect via GUAPI_DATA_DIR
+// (legacy PUBLISHER_DATA_DIR still honored). Retention: single-operator localhost
+// keeps all records; operator archives manually if the file grows large.
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const LOG_DIR = process.env.PUBLISHER_DATA_DIR
-	? join(process.env.PUBLISHER_DATA_DIR, "logs")
-	: join(__dirname, "..", "logs");
+const dataDir = dataDirEnv();
+const LOG_DIR = dataDir ? join(dataDir, "logs") : join(__dirname, "..", "logs");
 
 export const AUDIT_LOG_PATH = join(LOG_DIR, "auth-audit.log");
 

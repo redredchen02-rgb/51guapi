@@ -57,7 +57,7 @@ npx vitest run -t "测试名"                     # 按名称过滤
 ### 后端
 
 - 路由按模块分文件 `src/routes/*-routes.ts`,在 `index.ts` 统一 `register*Routes(server)`;JWT 鉴权 preHandler,`PUBLIC_ROUTES` 白名单放行
-- 存储:pending/config 用 SQLite(better-sqlite3),读 `PUBLISHER_DATA_DIR`;vitest 经 `src/test-setup.ts` 指向临时目录,测试不碰真实 `data/`
+- 存储:pending/config 用 SQLite(better-sqlite3),读 `GUAPI_DATA_DIR`(旧名 `PUBLISHER_DATA_DIR` 仍兼容 fallback,解析见 `src/config/data-dir.ts`);vitest 经 `src/test-setup.ts` 指向临时目录,测试不碰真实 `data/`
 - `src/scraper/` — 爬取与提炼管线:通用 adapter(`adapters/generic-adapter.ts`)、SSRF 守卫(`ssrf-guard.ts` + 可配置 allowlist)、`gossip-fact-extractor.ts` 提炼事实、`pending-store.ts` 入待审池
 - 数据流:URL → `generic-adapter.fetchContent()` → `gossipExtractFacts()` → `pending-store`(SQLite,`domain='gossip'`)→ 扩展经 `/api/v1/gossip/*` 读回
 - 扩展对后端的调用统一走 `authHeaders()` + 401 时 `clearToken()` 模式
