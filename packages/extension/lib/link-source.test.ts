@@ -1,12 +1,10 @@
-// @vitest-environment jsdom
-// extractLinks 依赖 DOMParser;主 vitest 配置是 node 环境,故此文件单独用 jsdom。
-import { describe, expect, it } from "vitest";
 import {
 	extractLinks,
 	hasUnsourcedLink,
 	normalizeUrl,
 	verifyLinks,
-} from "./link-source";
+} from "@51guapi/shared";
+import { describe, expect, it } from "vitest";
 
 describe("extractLinks", () => {
 	it("pulls hrefs from anchor tags", () => {
