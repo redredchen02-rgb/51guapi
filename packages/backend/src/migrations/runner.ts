@@ -119,11 +119,26 @@ CREATE TABLE IF NOT EXISTS gossip_sites (
   updated_at  TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_gossip_sites_updated ON gossip_sites(updated_at DESC);`,
+	// 自用模式种子(plan 2026-06-18-003):一次性重置 channels 表为单条 51cg1.com。
+	// 有意清除运行时积累的垃圾域名(操作者确认现有为垃圾);_migrations 保证只跑一次,
+	// 之后用户在 UI 新增的渠道不会被重置。51cg1.com 为 ASCII,直插 hostname 与
+	// normalizeChannelHost 归一值等价;读取时完整 SSRF 守卫(safeFetch/resolveAndPin)
+	// 仍全程生效。不在 ssrf-allowlist.ts 引入任何硬编码默认,空即全拒语义不变。
+	// created_at 用 ISO 形态(与 insertChannel 的 new Date().toISOString() 一致),
+	// 使 listChannels 的字符串排序在种子与 UI 新增渠道之间表现一致。
+	"014-seed-channels.sql": `\
+DELETE FROM channels;
+INSERT INTO channels
+  (id, hostname, display_name, path_prefix, max_depth, max_bytes, created_by, reason, created_at)
+VALUES
+  ('seed-51cg1', '51cg1.com', '51cg1', '/', 1, 5242880, 'seed', '默认种子渠道',
+   strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));`,
 	// 入池前验证关(plan 004 U3):content_fingerprint 供跨 URL 内容去重(查库,加索引);
 	// verification 存 verifyCrawledTopic 结果 JSON(逐项判定/原因,供 UI 标红);verified_at 为
 	// 人工二次核对通过时间戳(NULL=未核对,题材池只收非 NULL)。用列而非新 status 枚举——status
 	// 有 CHECK 约束,加值需整表重建;布尔/时间戳列更轻、可逆。_migrations 表保证只跑一次。
-	"014-pending-verification.sql": `\
+	// 注:并发期 014 被 self-use 种子占用,本迁移改用 015(键须零填充三位,字典序在 014 之后)。
+	"015-pending-verification.sql": `\
 ALTER TABLE pending_topics ADD COLUMN content_fingerprint TEXT DEFAULT NULL;
 ALTER TABLE pending_topics ADD COLUMN verification TEXT DEFAULT NULL;
 ALTER TABLE pending_topics ADD COLUMN verified_at TEXT DEFAULT NULL;

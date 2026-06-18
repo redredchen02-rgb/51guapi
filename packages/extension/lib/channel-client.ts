@@ -1,8 +1,8 @@
 import { apiFetch } from "./api-fetch";
 
-// U6 渠道客户端 — 管理可爬取渠道域名(动态进后端 SSRF allowlist)。
-// 新增渠道是高敏感写操作:必须带操作者确认手势(header x-operator-confirm + body confirm)。
-// 该手势与后端 channel-routes 的人手确认闸对齐,LLM/自动化不会带。
+// 渠道客户端 — 管理可爬取渠道域名(动态进后端 SSRF allowlist)。
+// 自用模式(plan 2026-06-18-003):写入两道闸(确认手势 + 管理员口令)已移除,
+// 加渠道只需有效 JWT(经 apiFetch 自动带 Authorization)。
 
 export interface Channel {
 	id: string;
@@ -35,12 +35,10 @@ export async function fetchChannels(
 export interface CreateChannelOptions {
 	displayName?: string;
 	reason?: string;
-	/** 管理员口令重验(step-up)。后端要求,缺/错回 403。 */
-	adminPassword?: string;
 }
 
 /**
- * 新增渠道。必带操作者确认手势(header + body)+ 管理员口令 step-up,否则后端回 403。
+ * 新增渠道(自用模式:只需有效 JWT,无确认手势/口令)。
  * 返回新增(或去重命中)的渠道。
  */
 export async function createChannel(
@@ -50,17 +48,11 @@ export async function createChannel(
 ): Promise<Channel> {
 	const res = await apiFetch("/api/v1/channels", {
 		method: "POST",
-		headers: {
-			"Content-Type": "application/json",
-			// 人手确认手势:与后端 channel-routes 的 CONFIRM_HEADER 对齐。
-			"x-operator-confirm": "1",
-		},
+		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify({
 			channel,
 			displayName: opts.displayName,
 			reason: opts.reason,
-			confirm: true,
-			adminPassword: opts.adminPassword,
 		}),
 		fetchFn,
 		timeoutMs: 15_000,

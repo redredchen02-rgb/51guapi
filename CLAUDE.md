@@ -39,7 +39,7 @@ npx vitest run -t "测试名"                     # 按名称过滤
 
 **构建顺序**:`@51guapi/shared` 必须先 build 出 `dist/` 才能对 backend/extension 做类型检查。`pnpm -r compile` / `pnpm -r test` 已按拓扑序处理;单独操作某包前若报 shared 类型缺失,先 `pnpm --filter @51guapi/shared build`。
 
-后端环境:复制 `packages/backend/.env.example` → `.env`。后端 **fail-closed**:`CORS_ORIGIN` 缺失或为 `*`、`JWT_SECRET`/`JWT_ADMIN_PASSWORD_HASH` 弱值/占位值时拒绝启动。生成强值的命令见 AGENTS.md 或 `.env.example` 注释。
+后端环境:复制 `packages/backend/.env.example` → `.env`。后端 **fail-closed**:`CORS_ORIGIN` 缺失或为 `*`、`JWT_SECRET` 弱值/占位值时拒绝启动。**自用模式(plan 2026-06-18-003):登入免密**——`/login` 只要有 `JWT_SECRET` 即发 token,不再需要 `JWT_ADMIN_PASSWORD_HASH`;可爬取渠道白名单的写入也无口令/确认手势(默认种子仅 `51cg1.com`,UI 直接增删)。生成强值的命令见 AGENTS.md 或 `.env.example` 注释。
 
 ## 架构
 

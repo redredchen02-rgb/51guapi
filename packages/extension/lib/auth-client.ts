@@ -9,13 +9,14 @@ export interface LoginResult {
 	error?: string;
 }
 
-export async function login(password: string): Promise<LoginResult> {
+// 自用模式:免密登入。password 可选(仅向后兼容,后端忽略)。
+export async function login(password?: string): Promise<LoginResult> {
 	try {
 		const backendUrl = await getBackendUrl();
 		const res = await fetch(`${backendUrl}/api/v1/auth/login`, {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ password }),
+			body: JSON.stringify(password === undefined ? {} : { password }),
 		});
 
 		if (!res.ok) {

@@ -4,11 +4,9 @@ import { btn } from "./styles";
 interface Props {
 	channels: Channel[];
 	newChannel: string;
-	chanPassword: string;
 	chanError: string;
 	chanBusy: boolean;
 	onNewChannelChange: (v: string) => void;
-	onChanPasswordChange: (v: string) => void;
 	onAddChannel: () => void;
 	onDeleteChannel: (id: string) => void;
 }
@@ -17,11 +15,9 @@ interface Props {
 export function ChannelWhitelistPanel({
 	channels,
 	newChannel,
-	chanPassword,
 	chanError,
 	chanBusy,
 	onNewChannelChange,
-	onChanPasswordChange,
 	onAddChannel,
 	onDeleteChannel,
 }: Props) {
@@ -39,7 +35,7 @@ export function ChannelWhitelistPanel({
 				可爬取渠道(白名单)
 			</div>
 			<div style={{ fontSize: 11, color: "#8c8c8c", marginBottom: 8 }}>
-				只有列入此处的域名才能被爬取。新增即需操作者确认,入库前做 DNS/私网校验。
+				只有列入此处的域名才能被爬取。入库前做 DNS/私网校验。
 			</div>
 			<div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
 				<input
@@ -47,19 +43,6 @@ export function ChannelWhitelistPanel({
 					placeholder="域名,如 51cg1.com(钉死 https)"
 					value={newChannel}
 					onChange={(e) => onNewChannelChange(e.target.value)}
-					style={{
-						flex: 1,
-						padding: "4px 6px",
-						fontSize: 12,
-						border: "1px solid #d9d9d9",
-						borderRadius: 4,
-					}}
-				/>
-				<input
-					type="password"
-					placeholder="管理员口令(step-up)"
-					value={chanPassword}
-					onChange={(e) => onChanPasswordChange(e.target.value)}
 					style={{
 						flex: 1,
 						padding: "4px 6px",

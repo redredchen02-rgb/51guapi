@@ -106,8 +106,8 @@ export const RewriteDraftBody = Type.Object({
 
 // ── Auth ──────────────────────────────────────────────
 export const LoginBody = Type.Object({
-	// maxLength bounds the synchronous scrypt cost per request (micro-DoS guard).
-	password: Type.String({ minLength: 1, maxLength: 1024 }),
+	// 自用模式:免密登入,password 可选且被忽略。maxLength 仍作为通用体积上限。
+	password: Type.Optional(Type.String({ maxLength: 1024 })),
 });
 
 export const LoginResponse = Type.Object({

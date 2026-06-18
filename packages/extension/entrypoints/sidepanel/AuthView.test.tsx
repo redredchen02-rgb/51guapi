@@ -20,56 +20,49 @@ afterEach(() => {
 	vi.clearAllMocks();
 });
 
-function pwInput(container: HTMLElement): HTMLInputElement {
-	const el = container.querySelector('input[type="password"]');
-	if (!el) throw new Error("password input not found");
-	return el as HTMLInputElement;
-}
-
-describe("AuthView", () => {
-	it("密码为空提交 → 显示「请输入密码」，不调用 login", () => {
-		render(<AuthView onLogin={vi.fn()} />);
-		fireEvent.click(screen.getByRole("button", { name: "登录" }));
-		expect(screen.getByRole("alert").textContent).toContain("请输入密码");
-		expect(mockLogin).not.toHaveBeenCalled();
-	});
-
-	it("登录成功 → 调用 login 并触发 onLogin", async () => {
+describe("AuthView (自用模式·免密)", () => {
+	it("挂载即自动免密登入成功 → 调 onLogin,login 不带密码", async () => {
 		mockLogin.mockResolvedValueOnce({ ok: true } as never);
 		const onLogin = vi.fn();
-		const { container } = render(<AuthView onLogin={onLogin} />);
-		fireEvent.change(pwInput(container), { target: { value: "pw123" } });
-		fireEvent.click(screen.getByRole("button", { name: "登录" }));
+		render(<AuthView onLogin={onLogin} />);
 		await waitFor(() => expect(onLogin).toHaveBeenCalledOnce());
-		expect(mockLogin).toHaveBeenCalledWith("pw123");
+		expect(mockLogin).toHaveBeenCalledWith();
 	});
 
-	it("登录失败 → 显示后端返回的错误信息", async () => {
-		mockLogin.mockResolvedValueOnce({ ok: false, error: "密码错误" } as never);
+	it("不渲染任何密码输入框", async () => {
+		mockLogin.mockResolvedValueOnce({ ok: false, error: "凭证无效" } as never);
 		const { container } = render(<AuthView onLogin={vi.fn()} />);
-		fireEvent.change(pwInput(container), { target: { value: "wrong" } });
-		fireEvent.click(screen.getByRole("button", { name: "登录" }));
-		expect(await screen.findByText("密码错误")).toBeTruthy();
-		expect(screen.getByRole("alert").textContent).toContain("密码错误");
+		await screen.findByText("凭证无效");
+		expect(container.querySelector('input[type="password"]')).toBeNull();
 	});
 
-	it("错误含「无法连接」→ 显示后端启动提示与命令", async () => {
+	it("后端不可达 → 显示启动提示与命令,不调 onLogin", async () => {
 		mockLogin.mockResolvedValueOnce({
 			ok: false,
 			error: "无法连接后端服务",
 		} as never);
-		const { container } = render(<AuthView onLogin={vi.fn()} />);
-		fireEvent.change(pwInput(container), { target: { value: "x" } });
-		fireEvent.click(screen.getByRole("button", { name: "登录" }));
+		const onLogin = vi.fn();
+		render(<AuthView onLogin={onLogin} />);
 		expect(await screen.findByText(/启动后端/)).toBeTruthy();
 		expect(screen.getByText("node scripts/setup.mjs")).toBeTruthy();
+		expect(onLogin).not.toHaveBeenCalled();
+	});
+
+	it("点「重试」→ 再次 login;成功则 onLogin", async () => {
+		mockLogin
+			.mockResolvedValueOnce({ ok: false, error: "无法连接后端服务" } as never)
+			.mockResolvedValueOnce({ ok: true } as never);
+		const onLogin = vi.fn();
+		render(<AuthView onLogin={onLogin} />);
+		const retry = await screen.findByRole("button", { name: "重试" });
+		fireEvent.click(retry);
+		await waitFor(() => expect(onLogin).toHaveBeenCalledOnce());
+		expect(mockLogin).toHaveBeenCalledTimes(2);
 	});
 
 	it("error 不含「无法连接」→ 不显示启动提示", async () => {
 		mockLogin.mockResolvedValueOnce({ ok: false, error: "凭证无效" } as never);
-		const { container } = render(<AuthView onLogin={vi.fn()} />);
-		fireEvent.change(pwInput(container), { target: { value: "x" } });
-		fireEvent.click(screen.getByRole("button", { name: "登录" }));
+		render(<AuthView onLogin={vi.fn()} />);
 		await screen.findByText("凭证无效");
 		expect(screen.queryByText("node scripts/setup.mjs")).toBeNull();
 	});

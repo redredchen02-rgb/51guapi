@@ -83,29 +83,7 @@ if [[ ! -f "$ENV_FILE" ]]; then
   sed -i.bak "s|JWT_SECRET=.*|JWT_SECRET=$JWT_SECRET_VAL|" "$ENV_FILE"
   ok "JWT_SECRET 已自动生成 ✓"
 
-  # JWT_ADMIN_PASSWORD_HASH — 读取密码后以 arg 方式传给 hash-password.mjs
-  echo ""
-  echo "  设置管理员密码（用于登录后端 API，至少 8 位）。"
-  while true; do
-    read -r -s -p "  Admin 密码: " ADMIN_PW; echo ""
-    read -r -s -p "  确认密码:   " ADMIN_PW2; echo ""
-    if [[ "$ADMIN_PW" != "$ADMIN_PW2" ]]; then
-      warn "两次密码不一致，请重新输入。"
-    elif [[ "${#ADMIN_PW}" -lt 8 ]]; then
-      warn "密码至少 8 位，请重新输入。"
-    else
-      break
-    fi
-  done
-  HASH_LINE=$(node "$REPO_ROOT/packages/backend/scripts/hash-password.mjs" "$ADMIN_PW")
-  HASH_VAL="${HASH_LINE#JWT_ADMIN_PASSWORD_HASH=}"
-  if [[ -n "$HASH_VAL" ]]; then
-    sed -i.bak "s|JWT_ADMIN_PASSWORD_HASH=.*|JWT_ADMIN_PASSWORD_HASH=$HASH_VAL|" "$ENV_FILE"
-    ok "JWT_ADMIN_PASSWORD_HASH 已写入 ✓"
-  else
-    warn "密码 hash 生成失败，请手动运行: node packages/backend/scripts/hash-password.mjs"
-    warn "并将输出填入 packages/backend/.env 的 JWT_ADMIN_PASSWORD_HASH="
-  fi
+  # 自用模式(plan 2026-06-18-003):免密登入,不再设置管理员密码 / JWT_ADMIN_PASSWORD_HASH。
 
   # 清理 .bak 文件
   rm -f "$ENV_FILE.bak"

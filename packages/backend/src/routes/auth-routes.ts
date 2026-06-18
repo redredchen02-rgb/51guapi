@@ -1,7 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import jwt from "jsonwebtoken";
 import { auditLogin } from "../services/audit-log.js";
-import { verifyAdminPassword } from "../services/password.js";
 import { err } from "../utils/error-response.js";
 import {
 	LoginBody as LoginBodySchema,
@@ -16,8 +15,9 @@ const AUTH_RATE_LIMIT = {
 		auditLogin("rate_limited", request.ip),
 };
 
+// 自用模式:登入不再验密码。body 的 password 仅为向后兼容(被忽略)。
 interface LoginBody {
-	password: string;
+	password?: string;
 }
 
 export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
@@ -33,17 +33,13 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
 			},
 		},
 		async (request, reply) => {
-			const adminHash = process.env.JWT_ADMIN_PASSWORD_HASH;
+			// 自用模式(plan 2026-06-18-003):免密登入。只要 JWT_SECRET 已配置即签发
+			// token,不再校验管理员口令。CORS + JWT_SECRET 仍是 fail-closed 启动前提,
+			// 仍受 AUTH_RATE_LIMIT(10/min)限流。
 			const secret = process.env.JWT_SECRET;
-			if (!adminHash || !secret) {
+			if (!secret) {
 				auditLogin("not_configured", request.ip);
 				return err(reply, 500, "auth not configured");
-			}
-
-			const { password } = request.body;
-			if (!verifyAdminPassword(password)) {
-				auditLogin("invalid_password", request.ip);
-				return err(reply, 401, "invalid password");
 			}
 
 			auditLogin("success", request.ip);

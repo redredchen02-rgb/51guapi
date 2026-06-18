@@ -155,12 +155,9 @@ describe("checkEnv: TG guard", () => {
 	});
 
 	function goodEnv(overrides: Record<string, string> = {}): NodeJS.ProcessEnv {
-		const { randomBytes, scryptSync } = require("node:crypto");
-		const salt = randomBytes(16);
-		const hash = `${salt.toString("hex")}:${scryptSync("pw", salt, 64).toString("hex")}`;
+		const { randomBytes } = require("node:crypto");
 		return {
 			JWT_SECRET: randomBytes(48).toString("hex"),
-			JWT_ADMIN_PASSWORD_HASH: hash,
 			CORS_ORIGIN: "chrome-extension://abcdefghijklmnop",
 			...overrides,
 		};

@@ -11,9 +11,6 @@ const WEAK_SECRETS = new Set([
 	"dev-secret",
 ]);
 
-// salt(16 bytes = 32 hex) : key(64 bytes = 128 hex)
-const HASH_RE = /^[0-9a-f]{32}:[0-9a-f]{128}$/i;
-
 export function checkEnv(env: NodeJS.ProcessEnv = process.env): string[] {
 	const errors: string[] = [];
 
@@ -25,13 +22,8 @@ export function checkEnv(env: NodeJS.ProcessEnv = process.env): string[] {
 		);
 	}
 
-	const hash = env.JWT_ADMIN_PASSWORD_HASH ?? "";
-	if (!HASH_RE.test(hash)) {
-		errors.push(
-			"JWT_ADMIN_PASSWORD_HASH is missing or not a valid salt:key hash. " +
-				"Generate: node packages/backend/scripts/hash-password.mjs",
-		);
-	}
+	// 自用模式(plan 2026-06-18-003):免密登入,不再要求 JWT_ADMIN_PASSWORD_HASH。
+	// JWT_SECRET(签发)与 CORS_ORIGIN(跨源边界)仍为 fail-closed 启动前提。
 
 	const corsOrigin = (env.CORS_ORIGIN ?? "").trim();
 	if (!corsOrigin || corsOrigin === "*") {
