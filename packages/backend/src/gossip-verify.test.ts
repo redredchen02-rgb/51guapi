@@ -236,6 +236,43 @@ describe("computeContentFingerprint", () => {
 		);
 		expect(a).toBe(b);
 	});
+
+	it("可指定指纹字段集 → 默认忽略的字段(經過)纳入后区分原本同指纹的两条", () => {
+		const base = makeFacts({ 經過: "現場互動熱絡" });
+		const diffOnlyPassage = makeFacts({ 經過: "全程零互動" });
+		// 默认基(不含經過)→ 两条同指纹
+		expect(computeContentFingerprint(base)).toBe(
+			computeContentFingerprint(diffOnlyPassage),
+		);
+		// 把經過纳入基 → 两条区分开
+		const fields = ["當事人", "事件摘要", "起因", "經過", "結果"] as const;
+		expect(computeContentFingerprint(base, [...fields])).not.toBe(
+			computeContentFingerprint(diffOnlyPassage, [...fields]),
+		);
+	});
+
+	it("字段顺序变化也会改指纹(按传入顺序拼接)", () => {
+		const f = makeFacts();
+		expect(computeContentFingerprint(f, ["當事人", "事件摘要"])).not.toBe(
+			computeContentFingerprint(f, ["事件摘要", "當事人"]),
+		);
+	});
+});
+
+describe("verifyCrawledTopic — config.fingerprintFields", () => {
+	it("config 注入字段集 → 指纹随基改变,且与直接调用一致", () => {
+		const facts = makeFacts();
+		const fields = ["當事人", "事件摘要"] as const;
+		const r = verifyCrawledTopic({
+			facts,
+			rawText: RAW,
+			now: NOW,
+			config: { fingerprintFields: [...fields] },
+		});
+		expect(r.fingerprint).toBe(computeContentFingerprint(facts, [...fields]));
+		// 与默认基不同(默认含起因/结果)
+		expect(r.fingerprint).not.toBe(computeContentFingerprint(facts));
+	});
 });
 
 describe("isWithinWindow", () => {

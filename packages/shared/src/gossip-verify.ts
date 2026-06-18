@@ -41,6 +41,9 @@ export interface VerifyConfig {
 	narrativeThreshold?: number;
 	/** 明确无效页特征集(默认内置);**覆盖**而非追加。 */
 	invalidMarkers?: string[];
+	/** 内容指纹参与字段(默认 當事人+事件摘要+起因+結果);**覆盖**而非追加。
+	 * 改基会使旧指纹与新指纹失配(去重以新基重新开始,不回溯既有条目)。 */
+	fingerprintFields?: (keyof GossipFactsBlock)[];
 }
 
 export interface GroundingResult {
@@ -131,6 +134,19 @@ const DEFAULT_QUALITY_RATIO = 0.5;
 const DEFAULT_NAME_THRESHOLD = 0.8;
 const DEFAULT_NARRATIVE_THRESHOLD = 0.3;
 
+/** 内容指纹默认参与字段:基放宽到含起因/结果,避免同名人不同事件撞指纹被误杀。 */
+export const DEFAULT_FINGERPRINT_FIELDS: (keyof GossipFactsBlock)[] = [
+	"當事人",
+	"事件摘要",
+	"起因",
+	"結果",
+];
+
+/** 指纹字段可选集(env 覆盖须从此集取,挡无效/无意义键)。
+ * 仅内容/叙事字段;排除 來源連結(指纹与 URL 无关)、發生時間、熱度標籤(题材太粗,会过度去重)。 */
+export const FINGERPRINT_FIELD_ALLOWLIST: readonly (keyof GossipFactsBlock)[] =
+	["當事人", "事件摘要", "起因", "經過", "結果"];
+
 /** 把可选 config 解析成全填充的具体阈值（默认=内置常量）。 */
 interface ResolvedConfig {
 	minBodyLen: number;
@@ -138,6 +154,7 @@ interface ResolvedConfig {
 	nameThreshold: number;
 	narrativeThreshold: number;
 	invalidMarkers: string[];
+	fingerprintFields: (keyof GossipFactsBlock)[];
 }
 function resolveConfig(c?: VerifyConfig): ResolvedConfig {
 	return {
@@ -146,6 +163,7 @@ function resolveConfig(c?: VerifyConfig): ResolvedConfig {
 		nameThreshold: c?.nameThreshold ?? DEFAULT_NAME_THRESHOLD,
 		narrativeThreshold: c?.narrativeThreshold ?? DEFAULT_NARRATIVE_THRESHOLD,
 		invalidMarkers: c?.invalidMarkers ?? INVALID_MARKERS,
+		fingerprintFields: c?.fingerprintFields ?? DEFAULT_FINGERPRINT_FIELDS,
 	};
 }
 
@@ -190,13 +208,15 @@ function fnv1a(str: string): string {
 }
 
 /**
- * 内容指纹：归一化(當事人 + 事件摘要 + 起因 + 結果)的稳定哈希。
+ * 内容指纹：归一化指定字段(默认 當事人 + 事件摘要 + 起因 + 結果)的稳定哈希。
  * 基**放宽**到含起因/结果(非仅當事人+事件摘要)，避免同一名人不同事件因「人名+泛摘要」撞同指纹被误杀。
+ * 字段集可由调用方(后端读 env)覆盖；按传入顺序拼接，故顺序变化也会改指纹。
  */
-export function computeContentFingerprint(facts: GossipFactsBlock): string {
-	const basis = [facts.當事人, facts.事件摘要, facts.起因, facts.結果]
-		.map((v) => norm(v ?? ""))
-		.join("|");
+export function computeContentFingerprint(
+	facts: GossipFactsBlock,
+	fields: (keyof GossipFactsBlock)[] = DEFAULT_FINGERPRINT_FIELDS,
+): string {
+	const basis = fields.map((k) => norm(facts[k] ?? "")).join("|");
 	return fnv1a(basis);
 }
 
@@ -298,7 +318,7 @@ export function verifyCrawledTopic(input: VerifyInput): VerificationResult {
 		unknown: fw.unknown,
 		ageDays: fw.ageDays,
 	};
-	const fingerprint = computeContentFingerprint(facts);
+	const fingerprint = computeContentFingerprint(facts, cfg.fingerprintFields);
 
 	const allFactsEmpty = GOSSIP_ALL_EMPTY(facts);
 

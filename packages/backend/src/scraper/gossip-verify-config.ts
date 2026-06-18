@@ -2,7 +2,10 @@
 // shared/gossip-verify.ts 是纯包、浏览器安全,绝不读 process.env;由此处(后端)在
 // **调用时**读 env 并注入 VerifyConfig,保持纯净。所有 env 在 call time 读取(非 import 时),
 // 与 ssrf-allowlist 同纪律,便于测试/热改。全部可选;未设即用 shared 内置默认。
-import type { VerifyConfig } from "@51guapi/shared";
+import {
+	FINGERPRINT_FIELD_ALLOWLIST,
+	type VerifyConfig,
+} from "@51guapi/shared";
 
 function numEnv(key: string): number | undefined {
 	const raw = process.env[key];
@@ -29,6 +32,20 @@ export function loadVerifyConfig(): VerifyConfig {
 			.split(",")
 			.map((s) => s.trim())
 			.filter((s) => s.length > 0);
+	}
+	const fpFields = process.env.GOSSIP_FINGERPRINT_FIELDS;
+	if (fpFields?.trim()) {
+		// 只收白名单内的合法字段键，无效键静默丢弃(fail toward 默认，不让乱配炸去重)。
+		const allow = FINGERPRINT_FIELD_ALLOWLIST as readonly string[];
+		const parsed = fpFields
+			.split(",")
+			.map((s) => s.trim())
+			.filter((s) => allow.includes(s));
+		// 全部无效 → 不设(回退 shared 内置默认)。
+		if (parsed.length > 0)
+			cfg.fingerprintFields = parsed as NonNullable<
+				VerifyConfig["fingerprintFields"]
+			>;
 	}
 	return cfg;
 }
