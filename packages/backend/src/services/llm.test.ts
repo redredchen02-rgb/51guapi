@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import type { Settings } from "@51guapi/shared";
+import type { ContentDraft, Settings } from "@51guapi/shared";
 import { describe, expect, it, vi } from "vitest";
 // 门面 smoke:逐字从 services/llm.js(barrel)import 全部原公开符号,
 // 证拆分后外部 import 路径与公开 API 一字未变。详细行为用例已下沉到
@@ -100,8 +100,7 @@ describe("services/llm 门面 re-export", () => {
 				mediaId: "1",
 				status: "draft",
 				createdAt: "2026-06-04T00:00:00.000Z",
-				// biome-ignore lint/suspicious/noExplicitAny: 门面 smoke 仅需最小草稿形状
-			} as any,
+			} as ContentDraft,
 			undefined,
 			{ settings, apiKey: "k", fetchFn: reviewFetch },
 		);
