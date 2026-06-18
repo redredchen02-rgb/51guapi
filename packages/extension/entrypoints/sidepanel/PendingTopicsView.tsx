@@ -5,14 +5,18 @@ import { downloadFile, exportTopicsAsCSV } from "../../lib/export";
 import {
 	fetchAdapters,
 	fetchPendingTopics,
+	fetchThemeCounts,
 	type PendingTopic,
 	patchPendingTopic,
+	setPendingVerified,
+	type ThemeCount,
 	triggerScrape,
 	updatePendingStatus,
 } from "../../lib/pending-client";
 import { useDraftGeneration } from "./hooks/useDraftGeneration";
 import { Loading } from "./Loading";
 import { GenerateConfirmDialog } from "./pending/GenerateConfirmDialog";
+import { ThemePicker } from "./pending/ThemePicker";
 import { TopicListItem } from "./pending/TopicListItem";
 
 interface QuickDraftConfirm {
@@ -44,23 +48,56 @@ export function PendingTopicsView({ onBack, onDraftReady, onError }: Props) {
 	const [quickDraftConfirm, setQuickDraftConfirm] =
 		useState<QuickDraftConfirm | null>(null);
 	const [quickDraftStatus, setQuickDraftStatus] = useState("");
+	// U5 题材选择 + U4 人工核对状态。
+	const [themes, setThemes] = useState<ThemeCount[]>([]);
+	const [themesLoading, setThemesLoading] = useState(true);
+	const [selectedTheme, setSelectedTheme] = useState<string | null>(null);
+	const [verifyingId, setVerifyingId] = useState<string | null>(null);
 	const { generate } = useDraftGeneration();
 
 	const refresh = useCallback(async () => {
 		setLoading(true);
-		const list = await fetchPendingTopics({
-			status: "pending",
-			sort_by: "score",
-			domain: "gossip",
-		});
+		// 选中题材 → 题材池视图（仅已核对 + 该题材）；否则 → 全部待审（供逐条核对）。
+		const list = selectedTheme
+			? await fetchPendingTopics({
+					domain: "gossip",
+					sort_by: "score",
+					theme: selectedTheme,
+					verified: true,
+				})
+			: await fetchPendingTopics({
+					status: "pending",
+					sort_by: "score",
+					domain: "gossip",
+				});
 		setTopics(list);
 		setLoading(false);
+	}, [selectedTheme]);
+
+	const refreshThemes = useCallback(async () => {
+		setThemesLoading(true);
+		setThemes(await fetchThemeCounts());
+		setThemesLoading(false);
 	}, []);
 
 	useEffect(() => {
 		void refresh();
-		void fetchAdapters().then(setAdapters);
 	}, [refresh]);
+
+	useEffect(() => {
+		void refreshThemes();
+		void fetchAdapters().then(setAdapters);
+	}, [refreshThemes]);
+
+	async function handleVerify(id: string) {
+		setVerifyingId(id);
+		const ok = await setPendingVerified(id, true);
+		setVerifyingId(null);
+		if (ok) {
+			await refresh();
+			await refreshThemes();
+		}
+	}
 
 	function toggleSelect(id: string) {
 		setSelected((prev) => {
@@ -366,6 +403,15 @@ export function PendingTopicsView({ onBack, onDraftReady, onError }: Props) {
 
 			{loading && <Loading />}
 
+			{!loading && (
+				<ThemePicker
+					themes={themes}
+					selected={selectedTheme}
+					onSelect={setSelectedTheme}
+					loading={themesLoading}
+				/>
+			)}
+
 			{!loading && topics.length === 0 && (
 				<div
 					className="text-center text-muted"
@@ -419,6 +465,8 @@ export function PendingTopicsView({ onBack, onDraftReady, onError }: Props) {
 									onToggleSelect={() => toggleSelect(t.id)}
 									onToggleExpand={() => toggleExpand(t.id, t.facts)}
 									onFactChange={(key, value) => setFactField(t.id, key, value)}
+									onVerify={() => handleVerify(t.id)}
+									verifying={verifyingId === t.id}
 								/>
 							))}
 					</ul>

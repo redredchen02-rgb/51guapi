@@ -1,5 +1,6 @@
 import type { PendingTopic } from "../../../lib/pending-client";
 import { FactsEditorModal } from "./FactsEditorModal";
+import { VerificationBadge } from "./VerificationBadge";
 
 interface Props {
 	topic: PendingTopic;
@@ -11,6 +12,9 @@ interface Props {
 	onToggleSelect: () => void;
 	onToggleExpand: () => void;
 	onFactChange: (key: string, value: string) => void;
+	/** 人工二次核对回调（U4）;传入则展开区显示「确认核对」。 */
+	onVerify?: () => void;
+	verifying?: boolean;
 }
 
 // 受控展示组件:单条选题卡(checkbox + 标题/评分徽章 + 详情按钮 + 内嵌事实编辑表单)。
@@ -25,6 +29,8 @@ export function TopicListItem({
 	onToggleSelect,
 	onToggleExpand,
 	onFactChange,
+	onVerify,
+	verifying,
 }: Props) {
 	const score = topic.score ?? topic.confidence;
 	const isHigh = score >= 0.7;
@@ -108,6 +114,10 @@ export function TopicListItem({
 						{" · "}
 						{topic.sourceUrl.slice(0, 50)}
 					</div>
+					<VerificationBadge
+						verification={topic.verification}
+						verifiedAt={topic.verifiedAt}
+					/>
 				</div>
 				<button
 					type="button"
@@ -125,6 +135,8 @@ export function TopicListItem({
 					editedFacts={editedFacts}
 					busy={busy}
 					onFactChange={onFactChange}
+					onVerify={onVerify}
+					verifying={verifying}
 				/>
 			)}
 		</li>

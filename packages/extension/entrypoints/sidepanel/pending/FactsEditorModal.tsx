@@ -8,6 +8,9 @@ interface Props {
 	editedFacts: Record<string, string> | undefined;
 	busy: boolean;
 	onFactChange: (key: string, value: string) => void;
+	/** 人工二次核对:点「确认核对」→ 置 verified（进题材池）。U4。 */
+	onVerify?: () => void;
+	verifying?: boolean;
 }
 
 // 受控展示组件:展开后的事实编辑表单(置信度 + 封面 + 可编辑事实字段 + 原始内容)。
@@ -19,7 +22,11 @@ export function FactsEditorModal({
 	editedFacts,
 	busy,
 	onFactChange,
+	onVerify,
+	verifying,
 }: Props) {
+	// 未溯源字段（验证关 grounding 判定）:改值后由后端 PATCH 重跑 grounding 刷新。
+	const unsourced = new Set(topic.verification?.grounding?.unsourced ?? []);
 	return (
 		<div
 			className="expand-enter"
@@ -90,6 +97,17 @@ export function FactsEditorModal({
 											⚠
 										</span>
 									)}
+									{unsourced.has(key) && (
+										<span
+											style={{
+												color: "var(--color-error, #cf1322)",
+												marginRight: 2,
+											}}
+											title="未溯源:原文中找不到此值，改值后会自动重新核验"
+										>
+											⛔
+										</span>
+									)}
 									{key}
 								</div>
 								<input
@@ -122,6 +140,31 @@ export function FactsEditorModal({
 					<div style={{ marginTop: "var(--space-xs)" }}>
 						{topic.rawContent.body.slice(0, 300)}…
 					</div>
+				</div>
+			)}
+			{onVerify && (
+				<div
+					style={{
+						marginTop: "var(--space-lg)",
+						display: "flex",
+						alignItems: "center",
+						gap: "var(--space-md)",
+					}}
+				>
+					{topic.verifiedAt ? (
+						<span className="text-xs" style={{ color: "var(--color-success)" }}>
+							✅ 已核对 · 已进题材池
+						</span>
+					) : (
+						<button
+							type="button"
+							className="btn btn-sm btn-primary"
+							onClick={onVerify}
+							disabled={busy || verifying}
+						>
+							{verifying ? "确认中…" : "确认核对（进题材池）"}
+						</button>
+					)}
 				</div>
 			)}
 		</div>

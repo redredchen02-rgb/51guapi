@@ -133,6 +133,16 @@ INSERT INTO channels
 VALUES
   ('seed-51cg1', '51cg1.com', '51cg1', '/', 1, 5242880, 'seed', '默认种子渠道',
    strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));`,
+	// 入池前验证关(plan 004 U3):content_fingerprint 供跨 URL 内容去重(查库,加索引);
+	// verification 存 verifyCrawledTopic 结果 JSON(逐项判定/原因,供 UI 标红);verified_at 为
+	// 人工二次核对通过时间戳(NULL=未核对,题材池只收非 NULL)。用列而非新 status 枚举——status
+	// 有 CHECK 约束,加值需整表重建;布尔/时间戳列更轻、可逆。_migrations 表保证只跑一次。
+	// 注:并发期 014 被 self-use 种子占用,本迁移改用 015(键须零填充三位,字典序在 014 之后)。
+	"015-pending-verification.sql": `\
+ALTER TABLE pending_topics ADD COLUMN content_fingerprint TEXT DEFAULT NULL;
+ALTER TABLE pending_topics ADD COLUMN verification TEXT DEFAULT NULL;
+ALTER TABLE pending_topics ADD COLUMN verified_at TEXT DEFAULT NULL;
+CREATE INDEX IF NOT EXISTS idx_pending_fingerprint ON pending_topics(content_fingerprint);`,
 };
 
 export function runMigrations(dbPath: string): void {

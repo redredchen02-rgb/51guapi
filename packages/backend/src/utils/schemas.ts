@@ -150,6 +150,8 @@ export const UpdatePendingBody = Type.Object({
 	rejectedReason: Type.Optional(Type.String()),
 	facts: Type.Optional(Type.Record(Type.String(), Type.Unknown())),
 	confidence: Type.Optional(Type.Number({ minimum: 0, maximum: 1 })),
+	// 人工二次核对（U4）：true=置 verifiedAt（进题材池），false=撤销回未核对。
+	verified: Type.Optional(Type.Boolean()),
 });
 
 // ── Gossip ──────────────────────────────────────────
@@ -165,6 +167,9 @@ export const GossipSiteCreate = Type.Object({
 export const GossipFromUrlBody = Type.Object({
 	url: Type.String({ minLength: 1 }),
 	siteName: Type.String({ minLength: 1, maxLength: 200 }),
+	// 时间窗（天）：抓取后若发布时间早于 now-windowDays 则跳过不入池。
+	// 服务端范围校验(拒非法/超大)——既是输入控制也防成本放大(security-lens)。
+	windowDays: Type.Optional(Type.Integer({ minimum: 1, maximum: 365 })),
 });
 
 // ── Health & Metrics ───────────────────────────────

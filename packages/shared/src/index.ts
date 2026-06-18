@@ -28,6 +28,26 @@ export {
 	GOSSIP_FACTS_SCHEMA,
 	gossipFactUrls,
 } from "./gossip-facts.js";
+export {
+	countThemes,
+	factThemes,
+	OTHER_THEME,
+	parseThemes,
+	THEME_ALLOWLIST,
+} from "./gossip-theme.js";
+export type {
+	FreshnessResult,
+	GroundingResult,
+	ValidityResult,
+	VerificationResult,
+	VerifyDecision,
+	VerifyInput,
+} from "./gossip-verify.js";
+export {
+	computeContentFingerprint,
+	isWithinWindow,
+	verifyCrawledTopic,
+} from "./gossip-verify.js";
 export type { LinkCheck } from "./link-source.js";
 export {
 	extractLinks,

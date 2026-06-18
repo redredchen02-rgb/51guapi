@@ -1,4 +1,5 @@
-import type { RejectionReason } from "@51guapi/shared";
+import type { GossipFactsBlock, RejectionReason } from "@51guapi/shared";
+import { countThemes, parseThemes, verifyCrawledTopic } from "@51guapi/shared";
 import { Type } from "@sinclair/typebox";
 import type { FastifyInstance } from "fastify";
 import {
@@ -54,6 +55,8 @@ export async function registerPendingRoutes(
 			sort_by?: string;
 			fold_threshold?: string;
 			domain?: string;
+			theme?: string;
+			verified?: string;
 		};
 	}>(
 		"/api/v1/pending-topics",
@@ -65,6 +68,9 @@ export async function registerPendingRoutes(
 					sort_by: Type.Optional(Type.String()),
 					fold_threshold: Type.Optional(Type.String()),
 					domain: Type.Optional(Type.String()),
+					// U5 题材过滤（按归一化的 熱度標籤）；U4 verified=true 只取已核对（题材池）。
+					theme: Type.Optional(Type.String()),
+					verified: Type.Optional(Type.String()),
 				}),
 			},
 		},
@@ -93,15 +99,57 @@ export async function registerPendingRoutes(
 
 			const rawTopics = await listPendingTopics(limit, status, sortBy, domain);
 
+			// U4 verified 过滤（题材池 = 已人工核对的）；U5 题材过滤（按归一化 熱度標籤）。
+			const wantVerified =
+				request.query.verified === "true"
+					? true
+					: request.query.verified === "false"
+						? false
+						: undefined;
+			const theme = request.query.theme?.trim() || undefined;
+
+			let filtered = rawTopics;
+			if (wantVerified !== undefined) {
+				filtered = filtered.filter((t) =>
+					wantVerified ? t.verifiedAt != null : t.verifiedAt == null,
+				);
+			}
+			if (theme) {
+				filtered = filtered.filter((t) =>
+					parseThemes(
+						(t.facts as Partial<GossipFactsBlock>).熱度標籤 ?? null,
+					).includes(theme),
+				);
+			}
+
 			const topics =
 				foldThreshold !== undefined && !Number.isNaN(foldThreshold)
-					? rawTopics.map((t) => ({
+					? filtered.map((t) => ({
 							...t,
 							folded: (t.score ?? 0) < foldThreshold,
 						}))
-					: rawTopics;
+					: filtered;
 
 			return { ok: true, topics: topics.map(toApiTopic) };
+		},
+	);
+
+	// U5 题材计数（题材选择器用）：默认只统计**已核对**的吃瓜（题材池）。
+	app.get<{ Querystring: { verified?: string } }>(
+		"/api/v1/pending-topics/themes",
+		{
+			schema: {
+				querystring: Type.Object({ verified: Type.Optional(Type.String()) }),
+			},
+		},
+		async (request) => {
+			const onlyVerified = request.query.verified !== "false"; // 默认 true
+			const gossip = await listPendingTopics(200, undefined, "score", "gossip");
+			const pool = onlyVerified
+				? gossip.filter((t) => t.verifiedAt != null)
+				: gossip;
+			const themes = countThemes(pool.map((t) => t.facts as GossipFactsBlock));
+			return { ok: true, themes };
 		},
 	);
 
@@ -174,6 +222,7 @@ export async function registerPendingRoutes(
 			rejectedReason?: string;
 			facts?: Record<string, unknown>;
 			confidence?: number;
+			verified?: boolean;
 		};
 	}>(
 		"/api/v1/pending-topics/:id",
@@ -219,12 +268,34 @@ export async function registerPendingRoutes(
 				return { ok: true, topic: updated };
 			}
 
-			// Partial update for facts/confidence
+			// Partial update for facts/confidence/verified
 			const topic = await loadPendingTopic(id);
 			if (!topic) return err(reply, 404, "Pending topic not found");
 
-			if (body.facts) topic.facts = body.facts;
+			if (body.facts) {
+				topic.facts = body.facts as PendingTopic["facts"];
+				// 改值后对新值重跑 grounding（基准=不可变 rawContent）——防 UI 层 rewrite 旁路:
+				// 不可只清红标，须让验证关重新判定新值是否溯源。
+				const rc = topic.rawContent;
+				if (rc) {
+					const rawText = `${rc.title ?? ""}\n${(rc.body ?? "").replace(
+						/<[^>]*>/g,
+						" ",
+					)}`;
+					topic.verification = verifyCrawledTopic({
+						facts: topic.facts as GossipFactsBlock,
+						rawText,
+						publishedTime: rc.metadata?.publishedTime,
+						now: Date.now(),
+					});
+					topic.contentFingerprint = topic.verification.fingerprint;
+				}
+			}
 			if (body.confidence !== undefined) topic.confidence = body.confidence;
+			if (body.verified !== undefined) {
+				// 人工二次核对：置/撤销 verifiedAt（题材池只收非空）。
+				topic.verifiedAt = body.verified ? new Date().toISOString() : undefined;
+			}
 			await savePendingTopic(topic);
 			return { ok: true, topic };
 		},

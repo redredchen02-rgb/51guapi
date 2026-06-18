@@ -1,3 +1,4 @@
+import { isWithinWindow, verifyCrawledTopic } from "@51guapi/shared";
 import type { FastifyInstance } from "fastify";
 import {
 	fetchContent,
@@ -17,6 +18,7 @@ import {
 } from "../scraper/gossip-site-store.js";
 import type { PendingTopic } from "../scraper/pending-store.js";
 import {
+	pendingTopicExistsByFingerprint,
 	pendingTopicExistsBySourceUrl,
 	savePendingTopic,
 } from "../scraper/pending-store.js";
@@ -66,6 +68,8 @@ interface SiteParams {
 interface FromUrlBody {
 	url: string;
 	siteName: string;
+	/** 时间窗（天）；抓取后发布时间早于 now-windowDays 则跳过不入池。 */
+	windowDays?: number;
 }
 
 export async function registerGossipRoutes(
@@ -179,7 +183,7 @@ export async function registerGossipRoutes(
 			},
 		},
 		async (request, reply) => {
-			const { url, siteName } = request.body ?? {};
+			const { url, siteName, windowDays } = request.body ?? {};
 			if (!url || !siteName) {
 				return err(reply, 400, "Missing required fields: url, siteName");
 			}
@@ -209,6 +213,23 @@ export async function registerGossipRoutes(
 				return err(reply, 502, `Failed to fetch URL: ${msg}`);
 			}
 
+			// 时间窗硬守(U1/R1):发布时间在窗外 → 不入池,明确反馈(用户主动点的,不静默吞)。
+			// 放在提炼前,旧瓜连 LLM 调用都省掉(防成本放大)。发布时间缺失/不可解析 → unknown,
+			// 不在此跳过,照常入池,留待 U3 验证关软标「时间未知」交人工。
+			const publishedTime = rawContent.metadata?.publishedTime;
+			if (windowDays != null) {
+				const fw = isWithinWindow(publishedTime, windowDays, Date.now());
+				if (!fw.unknown && !fw.ok) {
+					return {
+						ok: true,
+						skipped: "too-old",
+						publishedTime,
+						windowDays,
+						ageDays: fw.ageDays,
+					};
+				}
+			}
+
 			let extracted: ExtractedGossipFacts;
 			try {
 				extracted = await gossipExtractFacts(rawContent, {
@@ -220,6 +241,41 @@ export async function registerGossipRoutes(
 				const msg = e instanceof Error ? e.message : String(e);
 				recordScraperRun(false);
 				return err(reply, 502, `Fact extraction failed: ${msg}`);
+			}
+
+			// 入池前验证关(U3/R4):以**不可变 rawContent** 为基准校验抽取结果(每条 from-url 都重跑)。
+			// 正文去 HTML 标签后供 grounding 子串/重叠比对。
+			const rawText = `${rawContent.title}\n${(rawContent.body ?? "").replace(
+				/<[^>]*>/g,
+				" ",
+			)}`;
+			const verification = verifyCrawledTopic({
+				facts: extracted.facts,
+				rawText,
+				publishedTime,
+				windowDays,
+				now: Date.now(),
+			});
+
+			// 硬拒(明确无效:空页/错误页/广告)→ 不入池,但**用户可见**(用户主动点的,不静默吞)。
+			if (verification.decision === "reject") {
+				recordScraperRun(false);
+				return {
+					ok: true,
+					rejected: verification.reasons.join("；") || "内容无效",
+					verification,
+				};
+			}
+
+			// 跨 URL 内容去重:指纹命中已有条目 → 软标「疑似重复」入池(可见可恢复),不静默丢
+			// (避免同人不同瓜被指纹误杀)。source_url UNIQUE 仍兜底同 URL 重复。
+			if (await pendingTopicExistsByFingerprint(verification.fingerprint)) {
+				verification.suspectedDuplicate = true;
+				if (verification.decision === "pass") verification.decision = "flag";
+				verification.reasons = [
+					...verification.reasons,
+					"疑似重复(内容指纹命中已有条目)",
+				];
 			}
 
 			const now = new Date().toISOString();
@@ -241,6 +297,8 @@ export async function registerGossipRoutes(
 				status: "pending",
 				coverImageUrl: extracted.coverImageUrl,
 				domain: "gossip",
+				contentFingerprint: verification.fingerprint,
+				verification,
 				createdAt: now,
 				updatedAt: now,
 			};

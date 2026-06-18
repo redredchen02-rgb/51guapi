@@ -21,6 +21,8 @@ vi.mock("../../lib/pending-client", () => ({
 	patchPendingTopic: vi.fn(async () => true),
 	triggerScrape: vi.fn(async () => true),
 	fetchAdapters: vi.fn(async () => []),
+	fetchThemeCounts: vi.fn(async () => []),
+	setPendingVerified: vi.fn(async () => true),
 }));
 
 vi.mock("../../lib/messaging", () => ({
@@ -41,7 +43,9 @@ import { requestGenerate } from "../../lib/messaging";
 import {
 	fetchAdapters,
 	fetchPendingTopics,
+	fetchThemeCounts,
 	patchPendingTopic,
+	setPendingVerified,
 	triggerScrape,
 	updatePendingStatus,
 } from "../../lib/pending-client";
@@ -105,6 +109,8 @@ beforeEach(async () => {
 	vi.mocked(patchPendingTopic).mockResolvedValue(true);
 	vi.mocked(triggerScrape).mockResolvedValue(true);
 	vi.mocked(fetchAdapters).mockResolvedValue([]);
+	vi.mocked(fetchThemeCounts).mockResolvedValue([]);
+	vi.mocked(setPendingVerified).mockResolvedValue(true);
 	vi.mocked(requestGenerate).mockResolvedValue(makeGenerateResponse());
 
 	fakeBrowser.reset();
@@ -455,6 +461,50 @@ describe("R5 — 今日一键备稿", () => {
 					draft: expect.objectContaining({ id: "draft-1" }),
 					facts: expect.objectContaining({ 當事人: "测试人物" }),
 				}),
+			),
+		);
+	});
+});
+
+// ================================================================
+// U4/U5 — 人工核对 + 题材选择
+// ================================================================
+
+describe("U4/U5 — 验证核对 + 题材选择", () => {
+	it("展开后点「确认核对」→ setPendingVerified(id, true)", async () => {
+		vi.mocked(fetchPendingTopics).mockResolvedValue([makeTopic("t1")]);
+		render(
+			<PendingTopicsView
+				onBack={vi.fn()}
+				onDraftReady={vi.fn()}
+				onError={vi.fn()}
+			/>,
+		);
+		await waitFor(() => screen.getByText("选题 t1"));
+		fireEvent.click(screen.getByText("详情"));
+		await waitFor(() => screen.getByText(/确认核对/));
+		fireEvent.click(screen.getByText(/确认核对/));
+		await waitFor(() =>
+			expect(setPendingVerified).toHaveBeenCalledWith("t1", true),
+		);
+	});
+
+	it("选题材 chip → 以 theme + verified 重新拉取（题材池）", async () => {
+		vi.mocked(fetchThemeCounts).mockResolvedValue([
+			{ theme: "出軌", count: 2 },
+		]);
+		render(
+			<PendingTopicsView
+				onBack={vi.fn()}
+				onDraftReady={vi.fn()}
+				onError={vi.fn()}
+			/>,
+		);
+		await waitFor(() => screen.getByText("出軌 2"));
+		fireEvent.click(screen.getByText("出軌 2"));
+		await waitFor(() =>
+			expect(fetchPendingTopics).toHaveBeenCalledWith(
+				expect.objectContaining({ theme: "出軌", verified: true }),
 			),
 		);
 	});

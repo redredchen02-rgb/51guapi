@@ -1,6 +1,7 @@
 // 三层(side panel / background / content script)共享的类型定义。
 // Migrated from both packages/backend/src/shared/types.ts and packages/extension/lib/types.ts
 import type { FactsBlock } from "./facts.js";
+import type { VerificationResult } from "./gossip-verify.js";
 import type { DraftSlots } from "./post-assembler.js";
 
 /** Few-shot 范例对;结构化存储格式，序列化为 string 供 LLM prompt 使用。 */
@@ -103,6 +104,12 @@ export interface PendingTopic {
 	/** 提炼模式:strict=structured output;fallback=json_object 兼容模式。 */
 	extractionMode?: "strict" | "fallback";
 	domain?: "acg" | "gossip";
+	/** 入池前验证关结果（逐项判定/原因，供 UI 标红；U3）。 */
+	verification?: VerificationResult;
+	/** 内容指纹（跨 URL 去重；U3）。 */
+	contentFingerprint?: string;
+	/** 人工二次核对通过时间戳；非空=已核对（进题材池）；U4。 */
+	verifiedAt?: string;
 	createdAt: string;
 	updatedAt: string;
 }

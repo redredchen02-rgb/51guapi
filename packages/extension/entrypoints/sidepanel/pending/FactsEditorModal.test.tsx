@@ -34,6 +34,8 @@ interface Overrides {
 	topic?: PendingTopic;
 	editedFacts?: Record<string, string> | undefined;
 	busy?: boolean;
+	onVerify?: () => void;
+	verifying?: boolean;
 }
 
 function setup(overrides: Overrides = {}) {
@@ -44,6 +46,8 @@ function setup(overrides: Overrides = {}) {
 			editedFacts={overrides.editedFacts}
 			busy={overrides.busy ?? false}
 			onFactChange={onFactChange}
+			onVerify={overrides.onVerify}
+			verifying={overrides.verifying}
 		/>,
 	);
 	return { onFactChange };
@@ -93,6 +97,43 @@ describe("FactsEditorModal (事实往返编辑 — 净增覆盖)", () => {
 		// 6 个空字段 → 6 个 ⚠
 		const warns = screen.getAllByTitle("待补充");
 		expect(warns.length).toBe(6);
+	});
+
+	it("U4：未溯源字段显示 ⛔ 标记", () => {
+		const topic = makeTopic({
+			verification: {
+				grounding: {
+					perField: { 當事人: false },
+					unsourced: ["當事人"],
+					ok: false,
+				},
+				validity: { ok: true, hardFail: false, qualityRatio: 1, reasons: [] },
+				freshness: { ok: true, unknown: false, ageDays: 1 },
+				fingerprint: "x",
+				decision: "flag",
+				reasons: [],
+			},
+		});
+		setup({ topic });
+		expect(screen.getByTitle(/未溯源/)).toBeTruthy();
+	});
+
+	it("U4：未核对 → 显示「确认核对」按钮，点击调 onVerify", () => {
+		const onVerify = vi.fn();
+		setup({ onVerify });
+		const btn = screen.getByText(/确认核对/);
+		fireEvent.click(btn);
+		expect(onVerify).toHaveBeenCalledTimes(1);
+	});
+
+	it("U4：已核对(verifiedAt) → 显示已核对、无按钮", () => {
+		const onVerify = vi.fn();
+		setup({
+			topic: makeTopic({ verifiedAt: "2026-06-18T00:00:00.000Z" }),
+			onVerify,
+		});
+		expect(screen.getByText(/已核对/)).toBeTruthy();
+		expect(screen.queryByText(/确认核对/)).toBeNull();
 	});
 
 	it("confidence != null → 显示置信度百分比", () => {

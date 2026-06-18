@@ -1,4 +1,8 @@
-import type { FactsBlock, GossipFactsBlock } from "@51guapi/shared";
+import type {
+	FactsBlock,
+	GossipFactsBlock,
+	VerificationResult,
+} from "@51guapi/shared";
 import { getDb, pendingWriteQueue } from "./pending-db.js";
 import type { RawContent } from "./site-adapter.js";
 import type { EnrichedContext } from "./web-enricher.js";
@@ -33,6 +37,12 @@ export interface PendingTopic {
 	score?: number;
 	enrichment?: EnrichedContext;
 	domain?: "acg" | "gossip";
+	/** 内容指纹（跨 URL 去重；U3）。 */
+	contentFingerprint?: string;
+	/** 入池前验证结果（逐项判定/原因，供 UI 标红；U3）。 */
+	verification?: VerificationResult;
+	/** 人工二次核对通过时间戳；NULL=未核对，题材池只收非 NULL（U4）。 */
+	verifiedAt?: string;
 	createdAt: string;
 	updatedAt: string;
 }
@@ -59,6 +69,9 @@ interface PendingRow {
 	score: number | null;
 	enrichment: string | null;
 	domain: string;
+	content_fingerprint: string | null;
+	verification: string | null;
+	verified_at: string | null;
 	created_at: string;
 	updated_at: string;
 }
@@ -96,6 +109,12 @@ function rowToTopic(row: PendingRow): PendingTopic {
 		score: row.score ?? undefined,
 		enrichment: safeJsonParse<EnrichedContext>(row.enrichment, undefined),
 		domain,
+		contentFingerprint: row.content_fingerprint ?? undefined,
+		verification: safeJsonParse<VerificationResult>(
+			row.verification,
+			undefined,
+		),
+		verifiedAt: row.verified_at ?? undefined,
 		createdAt: row.created_at,
 		updatedAt: row.updated_at,
 	};
@@ -139,18 +158,22 @@ function clamp01(n: number): number {
 	return Math.max(0, Math.min(1, n));
 }
 
+/** 时间未知时的中性新鲜度天数:decay=exp(-7/7)≈0.37,中等档。 */
+const NEUTRAL_FRESHNESS_DAYS = 7;
+
 /**
- * 新鲜度参照「天数」:优先事件/发布时间,createdAt(入库时间)仅兜底。
- * 否则刚爬的 3 年前旧瓜会因 createdAt≈now 恒判新鲜。基准依序取:
- *   rawContent.metadata.publishedTime → facts.發生時間 → createdAt。
- * 任一不可解析(如「2024年5月」)即跳到下一个;全失败退回 createdAt。负值(未来时间)归 0。
+ * 新鲜度参照「天数」:只认事件/发布时间。基准依序取:
+ *   rawContent.metadata.publishedTime → facts.發生時間。
+ * 任一不可解析(如「2024年5月」)即跳到下一个。负值(未来时间)归 0。
+ * **皆缺失/不可解析 → 中性兜底(NEUTRAL_FRESHNESS_DAYS),绝不回退 createdAt(入库时间)。**
+ * 理由(R2):createdAt≈now 会让「无日期的旧瓜」恒判满分新鲜、排到有日期的近期瓜之上,
+ * 反噬时间窗目标。时间未知应判中性(交人工二次核对),而非冒充最新。
  */
 function freshnessDays(topic: PendingTopic): number {
 	const facts = topic.facts as Record<string, unknown> | undefined;
 	const candidates = [
 		topic.rawContent?.metadata?.publishedTime,
 		typeof facts?.發生時間 === "string" ? facts.發生時間 : undefined,
-		topic.createdAt,
 	];
 	for (const c of candidates) {
 		if (!c) continue;
@@ -159,7 +182,7 @@ function freshnessDays(topic: PendingTopic): number {
 			return Math.max(0, (Date.now() - ts) / (1000 * 60 * 60 * 24));
 		}
 	}
-	return 0;
+	return NEUTRAL_FRESHNESS_DAYS;
 }
 
 export async function pendingTopicExistsBySourceUrl(
@@ -169,6 +192,19 @@ export async function pendingTopicExistsBySourceUrl(
 	return (
 		db.prepare("SELECT 1 FROM pending_topics WHERE source_url = ?").get(url) !==
 		undefined
+	);
+}
+
+/** 内容指纹是否已存在（跨 URL 去重；命中视为「疑似重复」，由调用方软标处理）。 */
+export async function pendingTopicExistsByFingerprint(
+	fingerprint: string,
+): Promise<boolean> {
+	if (!fingerprint) return false;
+	const db = getDb();
+	return (
+		db
+			.prepare("SELECT 1 FROM pending_topics WHERE content_fingerprint = ?")
+			.get(fingerprint) !== undefined
 	);
 }
 
@@ -204,10 +240,12 @@ export async function savePendingTopic(
 				`
       INSERT INTO pending_topics
         (id, source_url, site_name, title, raw_content, facts, confidence, status,
-         rejected_reason, cover_image_url, score, enrichment, domain, created_at, updated_at)
+         rejected_reason, cover_image_url, score, enrichment, domain,
+         content_fingerprint, verification, verified_at, created_at, updated_at)
       VALUES
         (@id, @sourceUrl, @siteName, @title, @rawContent, @facts, @confidence, @status,
-         @rejectedReason, @coverImageUrl, @score, @enrichment, @domain, @createdAt, @updatedAt)
+         @rejectedReason, @coverImageUrl, @score, @enrichment, @domain,
+         @contentFingerprint, @verification, @verifiedAt, @createdAt, @updatedAt)
       ON CONFLICT(id) DO UPDATE SET
         source_url = excluded.source_url,
         site_name  = excluded.site_name,
@@ -221,6 +259,9 @@ export async function savePendingTopic(
         score      = excluded.score,
         enrichment = excluded.enrichment,
         domain     = excluded.domain,
+        content_fingerprint = excluded.content_fingerprint,
+        verification = excluded.verification,
+        verified_at = excluded.verified_at,
         updated_at = excluded.updated_at
     `,
 			).run({
@@ -237,6 +278,11 @@ export async function savePendingTopic(
 				score,
 				enrichment: topic.enrichment ? JSON.stringify(topic.enrichment) : null,
 				domain: topic.domain ?? "acg",
+				contentFingerprint: topic.contentFingerprint ?? null,
+				verification: topic.verification
+					? JSON.stringify(topic.verification)
+					: null,
+				verifiedAt: topic.verifiedAt ?? null,
 				createdAt: topic.createdAt,
 				updatedAt: topic.updatedAt,
 			});
