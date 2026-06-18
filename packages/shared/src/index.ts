@@ -24,11 +24,17 @@ export type { FetchWithTimeoutOptions } from "./fetch.js";
 export { fetchWithTimeout } from "./fetch.js";
 export type { GossipFactKey, GossipFactsBlock } from "./gossip-facts.js";
 export { GOSSIP_FACT_KEYS, GOSSIP_FACTS_SCHEMA } from "./gossip-facts.js";
+export type { LinkCheck } from "./link-source.js";
+export {
+	extractLinks,
+	hasUnsourcedLink,
+	normalizeUrl,
+	verifyLinks,
+} from "./link-source.js";
 export type { AssembledDraft, DraftSlots } from "./post-assembler.js";
 export {
 	assembleDraft,
 	containsPlaceholder,
-	esc,
 	PLACEHOLDER,
 	sanitizeToPlainText,
 } from "./post-assembler.js";

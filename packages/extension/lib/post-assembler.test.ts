@@ -6,11 +6,12 @@ import {
 	type DraftSlots,
 	type FactsBlock,
 	factUrls,
+	hasUnsourcedLink,
 	PLACEHOLDER,
 	sanitizeToPlainText,
+	verifyLinks,
 } from "@51guapi/shared";
 import { describe, expect, it } from "vitest";
-import { hasUnsourcedLink, verifyLinks } from "./link-source";
 
 describe("containsPlaceholder", () => {
 	it("裸式【待补】命中", () => {

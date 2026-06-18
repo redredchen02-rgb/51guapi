@@ -229,3 +229,50 @@ export const UpdatePromptBody = Type.Object({
 	fewShotPairs: Type.Optional(Type.Array(FewShotPairSchema)),
 	model: Type.Optional(Type.String({ maxLength: 100 })),
 });
+
+// ── Channels ──────────────────────────────────────────
+// 须与 channel-routes.ts 的 toDto() 字段逐一对齐(response schema 会按此序列化/剥字段)。
+export const ChannelDto = Type.Object({
+	id: Type.String(),
+	hostname: Type.String(),
+	displayName: Type.String(),
+	pathPrefix: Type.String(),
+	maxDepth: Type.Number(),
+	maxBytes: Type.Number(),
+	createdBy: Type.String(),
+	reason: Type.String(),
+	createdAt: Type.String(),
+});
+
+export const ListChannelsResponse = Type.Object({
+	ok: OkStatus,
+	channels: Type.Array(ChannelDto),
+});
+
+export const CreateChannelResponse = Type.Object({
+	ok: OkStatus,
+	channel: ChannelDto,
+	deduped: Type.Boolean(),
+});
+
+export const DeleteOkResponse = Type.Object({
+	ok: OkStatus,
+});
+
+// ── Preflight ─────────────────────────────────────────
+export const PreflightResponse = Type.Object({
+	ok: OkStatus,
+	checks: Type.Array(
+		Type.Object({
+			id: Type.String(),
+			label: Type.String(),
+			pass: Type.Boolean(),
+		}),
+	),
+	residuals: Type.Array(
+		Type.Object({
+			id: Type.String(),
+			label: Type.String(),
+		}),
+	),
+});

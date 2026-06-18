@@ -1,5 +1,6 @@
 import { dirname, join } from "node:path";
 import type { FewShotPair } from "@51guapi/shared";
+import { dataDirEnv } from "../config/data-dir.js";
 import { JsonFileStore } from "../utils/json-store.js";
 
 // ---- 类型定义 ----
@@ -31,7 +32,7 @@ export interface PromptTemplateUpdate {
 // ---- 文件持久层（轻量 JSON，与 pending-store.ts 一致） ----
 
 const DATA_DIR =
-	process.env.PUBLISHER_DATA_DIR ||
+	dataDirEnv() ||
 	join(dirname(new URL(import.meta.url).pathname), "..", "data");
 const PROMPTS_DIR = join(DATA_DIR, "prompts");
 

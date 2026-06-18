@@ -1,4 +1,5 @@
 import { dirname, join } from "node:path";
+import { dataDirEnv } from "../config/data-dir.js";
 import { JsonFileStore } from "../utils/json-store.js";
 
 export interface GossipSiteConfig {
@@ -16,7 +17,7 @@ export interface GossipSiteCreate {
 }
 
 const DATA_DIR =
-	process.env.PUBLISHER_DATA_DIR ||
+	dataDirEnv() ||
 	join(dirname(new URL(import.meta.url).pathname), "..", "data");
 const GOSSIP_SITES_DIR = join(DATA_DIR, "gossip-sites");
 

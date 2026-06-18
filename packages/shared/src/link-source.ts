@@ -2,7 +2,7 @@
 // 与 sanitizeBody(防 XSS)正交 —— sanitize 原样放行远程 https 链接,故这是独立的另一道闸。
 // 纯函数;extractLinks 用正则提取 HTML <a href>(无 DOM 依赖,SW 亦可用)。
 //
-// 不自动改写/剥除连结,只返回判定结果,由审核区(U4)渲染给人决定。
+// 不自动改写/剥除连结,只返回判定结果,由审核区渲染给人决定。
 
 export interface LinkCheck {
 	url: string;
