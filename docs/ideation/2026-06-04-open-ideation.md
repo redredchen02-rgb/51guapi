@@ -4,7 +4,7 @@ topic: open-exploration
 focus: open-ended
 ---
 
-# Ideation: 51publisher 開放探索
+# Ideation: 51guapi 開放探索
 
 ## Codebase Context
 

@@ -2,7 +2,7 @@
 # Template — install.sh substitutes __NODE_MAIN__ with the real absolute path.
 set -euo pipefail
 
-ENV_FILE="${PUBLISHER_ENV_PATH:-$HOME/.51publisher/.env}"
+ENV_FILE="${GUAPI_ENV_PATH:-$HOME/.51guapi/.env}"
 
 if [[ ! -f "$ENV_FILE" ]]; then
   echo "ERROR: .env file not found at $ENV_FILE" >&2

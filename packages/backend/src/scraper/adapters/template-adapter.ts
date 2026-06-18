@@ -94,7 +94,7 @@ export class TemplateSiteAdapter implements SiteAdapter {
 			headers: {
 				// [CUSTOMIZE] 如目标站点有 UA 限制，调整此处
 				"User-Agent":
-					"Mozilla/5.0 (compatible; 51guapi-scraper/1.0; +http://127.0.0.1:3001)",
+					"Mozilla/5.0 (compatible; 51guapi-scraper/1.0; +http://127.0.0.1:3002)",
 				// [CUSTOMIZE] 如需登录 cookie，在此添加 Cookie 头（从环境变量读取，切勿硬编码）
 			},
 		});

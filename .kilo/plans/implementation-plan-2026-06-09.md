@@ -2,7 +2,7 @@
 
 ## Overview
 
-This plan addresses four major tasks for the 51publisher monorepo:
+This plan addresses four major tasks for the 51guapi monorepo:
 1. JSON to SQLite data migration
 2. SQLite concurrent write performance optimization  
 3. E2E testing framework restoration
@@ -168,7 +168,7 @@ export default defineConfig({
 3. **Quill loader**: Verify `helpers/quill-fixture.ts` works in monorepo structure
 
 #### 3.4 Test Execution
-- Run `pnpm --filter publisher-fill-assistant test:e2e`
+- Run `pnpm --filter 51guapi-extension test:e2e`
 - Verify all 6 E2E test files pass
 - Add missing setup if tests fail
 
@@ -248,7 +248,7 @@ export function loadSSRfAllowlist(): SSRFConfig {
 
 ```bash
 # After security config
-pnpm --filter publisher-backend build
+pnpm --filter 51guapi-backend build
 
 # After migration
 node packages/backend/scripts/migrate-json-to-sqlite.js --dry-run
@@ -257,7 +257,7 @@ node packages/backend/scripts/migrate-json-to-sqlite.js --dry-run
 node packages/backend/scripts/benchmark-sqlite.js
 
 # After all changes
-pnpm test && pnpm --filter publisher-fill-assistant test:e2e
+pnpm test && pnpm --filter 51guapi-extension test:e2e
 ```
 
 ---

@@ -183,7 +183,7 @@ Unit 8  test suite updates (all files)
 - Edge case: 只有空白行 → `[]`（filter(Boolean) 行為）
 
 **Verification:**
-- `pnpm --filter publisher-fill-assistant test` 全綠，新函數有對應測試通過
+- `pnpm --filter 51guapi-extension test` 全綠，新函數有對應測試通過
 
 ---
 
@@ -233,14 +233,14 @@ Unit 8  test suite updates (all files)
 - 移除 `Settings` interface 的 `fewShotExamples?: string` 欄位
 - 移除相關 JSDoc 注釋（line 103 的 `/** 结构化 few-shot 范例列表(R11-R13);... */`）
 - 保留 `fewShotPairs?: FewShotPair[]`
-- `pnpm --filter @51publisher/shared build`
+- `pnpm --filter @51guapi/shared build`
 - 確認 `dist/types.d.ts` 同步
 
 **Test scenarios:**
 - Test expectation: none — 這是純類型刪除，無行為變更；compile 正確性由後續 units 的 `pnpm -r compile` 驗證
 
 **Verification:**
-- `pnpm --filter @51publisher/shared build` 成功
+- `pnpm --filter @51guapi/shared build` 成功
 - `pnpm -r compile` 此時應出現 tsc 錯誤（告知還有哪些文件讀取 `fewShotExamples`）— 這些錯誤是後續 Units 的工作單；記錄下來確認與計劃文件吻合
 
 ---
@@ -271,7 +271,7 @@ Unit 8  test suite updates (all files)
 - Edge case: stored 為空 → 返回 `DEFAULT_SETTINGS`（含空 `fewShotPairs`）
 
 **Verification:**
-- `pnpm --filter publisher-fill-assistant test` 全綠
+- `pnpm --filter 51guapi-extension test` 全綠
 - `storage.test.ts` 中凡引用 `fewShotExamples` 的測試已全部更新或移除
 
 ---
@@ -289,7 +289,7 @@ Unit 8  test suite updates (all files)
 - Test: `packages/extension/lib/prompt-client.test.ts`
 
 **Approach:**
-- `PromptTemplate` interface（line 11）: `fewShotExamples: string` → `fewShotPairs: FewShotPair[]`（導入 FewShotPair from `@51publisher/shared`）
+- `PromptTemplate` interface（line 11）: `fewShotExamples: string` → `fewShotPairs: FewShotPair[]`（導入 FewShotPair from `@51guapi/shared`）
 - `createPrompt` data 參數（line 42）: `fewShotExamples: string` → `fewShotPairs: FewShotPair[]`
 - `updatePrompt` data 參數（line 72）: `fewShotExamples?: string` → `fewShotPairs?: FewShotPair[]`
 
@@ -301,7 +301,7 @@ Unit 8  test suite updates (all files)
 - Happy path: `updatePrompt(id, {fewShotPairs: [...]})` → 正確 PUT 請求
 
 **Verification:**
-- `pnpm --filter publisher-fill-assistant compile` 無錯（此時 prompt-client.ts 不再含 fewShotExamples 型別）
+- `pnpm --filter 51guapi-extension compile` 無錯（此時 prompt-client.ts 不再含 fewShotExamples 型別）
 
 ---
 
@@ -363,7 +363,7 @@ Unit 8  test suite updates (all files)
 - 確認 `importFewShot`（原 3 條測試）已移除或重新標記為 skip
 
 **Verification:**
-- `pnpm --filter publisher-fill-assistant test` 全綠
+- `pnpm --filter 51guapi-extension test` 全綠
 - `SettingsFormReturnValue` interface 無 `importFewShot`
 
 ---
@@ -410,7 +410,7 @@ Unit 8  test suite updates (all files)
 - Happy path: Settings 組件掛載後只渲染 `FewShotPairEditor`，無 `<textarea>` 存在於 DOM
 
 **Verification:**
-- `pnpm --filter publisher-fill-assistant test` 全綠
+- `pnpm --filter 51guapi-extension test` 全綠
 - `grep -rn "PromptCard\|PromptManagementCard" packages/extension` 結果為零（確認死碼已刪）
 
 ---
@@ -421,7 +421,7 @@ Unit 8  test suite updates (all files)
 
 **Requirements:** R11, R12, R13, R14
 
-**Dependencies:** Unit 3（`FewShotPair` 類型從 `@51publisher/shared` 引入，shared build 已完成）
+**Dependencies:** Unit 3（`FewShotPair` 類型從 `@51guapi/shared` 引入，shared build 已完成）
 
 **Files:**
 - Modify: `packages/backend/src/scraper/prompt-store.ts`
@@ -433,7 +433,7 @@ Unit 8  test suite updates (all files)
 **Approach:**
 
 *`prompt-store.ts` 類型更新：*
-- `import { FewShotPair } from "@51publisher/shared"`
+- `import { FewShotPair } from "@51guapi/shared"`
 - `PromptTemplate`: `fewShotExamples: string` → `fewShotPairs: FewShotPair[]`
 - `PromptTemplateCreate`: 同上
 - `PromptTemplateUpdate`: `fewShotExamples?: string` → `fewShotPairs?: FewShotPair[]`
@@ -471,7 +471,7 @@ Unit 8  test suite updates (all files)
 - **一致性驗證**: 後端 lazy-on-read 對 `"A\n---\nB\n\nC\n---\nD"` 的輸出與 extension `parseFewShotExamples("A\n---\nB\n\nC\n---\nD")` 結果相同（`[{input:"A",output:"B"},{input:"C",output:"D"}]`）；確保兩側算法同步，若有差異以 extension 側為準
 
 **Verification:**
-- `pnpm --filter @51publisher/backend test` 全綠
+- `pnpm --filter @51guapi/backend test` 全綠
 - `grep -rn "fewShotExamples" packages/backend/src/` 結果為零（遷移臨時判斷 key 除外）
 - `useSettingsForm.ts` 的 `selectPrompt` 不再讀取 `tpl.fewShotExamples`（改為 `tpl.fewShotPairs ?? []`）
 

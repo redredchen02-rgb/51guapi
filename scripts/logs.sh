@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-tail -f ~/.51publisher/backend.log
+tail -f ~/.51guapi/backend.log

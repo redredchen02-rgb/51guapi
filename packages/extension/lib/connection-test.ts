@@ -26,7 +26,7 @@ const FIXED_MESSAGE: Record<ConnectionTestStatus, string> = {
 	ok: "连接正常。",
 	unauthorized: "登录已过期,请重新登录。",
 	timeout: "后端无响应(超时)。",
-	"backend-unreachable": "后端不可达,请确认后端服务已启动(端口 3001)。",
+	"backend-unreachable": "后端不可达,请确认后端服务已启动(端口 3002)。",
 	"llm-error": "后端可达,但 LLM/配置异常(检查后端 .env 的 endpoint/key)。",
 };
 

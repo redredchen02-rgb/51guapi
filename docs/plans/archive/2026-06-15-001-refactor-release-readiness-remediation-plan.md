@@ -11,13 +11,13 @@ deepened: 2026-06-15
 
 ## Overview
 
-一次四维度体检（安全/技术债/测试/DX-Ops）确认：51publisher 的核心逻辑（三世界模型、防幻觉事实注入、安全闸门链）健康，风险集中在边缘——项目文件与现实脱节、首飞运营未执行、CI/测试被动漂移、扩展侧有重复样板与巨组件。
+一次四维度体检（安全/技术债/测试/DX-Ops）确认：51guapi 的核心逻辑（三世界模型、防幻觉事实注入、安全闸门链）健康，风险集中在边缘——项目文件与现实脱节、首飞运营未执行、CI/测试被动漂移、扩展侧有重复样板与巨组件。
 
 本计划按文件审查后定的顺序 **A（真相校正）→ C（CI/测试硬化）→ B（首飞冒烟验证基线）→ D（代码重构）** 落地。E 组（P2 卫生）已拆到跟进迭代，不在本轮。核心排序逻辑：先让文件可信、补好测试与 CI，用一次真实发布**证实「可上线」假设**，再在验证过的填充基线上做重构——避免在「从没真发过一篇」的状态下先大改填充 UI。
 
 ## Problem Frame
 
-受影响者是单人运营者。当前两个硬现实：(1) `CLAUDE.md` / `.ai-memory` 仍写「remote 是 GitLab、活跃 CI 是 `.gitlab-ci.yml`」，但仓库**已迁到 GitHub**（`git remote -v` = `github.com/redredchen02-rgb/51publisher`，`.gitlab-ci.yml` 不存在，活跃 CI 是 `.github/workflows/ci.yml`）——照旧文件行事会浪费除错时间；(2) 项目**从未真正发布过一次**，「可上线」是愿望而非事实。详见 origin: `docs/brainstorms/2026-06-15-project-optimization-iteration-requirements.md`。
+受影响者是单人运营者。当前两个硬现实：(1) `CLAUDE.md` / `.ai-memory` 仍写「remote 是 GitLab、活跃 CI 是 `.gitlab-ci.yml`」，但仓库**已迁到 GitHub**（`git remote -v` = `github.com/redredchen02-rgb/51guapi`，`.gitlab-ci.yml` 不存在，活跃 CI 是 `.github/workflows/ci.yml`）——照旧文件行事会浪费除错时间；(2) 项目**从未真正发布过一次**，「可上线」是愿望而非事实。详见 origin: `docs/brainstorms/2026-06-15-project-optimization-iteration-requirements.md`。
 
 ## Requirements Trace
 
@@ -45,7 +45,7 @@ deepened: 2026-06-15
 
 **A — 文件真相**
 - `CLAUDE.md:13`（GitLab/`.gitlab-ci.yml` 误述）、`CLAUDE.md:69`（路由「在 index.ts 统一 register*Routes」误述）。
-- `.ai-memory/project_51publisher.md:14, 19, 27`（GitLab push / `.gitlab-ci.yml 已加` 等过期陈述）。
+- `.ai-memory/project_51guapi.md:14, 19, 27`（GitLab push / `.gitlab-ci.yml 已加` 等过期陈述）。
 - `AGENTS.md` 已干净（无需改）。历史 `docs/brainstorms/*` `docs/plans/*` 的 GitLab 引用是**带日期的历史档**，保留不改。
 - 实证：`app.ts:85–97` 是全部 `register*Routes` 调用处；`index.ts:14` 仅 `registerDraftRoutes(app)`。
 
@@ -65,7 +65,7 @@ deepened: 2026-06-15
 
 **D — 重构**
 - 6 client 全在 `packages/extension/lib/`：`auth-client.ts` `config-client.ts` `gossip-client.ts` `pending-client.ts` `prompt-client.ts` `published-posts-client.ts`。
-- 共享三 helper：`getBackendUrl()`（`lib/backend-url.ts`，含 module 缓存 + `127.0.0.1:3001` fallback）、`fetchWithTimeout`（`@51publisher/shared` ← `shared/src/fetch.ts`）、`getAuthHeaders`/`clearToken`（`lib/auth-client.ts`）。
+- 共享三 helper：`getBackendUrl()`（`lib/backend-url.ts`，含 module 缓存 + `127.0.0.1:3001` fallback）、`fetchWithTimeout`（`@51guapi/shared` ← `shared/src/fetch.ts`）、`getAuthHeaders`/`clearToken`（`lib/auth-client.ts`）。
 - 规范 per-request 形状（`pending-client.ts:86–97`）：`getAuthHeaders()` → `getBackendUrl()` → `fetchWithTimeout(url,{...headers})` → `if (res.status===401){ await clearToken(); ...}`，每方法重复。
 - 重构杠杆（helper token 计数）：pending 18 / gossip 18 / config 10 / prompt 10 / auth 3 / **published-posts 0（异类，不用共享 helper——重构时排除或单独核实）**。
 - 现有测试镜像：`pending-client.test.ts`、`published-posts-client.test.ts`。
@@ -78,7 +78,7 @@ deepened: 2026-06-15
 - `docs/plans/2026-06-11-004`（active）：CORS（Unit 4 `[x]`）= 逗号分隔多值 + dev/打包双 ID，**不加 manifest key**；**Unit 5（路径 B 真实批次验收）仍 `[ ]`** —— B 组衔接它。
 - `docs/plans/2026-06-10-002`：SSRF（U12 `[x]`）用自定义 undici `Agent({connect:{lookup}})` 钉死 IP；**铁律**：fetch 与 Agent 必须同一 npm undici 包；私网判断勿用 npm `ip` 包（CVE 误判）。
 - `docs/plans/2026-06-09-001`：husky 引入、e2e 自动化进 CI、前端 CSS Modules/拆分——多数**当年延后或否决**。本轮把 e2e 推进 CI 是**推翻该决定**（理由：现为 GitHub Actions + jsdom，旧 GitLab runner 鉴权坑已不适用）。
-- 通用坑：改 shared types 后须先 `pnpm --filter @51publisher/shared build` 再验证（否则读过期 dist 假绿）；后端测试 `cleanData()` 会 `rmSync data/`，审计/备份绝不落 `data/`。
+- 通用坑：改 shared types 后须先 `pnpm --filter @51guapi/shared build` 再验证（否则读过期 dist 假绿）；后端测试 `cleanData()` 会 `rmSync data/`，审计/备份绝不落 `data/`。
 - `docs/solutions/` 几乎为空——本轮落地后应把 CI/SSRF/CORS 可复用经验沉淀进去。
 
 ### External References
@@ -133,7 +133,7 @@ graph TB
 
 **Files:**
 - Modify: `CLAUDE.md`（line 13 GitLab→GitHub + 活跃 CI `.github/workflows/ci.yml`；line 69 路由「app.ts 注册，index.ts 仅 registerDraftRoutes」）
-- Modify: `.ai-memory/project_51publisher.md`（line 14/19/27 去 GitLab、改 GitHub push、修正「.gitlab-ci.yml 已加」反述）
+- Modify: `.ai-memory/project_51guapi.md`（line 14/19/27 去 GitLab、改 GitHub push、修正「.gitlab-ci.yml 已加」反述）
 
 **Approach:**
 - 逐行替换；措辞勿写「全部路由移到 app.ts」（会造新漂移），写「`register*Routes` 集中在 `app.ts:85–97`，`index.ts:14` 仅在启动路径单独调 `registerDraftRoutes(app)`」——**说明 index.ts 为何独留这一条**（启动路径单独挂载），使不对称读起来是有意而非新漂移。
@@ -171,7 +171,7 @@ graph TB
 - 核对：SSRF 多记录 DNS / rebind → 先判定测试面（assertUrlSafe vs Agent lookup 集成测试），记录结论。
 - 新增（仅当上面判定为未覆盖）：针对 Agent lookup 钩子的集成测试，mock lookup 返回含私网 IP → 期望 `SsrfError`。
 
-**Verification:** `pnpm --filter publisher-backend test` + 扩展 grounding 测试全绿；产出覆盖说明，每个目标场景有「已覆盖/新增」明确结论（不留「假设已覆盖」）。
+**Verification:** `pnpm --filter 51guapi-backend test` + 扩展 grounding 测试全绿；产出覆盖说明，每个目标场景有「已覆盖/新增」明确结论（不留「假设已覆盖」）。
 
 - [x] **Unit C2: CI 硬化（e2e + check:fixtures + 无条件 gitleaks）**
 
@@ -182,7 +182,7 @@ graph TB
 **Dependencies:** C1 绿（在把 e2e/test job 设为阻断前，测试基线须已知全绿）。CI 配置编写本身可与 C1 并行。
 
 **Files:**
-- Modify: `.github/workflows/ci.yml`（`verify` job 后增 step 或并列 job：`pnpm --filter publisher-fill-assistant test:e2e`；在 **repo 根** 跑 `pnpm --filter publisher-fill-assistant check:fixtures`）
+- Modify: `.github/workflows/ci.yml`（`verify` job 后增 step 或并列 job：`pnpm --filter 51guapi-extension test:e2e`；在 **repo 根** 跑 `pnpm --filter 51guapi-extension check:fixtures`）
 - Modify: `.github/workflows/ci.yml`（增固定版本 gitleaks job，无条件、失败即 fail）
 - Modify（**必做**，非可选）: `.github/workflows/release.yml`（去掉测试 `continue-on-error: true` 使测试阻断发布——这是「可信上线」最直接的一条）。**注**：release.yml 有 **两处** `continue-on-error: true`（约 line 40 test step + line 50 另一 step），实施前确认 line 50 对应哪个 step、是否一并硬化。
 
@@ -209,7 +209,7 @@ graph TB
 
 **Files:**
 - Create: `docs/runbooks/first-flight-runbook.md`（新建可勾选清单）
-- Modify: `.ai-memory/project_51publisher.md`（把首飞待办指针指向新 runbook）
+- Modify: `.ai-memory/project_51guapi.md`（把首飞待办指针指向新 runbook）
 
 **Approach:**
 - runbook 分两类明确标注：**代码侧前置**（可由本计划/agent 做）vs **不可逆运营动作**（运营者亲手），并是**严格有序清单**——任何激活线上后端的部署/push 不得先于密钥撤销。
@@ -262,7 +262,7 @@ graph TB
 - Error path：后端不可达/超时 → 抛可被上层 catch 的错误，本地双写 PRIMARY 不受影响。
 - Integration：迁移后 `pending-client` / `gossip-client` 既有测试全绿（行为零回归）。
 
-**Verification:** 6 client（除核实后的 published-posts）走单一 apiFetch；`pnpm --filter publisher-fill-assistant test` 全绿。
+**Verification:** 6 client（除核实后的 published-posts）走单一 apiFetch；`pnpm --filter 51guapi-extension test` 全绿。
 
 - [x] **Unit D2: 动态提交 e2e fixture 变体（R11 前置）**
 
@@ -323,7 +323,7 @@ graph TB
 - Integration：点 retry → gate-failed 项回 queued（`onRetryItem`/`retryItem` 链路未断）。
 - Integration（接 D2）：拆分后填充/审批互动不触发自动提交（submit=0）。
 
-**Verification:** `pnpm --filter publisher-fill-assistant test` + `test:e2e`（含 D2 变体）全绿；gate-failed UI 三项行为肉眼+测试确认保留。
+**Verification:** `pnpm --filter 51guapi-extension test` + `test:e2e`（含 D2 变体）全绿；gate-failed UI 三项行为肉眼+测试确认保留。
 
 ## System-Wide Impact
 
@@ -343,7 +343,7 @@ graph TB
 | apiFetch 抽取破坏 fail-closed 双写 | 先写 401/超时失败测试；逐 client 迁移，每步跑既有测试；`published-posts-client` 单独核实 |
 | D3 拆分丢失 gate-failed UI 行为 | 明列三项必保行为；拆分前后跑 D2 e2e 变体 + 组件测试 |
 | 运营者迟迟不执行 B1 真发，目标停在"愿望" | runbook 标注冒烟为重构前置；本计划不替执行，但把它排在 D 之前形成节奏压力 |
-| 改 shared/类型后读过期 dist 假绿 | 验证前 `pnpm --filter @51publisher/shared build` 或删 `*.tsbuildinfo` |
+| 改 shared/类型后读过期 dist 假绿 | 验证前 `pnpm --filter @51guapi/shared build` 或删 `*.tsbuildinfo` |
 | LLM 旧 key 仅轮换未撤销 | B1 runbook：供应商端 revoke **无条件**先行并验证旧 key 返回 401；清史是纵深防御（清不掉 fork/clone/缓存 SHA），revoke 才是真边界 |
 | 部署/push 先于密钥撤销，线上跑在已泄漏凭证上 | B1 严格有序：Step1 revoke→Step2 CORS→Step3 dry-run→Step4 真发/push |
 | gossip/config/prompt/auth client 无测试 → D1 迁移无零回归守护 | 迁移前确认测试存在，无则先补 characterization 测试 |
@@ -352,7 +352,7 @@ graph TB
 
 - 落地后把 CI（e2e/gitleaks 接线）、apiFetch 双写守则、SSRF/CORS 经验沉淀到 `docs/solutions/`（当前几乎为空）。
 - E 组（P2 卫生 + R16 pino redaction）记为跟进迭代，单独开计划。
-- B1 真发冒烟后更新 `.ai-memory/project_51publisher.md` 首飞状态。
+- B1 真发冒烟后更新 `.ai-memory/project_51guapi.md` 首飞状态。
 
 ## Sources & References
 

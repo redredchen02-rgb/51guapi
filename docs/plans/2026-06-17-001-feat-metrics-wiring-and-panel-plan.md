@@ -173,7 +173,7 @@ graph TB
 - Test expectation: none — 纯注释/文档变更，无行为改变
 
 **Verification:**
-- `pnpm --filter publisher-backend compile` 无类型错误
+- `pnpm --filter 51guapi-backend compile` 无类型错误
 - metrics.ts 中 recordScraperRun 有 JSDoc 且 HELP 文本已更新
 
 ---
@@ -209,7 +209,7 @@ graph TB
 - Isolation: beforeEach 重置后各 test 独立（counters 不跨 test 泄漏）
 
 **Verification:**
-- `pnpm --filter publisher-backend test` 全绿
+- `pnpm --filter 51guapi-backend test` 全绿
 - HTTP 测试中 `/api/v1/metrics` 返回 `scraperRunsSuccess >= 1`
 
 ---
@@ -243,7 +243,7 @@ graph TB
 - Edge case: storage 中存在不完整旧数据（缺 batchesCompleted 字段）→ getExtensionCounters() 返回 default 而不 crash
 
 **Verification:**
-- `pnpm --filter publisher-fill-assistant test` 中 storage 测试全绿
+- `pnpm --filter 51guapi-extension test` 中 storage 测试全绿
 - TypeScript 类型检查通过
 
 ---
@@ -275,7 +275,7 @@ graph TB
 - Integration: handleRunBatch 两次成功 → batchesCompleted = 2（读 storage 确认，非内存）
 
 **Verification:**
-- `pnpm --filter publisher-fill-assistant test` 中 background 相关测试全绿
+- `pnpm --filter 51guapi-extension test` 中 background 相关测试全绿
 - `pnpm compile` 无类型错误
 
 ---
@@ -333,7 +333,7 @@ graph TB
 - Integration: App.tsx 点击「数据指标」→ view 切换为 'metrics' → MetricsView 渲染
 
 **Verification:**
-- `pnpm --filter publisher-fill-assistant test` 全绿
+- `pnpm --filter 51guapi-extension test` 全绿
 - sidepanel 主视图有「数据指标」入口卡片
 - 点击后展示 3 个指标卡片，后端不可用时爬取/草稿卡片显示「后端离线」
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-echo "=== 51publisher Deploy ==="
+echo "=== 51guapi Deploy ==="
 
 # Detect environment
 if [ -f /app/package.json ]; then
@@ -25,8 +25,8 @@ bash scripts/start-backend.sh &
 
 echo "=> Waiting for health check..."
 for i in $(seq 1 30); do
-  if curl -sf http://localhost:3001/api/v1/healthz > /dev/null 2>&1; then
-    echo "=> Backend healthy on port 3001"
+  if curl -sf http://localhost:3002/api/v1/healthz > /dev/null 2>&1; then
+    echo "=> Backend healthy on port 3002"
     exit 0
   fi
   sleep 1

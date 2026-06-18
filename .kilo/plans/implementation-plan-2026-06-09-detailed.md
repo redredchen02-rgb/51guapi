@@ -1,4 +1,4 @@
-# Implementation Plan — 51publisher (2026-06-09)
+# Implementation Plan — 51guapi (2026-06-09)
 
 ## Overall Understanding
 
@@ -138,19 +138,19 @@ function parseHosts(): string[] {
 export default defineConfig({
   modules: ['@wxt-dev/module-react'],
   manifest: {
-    name: '51publisher 发帖填充助手',
+    name: '51guapi 发帖填充助手',
     description: 'AI 生成草稿并填入后台发帖表单。授权站点可批量自动发布,非授权站点仅填充。',
     permissions: ['storage', 'sidePanel'],
     host_permissions: parseHosts(),
-    action: { default_title: '51publisher 填充助手' },
+    action: { default_title: '51guapi 填充助手' },
     side_panel: { default_path: 'sidepanel.html' },
   },
 });
 ```
 
 ### Validation for Task 4
-- `pnpm --filter publisher-backend build` — compiles without errors
-- Run test: `ALLOWED_HOSTS=https://dx-999-adm.ympxbys.xyz pnpm --filter publisher-backend test` (if backend has tests for routes)
+- `pnpm --filter 51guapi-backend build` — compiles without errors
+- Run test: `ALLOWED_HOSTS=https://dx-999-adm.ympxbys.xyz pnpm --filter 51guapi-backend test` (if backend has tests for routes)
 
 ---
 

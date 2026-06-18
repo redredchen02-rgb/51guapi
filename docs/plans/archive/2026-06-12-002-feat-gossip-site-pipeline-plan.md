@@ -172,7 +172,7 @@ graph TB
 - Test expectation: 純型別/常數，無執行邏輯；在 `shared` 的 build + tsc 型別檢查中驗證
 
 **Verification:**
-- `pnpm --filter @51publisher/shared build` 成功，`dist/` 含新 export
+- `pnpm --filter @51guapi/shared build` 成功，`dist/` 含新 export
 - `pnpm compile` 全包型別檢查通過
 
 ---

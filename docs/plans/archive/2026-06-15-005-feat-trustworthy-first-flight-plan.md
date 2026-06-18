@@ -65,7 +65,7 @@ origin: docs/brainstorms/2026-06-15-trustworthy-first-flight-requirements.md
 ### Institutional Learnings
 
 - **「自检绿但验错目标」是 preflight 头号陷阱**(`docs/solutions/security-issues/fixture-secret-gate-false-green-relative-path-2026-06-15.md`):问三问;路径锚脚本位置;「扫到 0 目标」判红;植入坏样验转红。
-- **幻影 P0**(`docs/solutions/developer-experience/vitest-excludes-dist-phantom-backend-p0-2026-06-15.md`):每条命令先实跑确认;包名 `--filter publisher-backend` / `publisher-fill-assistant`。
+- **幻影 P0**(`docs/solutions/developer-experience/vitest-excludes-dist-phantom-backend-p0-2026-06-15.md`):每条命令先实跑确认;包名 `--filter 51guapi-backend` / `51guapi-extension`。
 - **HTTP client 注入接缝不一致**(`docs/solutions/developer-experience/extension-http-client-testability-injection-seam-2026-06-15.md`):涉及 client 单测先读其 `*-client.ts`。
 - **MV3 拥抱 SW 短命 + 持久化恢复**(plan `2026-06-04-005` tombstone)。但 keep-alive alarm 让 SW 长存活 + alarm 1min floor,使「启动扫描」与「时间看门狗」有相关失效面,需分别证明哪个是 load-bearing(见 Unit 4/Risks)。
 - **小独立 PR 交付纪律**:拆 PR-A / PR-B,依赖单向。
@@ -452,7 +452,7 @@ Part A(U1→U2→U3)与 Part B(U4→U5→U6→U7)基本独立;唯一跨界是 U7
 - Runbook:`docs/runbooks/first-flight-runbook.md`
 - 关键代码(#28 后核准):`lib/safety-gate.ts`(`canSubmit`:105 未变)、`lib/storage.ts`(`getSafetyMode`:160/`setSafetyMode`:167、FillTombstone)、`lib/batch-orchestrator.ts`(`createSerialQueue`:50、approveBatch 循环 grounding 双评 :411/:415、sendFill :435、sendGrant :464、itemIdFilter :389)、`entrypoints/background.ts`(`buildApproveDeps` 唯一 grant/fill 点 :258/:269、`runApprove` :294、`handleApproveBatch` :323/`handleApproveSingleItem` :344、启动扫描、keep-alive alarm)、`lib/trajectory.ts`(FNV)、`lib/grounding-gate.ts`、`backend/src/config/env-check.ts`、`backend/src/app.ts`(preHandler/路由注册)、`wxt.config.ts`(EXTENSION_KEY)。**已删:`handlePublish`/`PUBLISH_PAGE`(#28)。**
 - Learnings:`docs/solutions/security-issues/fixture-secret-gate-false-green-relative-path-2026-06-15.md`、`docs/solutions/developer-experience/vitest-excludes-dist-phantom-backend-p0-2026-06-15.md`、`docs/solutions/developer-experience/extension-http-client-testability-injection-seam-2026-06-15.md`、`docs/plans/2026-06-04-005-feat-batch-observability-reliability-plan.md`(tombstone)
-- 相关 PR:[#23](https://github.com/redredchen02-rgb/51publisher/pull/23)(grounding 校已发布 draft)
+- 相关 PR:[#23](https://github.com/redredchen02-rgb/51guapi/pull/23)(grounding 校已发布 draft)
 - 深化:架构 + 安全 + document-review(coherence/feasibility/design/security/scope/adversarial)双轮 8 评审(2026-06-15)。收敛 P0「全局 authorized 被其它入口消费(含 fill 副作用)」→ Unit 5 grant/fill interlock + 单键标记 + 内存 nonce;并整合 SHA-256、串行 arm、路由注册顺序、CLI 运行器、看门狗 floor、UI 状态、Alternatives。
 - 第三轮(2026-06-15,ce:brainstorm 复跑 + 7/7 persona document-review 全通):修正 **metrics 死指标**(`metrics.ts` counter 恒为 0、从不自增 → 移出 preflight 必检集);R-trace 对齐至 origin R1–R11(R10 仅首飞脚手架 / R11 交互态)。占位符前置 plan 004 已 **completed**(`feat/fill-missing-facts-reassemble` 分支),真发硬前置满足。
 - 第四轮(2026-06-15,PR-A 合并后 PR-B 接缝重新核准):**PR-A(U1–U3 + dryrun-green)已合并 main(#31)**。按 **#28**(移除 `handlePublish`/`PUBLISH_PAGE` 裸单条路径——批量审批成唯一授权出口)与 **#25**(grounding Phase 2:approveBatch 对 snapshot+draft 双评)重新核准 Unit 4–7:interlock 落点改为 **`approveBatch` 循环内 per-item guard(经 `ApproveBatchDeps` 注入)**,非 item-agnostic 的 background 闭包;删去对 `handlePublish`/`first-flight-locked`/单条 publish-orchestrator 路径的所有引用;「单条 vs 批量」悬决已解(仅批量,单条经 itemIdFilter)。

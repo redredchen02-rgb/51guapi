@@ -7,7 +7,7 @@ topic: content-quality-and-first-flight
 
 ## Problem Frame
 
-51publisher 已是一台**打磨精致的发动机**:v1 + plan-004 + plan-005 全部落地,
+51guapi 已是一台**打磨精致的发动机**:v1 + plan-004 + plan-005 全部落地,
 217 测试全绿,可 `pnpm build` 出扩展,批量状态机 / 轨迹哈希链 / 崩溃恢复 / TOCTOU 修复
 / 三态填充表 / dry-run 报告 / 历史面板一应俱全。
 

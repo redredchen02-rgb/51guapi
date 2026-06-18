@@ -2,7 +2,7 @@
 import { storage } from "#imports";
 
 const SETTINGS_KEY = "local:settings";
-const DEFAULT_BACKEND = "http://127.0.0.1:3001";
+const DEFAULT_BACKEND = "http://127.0.0.1:3002";
 
 let cachedUrl: string | undefined;
 

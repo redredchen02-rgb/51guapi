@@ -6,7 +6,7 @@ import { DraftReviewPanel } from "./DraftReviewPanel.js";
 
 vi.mock("../../lib/storage", () => ({
 	getSettings: vi.fn(async () => ({
-		endpoint: "http://127.0.0.1:3001",
+		endpoint: "http://127.0.0.1:3002",
 		model: "m",
 		apiKey: "",
 	})),

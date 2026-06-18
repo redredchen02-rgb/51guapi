@@ -30,7 +30,7 @@ export function validateSettingsForm(
 		backendUrl &&
 		!/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/i.test(backendUrl)
 	) {
-		return "后端 URL 必须是 localhost 或 127.0.0.1 地址（例：http://localhost:3001）。";
+		return "后端 URL 必须是 localhost 或 127.0.0.1 地址（例：http://localhost:3002）。";
 	}
 	return null;
 }

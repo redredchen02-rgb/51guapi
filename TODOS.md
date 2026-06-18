@@ -13,7 +13,7 @@
 - **Fix backend test dependencies in CI** | **Priority:** P0 | **Resolved (not reproducing):** 2026-06-15
   原报告:packages/backend/dist/ 下 8 个测试文件因缺失依赖（fastify、better-sqlite3、@51guapi/shared）而持续失败。
   核实:`packages/backend/vitest.config.ts` 已 `exclude: ["dist/**"]`,vitest 只跑 `src/` 源码,不收集 dist 下编译产物。
-  `pnpm --filter publisher-backend test` 实跑 = 275 passed / 26 files,无依赖失败。`pnpm -r test` 亦绿。
+  `pnpm --filter 51guapi-backend test` 实跑 = 275 passed / 26 files,无依赖失败。`pnpm -r test` 亦绿。
   dist 下的 `*.test.js` 仅是旧 build 产物,不进测试。该 P0 在当前 GitHub Actions CI(`pnpm -r test`)下不复现。
   发现于: feat/phase-2-measurement (2026-06-11);关闭于: feat/harden-safety-net (2026-06-15)
 

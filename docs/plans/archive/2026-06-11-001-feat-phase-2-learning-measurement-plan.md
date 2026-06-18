@@ -227,7 +227,7 @@ flowchart TB
 - Error path: JSON 解析失败 → 现有错误路径不变，usage 提取不影响错误传播
 
 **Verification:**
-- `pnpm test --filter publisher-backend`（后端单测全绿）
+- `pnpm test --filter 51guapi-backend`（后端单测全绿）
 - 手动调用 generate-draft 端点，检查响应体含 `llmCostTokens` 字段
 
 ---
@@ -268,7 +268,7 @@ flowchart TB
 - Integration: authorized 发布仍正常完成，现有 authorized 测试全绿
 
 **Verification:**
-- `pnpm test --filter publisher-fill-assistant`（扩展单测全绿）
+- `pnpm test --filter 51guapi-extension`（扩展单测全绿）
 - 手动跑 off 模式一批 → `chrome.storage.local` 中确认 trajectory 数组新增 off 记录
 - 改稿后发布 → trajectory 记录 `hasManualEdit=true`
 
@@ -306,7 +306,7 @@ flowchart TB
 - Happy path: 同一字段在 3 条 item 中均降级 → `topFields[0] = { field: 'tags', count: 3 }`
 
 **Verification:**
-- `pnpm test --filter publisher-fill-assistant`（degrade-stats 测试全绿）
+- `pnpm test --filter 51guapi-extension`（degrade-stats 测试全绿）
 - 手动运行一批 → 批次详情顶部显示正确汇总
 
 ---
@@ -392,7 +392,7 @@ flowchart TB
 - Integration: authorized 发布后 trajectory 记录含 `slotDiff`，`hasManualEdit` 与 `changedSlots.length > 0` 一致（一致性验证）
 
 **Verification:**
-- `pnpm test --filter publisher-fill-assistant`（draft-diff 测试全绿）
+- `pnpm test --filter 51guapi-extension`（draft-diff 测试全绿）
 - 发布改稿后的帖子 → trajectory 记录 `slotDiff.changedSlots` 列出改动字段
 
 ---
@@ -463,7 +463,7 @@ flowchart TB
 - Edge case: 上移第一张 / 下移最后一张 → 按钮 disabled
 
 **Verification:**
-- `pnpm test --filter publisher-fill-assistant`（FewShotPairEditor 测试全绿）
+- `pnpm test --filter 51guapi-extension`（FewShotPairEditor 测试全绿）
 - Settings UI 可见结构化卡片；保存后 `chrome.storage.local` 双字段正确
 
 ---
@@ -557,7 +557,7 @@ flowchart TB
 - Test isolation: 运行测试不碰真实 `pending.db`（PUBLISHER_DATA_DIR 指向临时目录）
 
 **Verification:**
-- `pnpm test --filter publisher-backend`（published-posts-routes 测试全绿）
+- `pnpm test --filter 51guapi-backend`（published-posts-routes 测试全绿）
 - authorized 发布后，`GET /api/v1/published-posts` 能查到新记录
 
 ---

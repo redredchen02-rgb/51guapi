@@ -225,7 +225,7 @@ Expected: FAIL with "Cannot find module './useAutoSave'"
 // packages/extension/entrypoints/sidepanel/hooks/useAutoSave.ts
 import { useCallback, useRef } from 'react';
 import { saveCurrentDraft } from '../../lib/storage';
-import type { ContentDraft } from '@51publisher/shared';
+import type { ContentDraft } from '@51guapi/shared';
 
 interface UseAutoSaveReturn {
   saveDraft: (draft: ContentDraft, immediate?: boolean) => void;
@@ -675,7 +675,7 @@ return (
         marginBottom: 8,
       }}
     >
-      <h1 style={{ fontSize: 16, margin: 0 }}>51publisher 填充助手</h1>
+      <h1 style={{ fontSize: 16, margin: 0 }}>51guapi 填充助手</h1>
       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
         {/* ... 现有按钮 */}
         <KeyboardShortcutsHelp />

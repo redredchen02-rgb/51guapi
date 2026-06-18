@@ -7,7 +7,7 @@ topic: comprehensive-capability-upgrade
 
 ## Problem Frame
 
-51publisher 工程基础扎实（286 单测 + 23 e2e、批量状态机、源接地防幻觉），但四个维度仍有明显短板影响每日可用性：
+51guapi 工程基础扎实（286 单测 + 23 e2e、批量状态机、源接地防幻觉），但四个维度仍有明显短板影响每日可用性：
 
 1. **自动抓取管线** — 基础设施已建（scheduler、site-adapter 接口、fact-extractor、pending-store、PendingTopicsView），但只有 demo 适配器、待审 UI 无法内联编辑事实字段、手动触发入口缺失，管线无法投入真实运营。
 2. **分类/标签准确性** — `normalizeCategory` 已修复分类降级；标签仍依赖自由文字模糊匹配，后台 3912 条 tag 选项命中率不稳定。

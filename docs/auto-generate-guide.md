@@ -89,16 +89,16 @@ ENRICHMENT_MAX_QUERIES=3
 
 ```bash
 # 1. 登录获取 token
-TOKEN=$(curl -s -X POST http://localhost:3001/api/v1/auth/login \
+TOKEN=$(curl -s -X POST http://localhost:3002/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{"password":"your-password"}' | jq -r '.token')
 
 # 2. 触发自动批量生成
-curl -s -X POST http://localhost:3001/api/v1/scraper/auto-generate \
+curl -s -X POST http://localhost:3002/api/v1/scraper/auto-generate \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
   -d '{"minConfidence": 0.5, "maxItems": 5}' | jq .
 
 # 3. 查看质量统计
-curl -s http://localhost:3001/api/v1/healthz | jq .quality
+curl -s http://localhost:3002/api/v1/healthz | jq .quality
 ```

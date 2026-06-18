@@ -138,7 +138,7 @@ export async function generateDraft(
 			kind: "network",
 			error: aborted
 				? "后端请求超时，请检查服务状态。"
-				: "无法连接到后端服务，请确认后端已在 127.0.0.1:3001 启动。",
+				: "无法连接到后端服务，请确认后端已在 127.0.0.1:3002 启动。",
 		};
 	} finally {
 		clearTimeout(timer);

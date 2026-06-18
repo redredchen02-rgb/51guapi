@@ -67,7 +67,7 @@ export function buildApp(): FastifyInstance {
 			},
 			servers: [
 				{
-					url: "http://localhost:3001",
+					url: "http://localhost:3002",
 					description: "开发服务器",
 				},
 			],

@@ -9,7 +9,7 @@ topic: harden-safety-net
 
 ## Problem Frame
 
-51publisher 已是成熟项目(智能化路线图全合 main、真发已验收)。一轮跨维度健检(经文档审查纠偏)发现"安全网"有几个**真实但比初判更窄**的洞:
+51guapi 已是成熟项目(智能化路线图全合 main、真发已验收)。一轮跨维度健检(经文档审查纠偏)发现"安全网"有几个**真实但比初判更窄**的洞:
 
 1. **tag 发布路径的测试步骤形同虚设**——`release.yml`(仅在 tag push 触发)的测试步骤标 `continue-on-error: true`,即便测试红仍继续打包扩展 zip + 建 Docker 镜像 + 发 GitHub Release。
    - 校正:`ci.yml` 已在**每次 push/PR** 跑 `pnpm -r test` 且无 `continue-on-error`,红测在 CI 已被拦。因此本项不是"红测悄悄发布",而是"release 流程的测试门是哑的,tag 时不再独立把关"——价值在于消除误导性的哑门、确保 tag 时仍有真实测试闸。

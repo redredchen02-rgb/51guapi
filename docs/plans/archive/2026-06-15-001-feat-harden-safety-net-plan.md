@@ -11,7 +11,7 @@ deepened: 2026-06-15
 
 ## Overview
 
-两条线收紧 51publisher 的「安全网」:**Theme A** 修 CI/发布闸门(release tag 路径的哑测门、`check:fixtures` 未进 CI、产物未校验、e2e 假绿);**Theme B** 为缺少直接/专属测试的安全关键路径补单测(`ssrf-allowlist`、`auth-middleware`、4 个 extension HTTP 客户端、`field-mapping` contract)。本计划只改 CI YAML 与新增测试,不改闸门逻辑、不做架构重构或产品扩展(见 origin 的 Scope Boundaries)。
+两条线收紧 51guapi 的「安全网」:**Theme A** 修 CI/发布闸门(release tag 路径的哑测门、`check:fixtures` 未进 CI、产物未校验、e2e 假绿);**Theme B** 为缺少直接/专属测试的安全关键路径补单测(`ssrf-allowlist`、`auth-middleware`、4 个 extension HTTP 客户端、`field-mapping` contract)。本计划只改 CI YAML 与新增测试,不改闸门逻辑、不做架构重构或产品扩展(见 origin 的 Scope Boundaries)。
 
 > 规划期纠偏(见 origin 修订):首版高估缺口。已核实 `post-assembler.test.ts`、`ssrf-guard.test.ts`(14 cases)、`pending-client.test.ts`、`published-posts-client.test.ts` 均存在;`field-mapping`/`auth-middleware` 有间接覆盖。本计划据实只补**真实未覆盖切面**。
 
@@ -56,12 +56,12 @@ deepened: 2026-06-15
     - `config-client.ts` — 4 个函数**真正接受并使用** `fetchFn: typeof fetch = fetch`(line 26/36 等),最易测,直接注入 mock。
     - `pending-client.ts`(模板)— `fetchFn?` 为**可选**,函数体 `fetchFn ? await fetchFn(...) : await fetchWithTimeout(...)`(line 90-92)。这是「注入则用、否则走 shared timeout」的混合模式。
     - `prompt-client.ts` — 有参数 `_fetchFn`(line 29)但**下划线前缀=未使用**,函数体实际调 `fetchWithTimeout`(line 35/64/96)。**注入它不会拦截请求**。
-    - `gossip-client.ts` — **无注入参数**,全部调 `fetchWithTimeout`(import 自 `@51publisher/shared`)。
+    - `gossip-client.ts` — **无注入参数**,全部调 `fetchWithTimeout`(import 自 `@51guapi/shared`)。
     - `auth-client.ts` — 提供 `getAuthHeaders`/`clearToken`,被其余 client import。
-    - → 让 prompt/gossip 可测需**改源码**(把 fetch 调用改为可注入,仿 pending-client 的 `fetchFn ? : fetchWithTimeout` 混合)**或** `vi.mock("@51publisher/shared")` mock 掉 `fetchWithTimeout`。非「加默认参数即可」的零改动。
+    - → 让 prompt/gossip 可测需**改源码**(把 fetch 调用改为可注入,仿 pending-client 的 `fetchFn ? : fetchWithTimeout` 混合)**或** `vi.mock("@51guapi/shared")` mock 掉 `fetchWithTimeout`。非「加默认参数即可」的零改动。
   - `packages/shared/src/field-mapping.ts` — 导出 `VALID_FIELD_TYPES`、`isValidFieldMapping(v): v is FieldMapping`(型别守卫)、`DEFAULT_FIELD_MAPPING`;**无专属测试**,仅经 config-client/fillers 间接覆盖。**注意**:`packages/shared` 包**无 vitest 依赖、无 test 脚本、无 vitest 配置** → 直接在 shared 内建测试需先装 runner;**更简做法**:把 field-mapping 测试放在 `packages/extension/lib/`(仿 `post-assembler.test.ts` 在 extension 内测 shared 代码),复用 extension 的 WxtVitest。
 - **CI(经核实)**:`.github/workflows/ci.yml`(push/PR,无 continue-on-error,真闸)步骤 = install → build shared → `pnpm -r compile` → **`pnpm lint`(= `biome check --write`,会改文件)+ `git diff --exit-code`** → `pnpm -r test`;**从不跑 e2e / check:fixtures / zip**。`release.yml`(`v*` tag)测试步 `continue-on-error: true`、docker build 步亦 `continue-on-error`;`Build extension zip`/`Prepare extension artifact` 无 `if:` 守卫;`Export/Upload Docker` 用 `if: success()`;另有独立 `release` job `needs: build-and-verify`。脚本:root `package.json` 仅 `test`/`compile`/`lint`/`lint:ci`;`packages/extension/package.json` `check:fixtures` = `bash scripts/check-fixture-secrets.sh`(**相对路径,仅在 repo 根 cwd 可解析**);**`scripts/check-all.sh` 确实存在**(lint:ci + `pnpm -r test` + build backend/extension + 校验 `.output`/`dist` 存在);`scripts/check-fixture-secrets.sh` 在 **repo 根** `./scripts/`(非 `packages/extension/scripts/`)。无 Makefile。
-  - ⚠️ **`pnpm --filter publisher-fill-assistant check:fixtures` 会失败**(cwd=packages/extension,`scripts/` 不存在 → exit 127,经 pnpm 上抛 exit 1)。正确调用是 **repo 根 `bash scripts/check-fixture-secrets.sh`**。
+  - ⚠️ **`pnpm --filter 51guapi-extension check:fixtures` 会失败**(cwd=packages/extension,`scripts/` 不存在 → exit 127,经 pnpm 上抛 exit 1)。正确调用是 **repo 根 `bash scripts/check-fixture-secrets.sh`**。
 
 ### Institutional Learnings
 
@@ -72,7 +72,7 @@ deepened: 2026-06-15
 
 - **R4 默认不把 LLM key 注入 CI**:仅让 skip 状态在 CI 摘要可见(避免凭证暴露面 + LLM 配额成本);「真跑」留本地/夜间。若用户要 CI 真跑,须限非 fork 推送并 mask。(可逆默认,执行时可改)
 - **R12/docker build 一并 gate**:release 既发布镜像,镜像构建失败应中断发布 → 移除 docker build 的 `continue-on-error`;并确认移除 Test 的 `continue-on-error` 后后续 step 的 `if:` 依赖正确。
-- **gossip/prompt-client 测试注入方式(已据实裁决)**:两者实际调 `fetchWithTimeout`(prompt 的 `_fetchFn` 是死参),**不是**加默认参数即可。**选定路径 A**:把 prompt/gossip 的 fetch 调用改为 pending-client 式混合 `fetchFn ? await fetchFn(...) : await fetchWithTimeout(...)`(prompt 把 `_fetchFn` 改为真正使用的 `fetchFn`),测试注入 mock。**回退路径 B**:`vi.mock("@51publisher/shared")` mock `fetchWithTimeout`(零源码改动,但 mock 粒度粗)。默认走 A(与 config/pending 一致),A 触及源码超预期时退 B。这是触及源码的小重构,**非向后兼容的零改动**。
+- **gossip/prompt-client 测试注入方式(已据实裁决)**:两者实际调 `fetchWithTimeout`(prompt 的 `_fetchFn` 是死参),**不是**加默认参数即可。**选定路径 A**:把 prompt/gossip 的 fetch 调用改为 pending-client 式混合 `fetchFn ? await fetchFn(...) : await fetchWithTimeout(...)`(prompt 把 `_fetchFn` 改为真正使用的 `fetchFn`),测试注入 mock。**回退路径 B**:`vi.mock("@51guapi/shared")` mock `fetchWithTimeout`(零源码改动,但 mock 粒度粗)。默认走 A(与 config/pending 一致),A 触及源码超预期时退 B。这是触及源码的小重构,**非向后兼容的零改动**。
 - **characterization 防呆**:每个安全路径测试先对照应然契约(fail-closed、token 拒绝、白名单语义)断言,实然≠应然则记 bug(不在本轮修,除 R11),绝不锁死错误行为。
 
 ## Open Questions
@@ -107,7 +107,7 @@ deepened: 2026-06-15
 - Modify: `TODOS.md`(据结果关闭/保留 P0)
 - Modify: `CLAUDE.md`(**仅**改 remote/活跃 CI 为 GitHub Actions、`.gitlab-ci.yml` 不存在;**保留** `scripts/check-all.sh` 描述——经核实它属实)
 - Modify: `.ai-memory/*.md`(同上;若机器再生则定位生成源)
-**Approach:** `pnpm --filter publisher-backend test`(**正确包名**,非 `@51publisher/backend`)实跑确认 P0;因 `backend/vitest.config.ts` 排除 `dist/**`,**预期不复现**,据实关 TODO。CLAUDE.md 第 13 行改 GitLab→GitHub。两类任务(基线确认 / 文档改正)风险都小,可合一 commit;基线确认是 Unit 5–8 的门,文档改正不阻塞。
+**Approach:** `pnpm --filter 51guapi-backend test`(**正确包名**,非 `@51guapi/backend`)实跑确认 P0;因 `backend/vitest.config.ts` 排除 `dist/**`,**预期不复现**,据实关 TODO。CLAUDE.md 第 13 行改 GitLab→GitHub。两类任务(基线确认 / 文档改正)风险都小,可合一 commit;基线确认是 Unit 5–8 的门,文档改正不阻塞。
 **Test expectation:** none — 文档/基线确认,无行为变更。
 **Verification:** `pnpm -r test` 绿;TODOS P0 状态有据;CLAUDE.md/`.ai-memory` 无「GitLab CI」陈述且未误删 check-all.sh 描述。
 
@@ -131,7 +131,7 @@ deepened: 2026-06-15
 **Files:**
 - Modify: `.github/workflows/ci.yml`(新增 step **`run: bash scripts/check-fixture-secrets.sh`,cwd=repo 根**)
 - Modify(建议): `packages/extension/package.json`(修 `check:fixtures` 脚本路径,使其从任一 cwd 可用,或挪到 root `package.json`)
-**Approach:** **不要用** `pnpm --filter publisher-fill-assistant check:fixtures`——经核实 cwd=packages/extension 下脚本路径不存在,会 exit 1(不是静默无效,但 step 会红/坏)。正确做法是 repo 根直接跑该脚本。step 排在 install 后、任何 artifact/secret 步骤前。确认脚本内 `FIXTURE_DIR`(相对路径)在 repo 根解析到真实 fixtures。注意 ci.yml 的 `pnpm lint`(`biome check --write`)会改文件,新 step 应放在 lint+`git diff` 之后或不依赖干净树。
+**Approach:** **不要用** `pnpm --filter 51guapi-extension check:fixtures`——经核实 cwd=packages/extension 下脚本路径不存在,会 exit 1(不是静默无效,但 step 会红/坏)。正确做法是 repo 根直接跑该脚本。step 排在 install 后、任何 artifact/secret 步骤前。确认脚本内 `FIXTURE_DIR`(相对路径)在 repo 根解析到真实 fixtures。注意 ci.yml 的 `pnpm lint`(`biome check --write`)会改文件,新 step 应放在 lint+`git diff` 之后或不依赖干净树。
 **Test scenarios:**
 - Happy path:正常 fixture → step 绿。
 - Error path:fixture 植入假 token → step 红、阻断合并。
@@ -145,7 +145,7 @@ deepened: 2026-06-15
 **Dependencies:** 无
 **Files:**
 - Modify: `.github/workflows/ci.yml`(新增 build + 产物存在断言;e2e step 暴露 skip 计数)
-**Approach:** **复用** `scripts/check-all.sh` 的产物校验尾段思路(`pnpm --filter publisher-backend build`、`pnpm --filter publisher-fill-assistant build`,断言 `packages/extension/.output` 与 `packages/backend/dist` 存在)——ci.yml 当前不建这两者。**不要**整段调 check-all.sh(它会重复 lint:ci + 全量 test)。e2e 可见性:让 `test:e2e` 的 skip 计数写入 `$GITHUB_STEP_SUMMARY`(选最简机制)。
+**Approach:** **复用** `scripts/check-all.sh` 的产物校验尾段思路(`pnpm --filter 51guapi-backend build`、`pnpm --filter 51guapi-extension build`,断言 `packages/extension/.output` 与 `packages/backend/dist` 存在)——ci.yml 当前不建这两者。**不要**整段调 check-all.sh(它会重复 lint:ci + 全量 test)。e2e 可见性:让 `test:e2e` 的 skip 计数写入 `$GITHUB_STEP_SUMMARY`(选最简机制)。
 **Test scenarios:**
 - Happy path:build 产出 `.output`/`dist` 存在 → step 绿。
 - Edge case:e2e 因无 API_KEY 全 skip → CI 摘要人类可读显示「N skipped」,而非静默绿。
@@ -205,7 +205,7 @@ deepened: 2026-06-15
 - Create: `packages/extension/lib/gossip-client.test.ts`
 - Modify: `packages/extension/lib/prompt-client.ts`(把死参 `_fetchFn` 改为函数体真正使用的 `fetchFn`,仿 pending-client 混合模式)
 - Modify: `packages/extension/lib/gossip-client.ts`(加可注入的 `fetchFn`,`fetchFn ? : fetchWithTimeout`)
-**Approach:** config-client 已真用 `fetchFn` → 直接注入 `mockFetch().fn`。prompt/gossip 走 **路径 A**(改源码为 pending-client 式混合注入);若改动超预期退 **路径 B**(`vi.mock("@51publisher/shared")` mock `fetchWithTimeout`)。auth-client 测 `getAuthHeaders`/`clearToken` 形态。**这是触及源码的小重构,非零改动**——改后 `pnpm -r compile` 与既有调用点(background.ts 等)须仍绿(保留默认参数 = 原 fetch 路径)。
+**Approach:** config-client 已真用 `fetchFn` → 直接注入 `mockFetch().fn`。prompt/gossip 走 **路径 A**(改源码为 pending-client 式混合注入);若改动超预期退 **路径 B**(`vi.mock("@51guapi/shared")` mock `fetchWithTimeout`)。auth-client 测 `getAuthHeaders`/`clearToken` 形态。**这是触及源码的小重构,非零改动**——改后 `pnpm -r compile` 与既有调用点(background.ts 等)须仍绿(保留默认参数 = 原 fetch 路径)。
 **Patterns to follow:** `packages/extension/lib/pending-client.test.ts`(`fakeBrowser.reset`、`mockFetch`、`fetchFn ? : fetchWithTimeout` 混合)。
 **Test scenarios:**
 - Happy path(每 client):2xx → 正确解析;请求带 `getAuthHeaders()` 的 Bearer 头、命中预期 URL。
@@ -222,7 +222,7 @@ deepened: 2026-06-15
 **Dependencies:** Unit 1
 **Files:**
 - Create: `packages/extension/lib/field-mapping.test.ts`(**放 extension**,复用 WxtVitest;仿 `post-assembler.test.ts` 在 extension 内测 shared 代码)
-**Approach:** 从 `@51publisher/shared` import,测 `isValidFieldMapping`/`DEFAULT_FIELD_MAPPING`/`VALID_FIELD_TYPES`。**不要**在 `packages/shared` 内建测试——该包无 vitest 依赖/脚本/配置,装 runner 是额外未规划工作;放 extension 即复用现成运行器。**真后台漂移契约不在此**(归 e2e `fixture-contract.test.ts`,且按 field name/option `value:text` 断言而非字面 URL,见 learnings)。
+**Approach:** 从 `@51guapi/shared` import,测 `isValidFieldMapping`/`DEFAULT_FIELD_MAPPING`/`VALID_FIELD_TYPES`。**不要**在 `packages/shared` 内建测试——该包无 vitest 依赖/脚本/配置,装 runner 是额外未规划工作;放 extension 即复用现成运行器。**真后台漂移契约不在此**(归 e2e `fixture-contract.test.ts`,且按 field name/option `value:text` 断言而非字面 URL,见 learnings)。
 **Patterns to follow:** `packages/extension/lib/post-assembler.test.ts`(extension 内测 shared 纯逻辑)。
 **Test scenarios:**
 - Happy path:`isValidFieldMapping(DEFAULT_FIELD_MAPPING)` → true。

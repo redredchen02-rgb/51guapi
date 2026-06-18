@@ -303,7 +303,7 @@ graph TB
 | Operator confuses prose-placeholder items (unfixable here) for fillable ones | Overlay keys off missing fact slots; explicit regenerate affordance for prose-only (Unit 6) |
 | Two writers of `draft`/`snapshot` (inline edit via `patchBatchDrafts` vs. facts-refill) silently clobber each other | Explicit precedence rule + test in Unit 6 (refill regenerates draft wholesale; inline edits on gate-failed items lost or blocked) |
 | **Single-item publish parity gap widens.** `publish-orchestrator.ts` has NO grounding hard-gate; this feature hardens the batch path further, widening the asymmetry. Operators may wrongly assume single-item publish is grounding-gated. | Out of scope here, but tracked as separate follow-up work; recorded so it is an owned (not silent) residual exposure, consistent with the 2026-06-11 plan's accepted-residual pattern |
-| `shared` dist not rebuilt before extension typecheck | Rebuild `@51publisher/shared` before extension compile (per AGENTS.md build order) |
+| `shared` dist not rebuilt before extension typecheck | Rebuild `@51guapi/shared` before extension compile (per AGENTS.md build order) |
 
 ## Sources & References
 

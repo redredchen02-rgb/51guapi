@@ -123,7 +123,7 @@ graph TB
 - Edge：IPv6-only host、多 A 記錄取其一、DNS 失敗 → 既有行為不回歸。
 - 等價性：既有 timeout/maxHops/allowlistCheck 測試保持綠。
 
-**Verification:** `pnpm --filter publisher-backend test` 綠；新增 rebinding 測試證明連線 IP 被釘且私網被拒；`grep` 確認 fetch 路徑都帶 dispatcher。
+**Verification:** `pnpm --filter 51guapi-backend test` 綠；新增 rebinding 測試證明連線 IP 被釘且私網被拒；`grep` 確認 fetch 路徑都帶 dispatcher。
 
 ---
 
@@ -189,7 +189,7 @@ graph TB
 - Security：亞美尼亞/切羅基同形 label → 拒。
 - Edge：含 CJK 的合法多 label（`新闻.example.com`）→ 放行；`domainToASCII` 後可比對一致。
 
-**Verification:** `pnpm --filter publisher-backend test` 綠；純單一非拉丁脚本同形被拒；ASCII+CJK 放行；全庫無回歸。
+**Verification:** `pnpm --filter 51guapi-backend test` 綠；純單一非拉丁脚本同形被拒；ASCII+CJK 放行；全庫無回歸。
 
 ## System-Wide Impact
 

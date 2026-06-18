@@ -35,7 +35,7 @@ cp packages/backend/.env.example packages/backend/.env
 pnpm dev:backend
 ```
 
-> 启动成功验证：`curl http://127.0.0.1:3001/api/v1/healthz` 返回 `{"status":"ok"}`
+> 启动成功验证：`curl http://127.0.0.1:3002/api/v1/healthz` 返回 `{"status":"ok"}`
 
 ### 3. 构建并加载扩展
 
@@ -131,7 +131,7 @@ TG_CHAT_ID=<你的 chat id>
 │   │   ├── entrypoints/
 │   │   │   └── sidepanel/              # React UI：渠道/选题/草稿预览/导出/设置
 │   │   └── lib/                        # 核心逻辑（提炼、导出、客户端…）
-│   ├── backend/            # Fastify 5 + TypeScript，端口 3001
+│   ├── backend/            # Fastify 5 + TypeScript，端口 3002
 │   │   └── src/
 │   │       ├── routes/                 # 按模块分文件的路由（gossip/pending/channels/prompt）
 │   │       └── scraper/                # 爬取与提炼管线（SSRF 守卫 + 通用 adapter）

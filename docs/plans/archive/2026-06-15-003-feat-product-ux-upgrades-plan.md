@@ -69,8 +69,8 @@ date: 2026-06-15
 ### Institutional Learnings
 
 - **`docs/plans/2026-06-11-005-fix-grounding-gate-rewrite-bypass-plan.md`(必读 for R2)**:gate 评估 `assembledDraftSnapshot`(post-assembler 原稿,只读),防 AI 重写/手编洗白 `【待补】` 绕过铁律。**R2 的核心产品决策**:手编后重评新稿(可被洗白)还是锚定原快照?+ 状态机不变量:gate-failed 不得无人工动作自动升格;`retryItem` 回流的 markFilled 前须重捕快照。
-- `docs/solutions/extension-http-client-testability-injection-seam-2026-06-15.md`:两个 `llm.ts` 已用真 `fetchFn` 注入缝,可放心 mock;走 `fetchWithTimeout` 的用 `vi.mock("@51publisher/shared")`。→ E1/E4 测试直接相关。
-- `docs/solutions/vitest-excludes-dist-phantom-backend-p0-2026-06-15.md`:包名 `publisher-backend`/`publisher-fill-assistant`,backend vitest 排除 dist。
+- `docs/solutions/extension-http-client-testability-injection-seam-2026-06-15.md`:两个 `llm.ts` 已用真 `fetchFn` 注入缝,可放心 mock;走 `fetchWithTimeout` 的用 `vi.mock("@51guapi/shared")`。→ E1/E4 测试直接相关。
+- `docs/solutions/vitest-excludes-dist-phantom-backend-p0-2026-06-15.md`:包名 `51guapi-backend`/`51guapi-extension`,backend vitest 排除 dist。
 - la-sealion/gemma4 endpoint:需 prompt 内指定 JSON、`json_schema` 支持不稳(已有 400 降级)、env 钉死、必须 https。→ E4 分桶依据。
 - Theme C(`2026-06-15-002`):小而独立 PR;错误串被 UI 按字面消费(改 UI 文案/状态串当心组件测试字面断言)。
 
@@ -120,7 +120,7 @@ date: 2026-06-15
 - Error:连不上后端 → 「后端不可达(检查 3001)」。
 - Error:LLM 侧(500,含 LLM 不可达/config 错误/空列表)→ 合并一态「后端可达但 LLM/配置异常」。
 - 安全:后端错误体含疑似 endpoint/key 文本时,UI 仍显示**固定文案**、不回显原始 body。
-**Verification:** 各态固定文案正确、无原始错误体回显;`pnpm --filter publisher-fill-assistant test` + `compile` 绿;手动点一次真实测连接(冒烟)。
+**Verification:** 各态固定文案正确、无原始错误体回显;`pnpm --filter 51guapi-extension test` + `compile` 绿;手动点一次真实测连接(冒烟)。
 
 - [x] **Unit E4: LLM 429/503 退避重试(后端)**
 
@@ -143,7 +143,7 @@ date: 2026-06-15
 - Edge(分桶):`callLlmForJson` 200 + 非法 JSON(gemma4)→ **立即 `ok:false`、不重试**(sleep 0 次)。
 - Integration:`callLlmForJson` 持续 5xx → 重试耗尽返 `ok:false`、**不 throw**(`expect(...).not.toThrow()`)。
 - 安全:429 重试路径的日志/返回串不含 key/header/原始 body。
-**Verification:** 新增/改造测试绿;现有 429→next-model / 400→降级断言不破;退避用注入时钟、不真 sleep;`pnpm --filter publisher-backend test` + `compile` 绿。
+**Verification:** 新增/改造测试绿;现有 429→next-model / 400→降级断言不破;退避用注入时钟、不真 sleep;`pnpm --filter 51guapi-backend test` + `compile` 绿。
 
 - [x] **Unit E3: 隔离区视图 + 批量撤出**
 

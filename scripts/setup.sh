@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 51publisher 0-to-1 setup script
+# 51guapi 0-to-1 setup script
 # Usage: bash scripts/setup.sh
 # Handles: Node check, pnpm install, .env init, backend build & start.
 set -euo pipefail
@@ -8,7 +8,7 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 ENV_FILE="$REPO_ROOT/packages/backend/.env"
 ENV_EXAMPLE="$REPO_ROOT/packages/backend/.env.example"
 DIST_JS="$REPO_ROOT/packages/backend/dist/index.js"
-HEALTHZ="http://localhost:3001/api/v1/healthz"
+HEALTHZ="http://localhost:3002/api/v1/healthz"
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; NC='\033[0m'
 
@@ -178,7 +178,7 @@ echo ""
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${GREEN}  ✅ 设置完成！${NC}"
 echo ""
-echo -e "  后端地址: ${CYAN}http://localhost:3001${NC}"
+echo -e "  后端地址: ${CYAN}http://localhost:3002${NC}"
 echo -e "  健康检查: ${CYAN}$HEALTHZ${NC}"
 echo -e "  后端日志: ${CYAN}$LOG_FILE${NC}"
 echo -e "  停止服务: ${CYAN}kill \$(cat /tmp/51guapi-backend.pid)${NC}"

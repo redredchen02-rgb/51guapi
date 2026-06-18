@@ -7,9 +7,9 @@ pnpm: 9.x
 ## 測量結果
 
 ```bash
-# pnpm --filter publisher-backend build   (冷快取)
-# pnpm --filter publisher-fill-assistant build   (冷快取)
-# pnpm --filter @51publisher/shared build        (冷快取)
+# pnpm --filter 51guapi-backend build   (冷快取)
+# pnpm --filter 51guapi-extension build   (冷快取)
+# pnpm --filter @51guapi/shared build        (冷快取)
 ```
 
 > ⚠️ 基線值為一次性測量，啟動 CI 後應更新為實際 CI 環境數據。
@@ -20,9 +20,9 @@ pnpm: 9.x
 
 | 構建目標 | 當前時間 | CI 目標 | 優化觸發線 |
 |----------|----------|---------|-----------|
-| `@51publisher/shared` | TBD | < 5s | > 10s |
-| `publisher-backend` | TBD | < 15s | > 30s |
-| `publisher-fill-assistant` | TBD | < 30s | > 60s |
+| `@51guapi/shared` | TBD | < 5s | > 10s |
+| `51guapi-backend` | TBD | < 15s | > 30s |
+| `51guapi-extension` | TBD | < 30s | > 60s |
 
 ## CI 構建時間歷史
 

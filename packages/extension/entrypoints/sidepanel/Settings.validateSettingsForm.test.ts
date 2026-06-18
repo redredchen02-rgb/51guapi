@@ -10,7 +10,7 @@ describe("validateSettingsForm", () => {
 		expect(
 			validateSettingsForm({
 				endpoint: "https://api.example.com",
-				backendUrl: "http://localhost:3001",
+				backendUrl: "http://localhost:3002",
 			}),
 		).toBeNull();
 	});
@@ -19,7 +19,7 @@ describe("validateSettingsForm", () => {
 		expect(
 			validateSettingsForm({
 				endpoint: "",
-				backendUrl: "http://127.0.0.1:3001",
+				backendUrl: "http://127.0.0.1:3002",
 			}),
 		).toBeNull();
 	});

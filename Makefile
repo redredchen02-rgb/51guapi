@@ -5,7 +5,7 @@ setup:
 	git config core.hooksPath scripts/git-hooks
 
 dev:
-	pnpm --filter publisher-backend dev & pnpm --filter publisher-fill-assistant dev
+	pnpm --filter 51guapi-backend dev & pnpm --filter 51guapi-extension dev
 
 test:
 	pnpm -r test

@@ -105,7 +105,7 @@ origin: docs/brainstorms/2026-06-12-001-complete-publish-workflow-requirements.m
 - 现有两个测试用例期望值更新即可，不需要新增
 
 **Verification:**
-- `pnpm --filter @51publisher/backend test` 全绿
+- `pnpm --filter @51guapi/backend test` 全绿
 
 ---
 
@@ -138,7 +138,7 @@ origin: docs/brainstorms/2026-06-12-001-complete-publish-workflow-requirements.m
 - Edge case: `publishUrl` 为空时 `publishUrl` 字段 = `""` 而非 `undefined`
 
 **Verification:**
-- `pnpm --filter publisher-fill-assistant test` 绿；`published_posts` 相关测试通过
+- `pnpm --filter 51guapi-extension test` 绿；`published_posts` 相关测试通过
 
 ---
 

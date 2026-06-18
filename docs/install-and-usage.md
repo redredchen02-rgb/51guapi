@@ -1,6 +1,6 @@
 # 安装与使用指南
 
-51publisher 由两部分组成:一个 **Chrome 扩展**（生成草稿 + 填充表单）和一个**本地后端服务**（持久化批次、抓取选题、健康监控）。
+51guapi 由两部分组成:一个 **Chrome 扩展**（生成草稿 + 填充表单）和一个**本地后端服务**（持久化批次、抓取选题、健康监控）。
 
 > 🛡️ **防幻觉核心**:模型**只负责写口吻散文**;作品名、集数、连结等事实由**系统从你提供的事实里原样填入正文,模型碰不到**——从流程上让它没机会编造连结或作品事实。
 
@@ -21,7 +21,7 @@
 
 ```bash
 git clone <仓库地址>
-cd 51publisher
+cd 51guapi
 
 # 首次克隆后启用脱敏 pre-commit hook（只需一次）
 git config core.hooksPath scripts/git-hooks
@@ -59,7 +59,7 @@ node -e "console.log(require('node:crypto').randomBytes(48).toString('hex'))"
 node packages/backend/scripts/hash-password.mjs
 ```
 
-> **`CORS_ORIGIN` 怎么找？** 先跳到第四步构建并加载扩展，然后打开 `chrome://extensions`，找到 51publisher 扩展，复制 ID（格式如 `abcdef123456`），填入 `chrome-extension://abcdef123456`。多个 ID 用逗号分隔。
+> **`CORS_ORIGIN` 怎么找？** 先跳到第四步构建并加载扩展，然后打开 `chrome://extensions`，找到 51guapi 扩展，复制 ID（格式如 `abcdef123456`），填入 `chrome-extension://abcdef123456`。多个 ID 用逗号分隔。
 
 ### 3-2 启动
 
@@ -75,18 +75,18 @@ node packages/backend/dist/index.js
 启动成功后，终端显示：
 
 ```
-Server listening at http://127.0.0.1:3001
+Server listening at http://127.0.0.1:3002
 ```
 
-验证：`curl http://127.0.0.1:3001/api/v1/healthz` 应返回 `{"status":"ok",...}`。
+验证：`curl http://127.0.0.1:3002/api/v1/healthz` 应返回 `{"status":"ok",...}`。
 
 ### 3-3 macOS 开机自动启动（可选）
 
 ```bash
 # 先把 .env 放到专用安全目录（权限收紧）
-mkdir -p ~/.51publisher
-cp packages/backend/.env ~/.51publisher/.env
-chmod 600 ~/.51publisher/.env
+mkdir -p ~/.51guapi
+cp packages/backend/.env ~/.51guapi/.env
+chmod 600 ~/.51guapi/.env
 
 # 注册 launchd daemon（开机自启）
 bash scripts/launchd/install.sh
@@ -95,7 +95,7 @@ bash scripts/launchd/install.sh
 bash scripts/launchd/uninstall.sh
 ```
 
-日志写入 `/tmp/51publisher-backend.log`。
+日志写入 `/tmp/51guapi-backend.log`。
 
 ---
 
@@ -125,7 +125,7 @@ pnpm build:extension
 | **LLM endpoint** | 填 `https://la-sealion.inaiai.com/v1`，系统会自动补 `/chat/completions`。 |
 | **API key** | 你在 la-sealion 平台的 API Key。⚠️ 明文存于本地浏览器，并随请求发往 endpoint——**只配可信地址**。 |
 | **模型** | 填好上面两项后，点「**↻ 拉取模型列表**」→ 下拉选择 `gemma4-31b-heretic`；拉不到也可直接手填模型名。 |
-| **后端 URL** | 本地后端地址，默认 `http://127.0.0.1:3001`。 |
+| **后端 URL** | 本地后端地址，默认 `http://127.0.0.1:3002`。 |
 | **Prompt 模板** | 已内置「51娘 + 只写口吻散文」契约，通常无需改。 |
 | **Few-shot 范例** | 已内置脱敏范例；可改，但**别写真实连结**（会随请求外发）。 |
 | **字段映射** | 默认值来自现场勘查，后台改版时才需按指南更新。 |
@@ -138,7 +138,7 @@ pnpm build:extension
 
 ### 单条流程
 
-1. 在 51publisher 后台打开「添加帖子」表单。
+1. 在 51guapi 后台打开「添加帖子」表单。
 2. 侧边栏输入主题 →「**生成草稿**」。
 3. 预览区核对/修改草稿内容。
 4. 「**填充到当前页**」→ 看「填充结果」面板：绿=已填 / 黄=跳过 / 红=需手动。

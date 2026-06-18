@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-echo "=== 51publisher Full CI Simulation ==="
+echo "=== 51guapi Full CI Simulation ==="
 echo ""
 
 echo "=> [1/6] Installing dependencies..."

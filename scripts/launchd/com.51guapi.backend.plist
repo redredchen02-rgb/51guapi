@@ -6,7 +6,7 @@
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.51publisher.backend</string>
+    <string>com.51guapi.backend</string>
 
     <key>ProgramArguments</key>
     <array>
@@ -33,8 +33,8 @@
     <true/>
 
     <key>StandardOutPath</key>
-    <string>__HOME__/.51publisher/backend.log</string>
+    <string>__HOME__/.51guapi/backend.log</string>
     <key>StandardErrorPath</key>
-    <string>__HOME__/.51publisher/backend.log</string>
+    <string>__HOME__/.51guapi/backend.log</string>
 </dict>
 </plist>

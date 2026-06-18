@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 吃瓜小帮手 (51guapi):锁定 URL 爬取目标站资源 → AI 提炼成吃瓜草稿 → 人工预览/编辑 → 导出 JSON / Markdown。**只爬取 + 提炼 + 导出,不发布、不写回任何站点。** pnpm monorepo,三个包:
 
 - `packages/extension/` — Chrome 扩展(WXT + React 19 + Manifest V3),仅支持 Chromium
-- `packages/backend/` — Fastify 5 + TypeScript,端口 3001(JWT 鉴权、多渠道爬取/提炼管线、SSRF 守卫)
+- `packages/backend/` — Fastify 5 + TypeScript,端口 3002(JWT 鉴权、多渠道爬取/提炼管线、SSRF 守卫)
 - `packages/shared/` — 跨端共享类型与纯逻辑(`@51guapi/shared`:facts、vocab、export 等)
 
 仓库 remote 是 **GitHub**(github.com/redredchen02-rgb/51guapi);活跃 CI 是 `.github/workflows/`(`ci.yml` push/PR 真闸、`release.yml` `v*` tag)。根目录无 `.gitlab-ci.yml`。`scripts/check-all.sh` 存在(lint:ci + 测试 + 双端 build + 产物校验)。

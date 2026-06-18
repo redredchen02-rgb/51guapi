@@ -10,7 +10,7 @@ status: superseded
 > 已**回退**的部分：JSON→SQLite 统一迁移（batch/prompt 回退为 JSON，仅 pending/config 留 SQLite）。
 > 其余维度（前端质量、测试大补强、运维设施）**延后**，首飞后依真实数据量再评估。
 
-# 全面優化企劃書 — 51publisher
+# 全面優化企劃書 — 51guapi
 
 ## 概覽
 
@@ -72,7 +72,7 @@ rate limiting、CORS、日誌、JWT refresh。
 
 **A1.1 建立 package 結構**
 
-- `packages/shared/package.json` → name `@51publisher/shared`, type: module, build: tsc
+- `packages/shared/package.json` → name `@51guapi/shared`, type: module, build: tsc
 - `packages/shared/tsconfig.json` → extends root tsconfig, composite: true, outDir: dist
 - `pnpm-workspace.yaml` → 確認已包含 `packages/*`
 - root `tsconfig.json` → 加入 `references` 指向 shared
@@ -82,14 +82,14 @@ rate limiting、CORS、日誌、JWT refresh。
 - 逐檔比對兩邊的 diff（利用 `diff` 指令或手動確認）
 - 將共同部分遷入 `packages/shared/src/`
 - 兩邊特有部分留在原地（例如 extension 的 `PENDING_TOPICS_KEY` 等常數、backend 的 `ScrapedContent` 等）
-- `package.json` 中用 `"@51publisher/shared": "workspace:*"` 引用
-- Backend 的 `import` 改為 `import { ContentDraft } from '@51publisher/shared'`
+- `package.json` 中用 `"@51guapi/shared": "workspace:*"` 引用
+- Backend 的 `import` 改為 `import { ContentDraft } from '@51guapi/shared'`
 - Extension 同理（Vite 會自動 resolve workspace protocol）
 - 刪除兩邊各自的 `types.ts`/`facts.ts`/`field-mapping.ts`/`post-assembler.ts`/`vocab.ts`
 
 **A1.3 驗證**
 
-- `pnpm --filter @51publisher/shared build` → dist/ 產出正確
+- `pnpm --filter @51guapi/shared build` → dist/ 產出正確
 - `pnpm --filter backend build` → 零錯誤
 - `pnpm --filter extension build` → 零錯誤
 - `pnpm test` → 現有測試全綠
@@ -403,7 +403,7 @@ await server.register(rateLimit, {
 - 建立簡單的 logger 抽象 `packages/extension/lib/logger.ts`
 - 提供 `logger.info()`, `logger.error()`, `logger.warn()`
 - 開發環境輸出到 console，生產環境可選擇儲存或靜默
-- 統一格式: `[51publisher] [level] message {context}`
+- 統一格式: `[51guapi] [level] message {context}`
 
 ### E5. Config Routes 持久化
 
@@ -421,8 +421,8 @@ await server.register(rateLimit, {
 
 ### Phase A
 - [ ] `packages/shared/` 可 build，產出正確的 `.d.ts` + `.js`
-- [ ] Backend 所有 `import` 從 `./shared/` 改為 `@51publisher/shared`
-- [ ] Extension 所有 `import` 從 `./lib/` 改為 `@51publisher/shared`
+- [ ] Backend 所有 `import` 從 `./shared/` 改為 `@51guapi/shared`
+- [ ] Extension 所有 `import` 從 `./lib/` 改為 `@51guapi/shared`
 - [ ] 刪除舊的 `backend/src/shared/` 和 `extension/lib/` 的重複檔案
 - [ ] `pnpm test` 全綠
 - [ ] `pnpm compile` 零錯誤

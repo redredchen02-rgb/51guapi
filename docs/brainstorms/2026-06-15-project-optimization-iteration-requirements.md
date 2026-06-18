@@ -7,7 +7,7 @@ topic: project-optimization-iteration
 
 ## Problem Frame
 
-51publisher 的核心逻辑已经成熟且硬：三世界模型、防幻觉事实注入、安全闸门链（auth fail-closed / SSRF 默认拒绝 / 发布·grounding 闸 / XSS 消毒）都真实落地且有对抗性测试守护。一次四维度体检（安全 / 技术债 / 测试 / DX-Ops）确认：**风险不在脊椎，在边缘**——项目指南文件与现实脱节、首飞运营从未执行、CI/测试是「被动漂移」架构。
+51guapi 的核心逻辑已经成熟且硬：三世界模型、防幻觉事实注入、安全闸门链（auth fail-closed / SSRF 默认拒绝 / 发布·grounding 闸 / XSS 消毒）都真实落地且有对抗性测试守护。一次四维度体检（安全 / 技术债 / 测试 / DX-Ops）确认：**风险不在脊椎，在边缘**——项目指南文件与现实脱节、首飞运营从未执行、CI/测试是「被动漂移」架构。
 
 受影响者是**单人运营者**：照错误文件走会浪费除错时间；「可上线」目前是愿望而非事实。本轮目标是把这些边缘缺口一次收齐，让项目从「能跑的代码」变成「可信地上线并维护的产品」。
 
@@ -16,7 +16,7 @@ topic: project-optimization-iteration
 ## Requirements
 
 **A. 真相校正（文件 vs 现实，P0）**
-- R1. 修正 `CLAUDE.md` / `AGENTS.md` / `.ai-memory/*` 中所有「remote 是 GitLab」「活跃 CI 是 `.gitlab-ci.yml`」的陈述：实际 remote 为 `github.com/redredchen02-rgb/51publisher`，活跃 CI 为 `.github/workflows/`（`.gitlab-ci.yml` 不存在）。删除全部死掉的 GitLab 引用。
+- R1. 修正 `CLAUDE.md` / `AGENTS.md` / `.ai-memory/*` 中所有「remote 是 GitLab」「活跃 CI 是 `.gitlab-ci.yml`」的陈述：实际 remote 为 `github.com/redredchen02-rgb/51guapi`，活跃 CI 为 `.github/workflows/`（`.gitlab-ci.yml` 不存在）。删除全部死掉的 GitLab 引用。
 - R2. 修正 `CLAUDE.md` 中「路由在 `index.ts` 统一 `register*Routes`」的描述——实际**大部分**路由在 `app.ts` 注册，`index.ts` 仅注册 `registerDraftRoutes`（措辞勿写成「全部移到 app.ts」，否则制造新漂移）；顺带复核 e2e/field-mapping guide 的同类陈述。
 
 **B. 首飞运营 Runbook（P0）**
@@ -67,7 +67,7 @@ topic: project-optimization-iteration
 - 范围全包的原始理由「体检已暴露全貌，一次收齐优于分批」未对比「先 A+B 上线、C-E 后置」的更小子集；审查后采纳更小子集（A→C→B→D），P2 后置。
 
 ## Dependencies / Assumptions
-- 假设 `github.com/redredchen02-rgb/51publisher` 是唯一正确 remote（已 `git remote -v` 验证）。
+- 假设 `github.com/redredchen02-rgb/51guapi` 是唯一正确 remote（已 `git remote -v` 验证）。
 - R3/R4 依赖运营者持有真实 `.env` 与目标站点登录态；规划无法代替执行。
 - **e2e 跑在 jsdom（非真浏览器）+ 真 Quill 2.0.2**（已核 `vitest.e2e.config.ts` `environment: "jsdom"`）——CI 无需 headless 浏览器，只需确认 jsdom 下 Quill 依赖可装，余下仅「CI runner 稳定性」为真正待验项。
 - **扩展 id 已固定**：`wxt.config.ts` 设 `key: EXTENSION_KEY`（有硬编默认值），manifest 含固定 key → `chrome-extension://<id>` 确定。CORS allowlist 可由该 key 直接算出 id；唯一变量是 CI/release 是否经 env 覆盖 `EXTENSION_KEY`。

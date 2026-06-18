@@ -3,7 +3,7 @@ date: 2026-06-04
 topic: iteration-and-e2e-testing
 ---
 
-# 51publisher 填充助手:迭代节奏与 e2e 测试
+# 51guapi 填充助手:迭代节奏与 e2e 测试
 
 ## Problem Frame
 

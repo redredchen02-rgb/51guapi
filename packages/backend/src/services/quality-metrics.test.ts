@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 const _TEST_DB_PATH = join(process.cwd(), "data", "test-quality.db");
 
 // Mock 环境变量
-process.env.PUBLISHER_DATA_DIR = join(process.cwd(), "data");
+process.env.GUAPI_DATA_DIR = join(process.cwd(), "data");
 
 import { getDb, initPendingDb } from "../scraper/pending-db.js";
 import {

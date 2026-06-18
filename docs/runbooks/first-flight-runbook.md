@@ -51,7 +51,7 @@
 
 ## Step 5 — 推送 GitHub 🔴
 
-- [ ] 确认 GitHub `redredchen02-rgb/51publisher` 仓库为**私有**。
+- [ ] 确认 GitHub `redredchen02-rgb/51guapi` 仓库为**私有**。
 - [ ] `git push` feat 分支与 rescue 分支。
 - [ ] 首飞成功后再备份 `data/`（备份**绝不落 `data/` 内**——后端测试 `cleanData()` 会 `rmSync data/`）。
 
@@ -59,5 +59,5 @@
 
 ## 完成后
 
-- [ ] 更新 `.ai-memory/project_51publisher.md` 的首飞状态（从「待运营者动作」移到「已完成」）。
+- [ ] 更新 `.ai-memory/project_51guapi.md` 的首飞状态（从「待运营者动作」移到「已完成」）。
 - [ ] D 组重构（apiFetch / BatchReviewPanel 拆分）在此验证过的填充基线上进行。
