@@ -16,7 +16,6 @@ const BAD_SAMPLES: { label: string; env: NodeJS.ProcessEnv }[] = [
 		label: "弱 JWT_SECRET",
 		env: {
 			JWT_SECRET: "secret",
-			JWT_ADMIN_PASSWORD_HASH: "x",
 			CORS_ORIGIN: "chrome-extension://abc",
 		},
 	},

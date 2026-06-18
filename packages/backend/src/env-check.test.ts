@@ -1,11 +1,6 @@
-import { randomBytes, scryptSync } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { checkEnv, validateEnv } from "./config/env-check.js";
-
-function goodHash(): string {
-	const salt = randomBytes(16);
-	return `${salt.toString("hex")}:${scryptSync("pw", salt, 64).toString("hex")}`;
-}
 
 const strongSecret = randomBytes(48).toString("hex");
 const validCors = "chrome-extension://abcdefghijklmnop";
@@ -13,7 +8,6 @@ const validCors = "chrome-extension://abcdefghijklmnop";
 function goodEnv(overrides: Record<string, string> = {}): NodeJS.ProcessEnv {
 	return {
 		JWT_SECRET: strongSecret,
-		JWT_ADMIN_PASSWORD_HASH: goodHash(),
 		CORS_ORIGIN: validCors,
 		...overrides,
 	};
