@@ -14,19 +14,15 @@ import {
 	fetchGossipTopicFromUrl,
 	type GossipSite,
 } from "../../lib/gossip-client";
+import { AddSiteForm } from "./gossip/AddSiteForm";
+import { ChannelWhitelistPanel } from "./gossip/ChannelWhitelistPanel";
+import { SiteCard } from "./gossip/SiteCard";
+import { btn } from "./gossip/styles";
 
 interface Props {
 	onBack: () => void;
 	onTopicAdded: () => void; // 跳轉到 pending 頁
 }
-
-const btn: React.CSSProperties = {
-	padding: "5px 10px",
-	fontSize: 12,
-	border: "none",
-	borderRadius: 4,
-	cursor: "pointer",
-};
 
 export function GossipView({ onBack, onTopicAdded }: Props) {
 	const [sites, setSites] = useState<GossipSite[]>([]);
@@ -231,16 +227,6 @@ export function GossipView({ onBack, onTopicAdded }: Props) {
 		}
 	}
 
-	function urlLabel(url: string): string {
-		try {
-			const u = new URL(url);
-			const parts = u.pathname.split("/").filter(Boolean);
-			return parts[parts.length - 1] ?? url;
-		} catch {
-			return url;
-		}
-	}
-
 	return (
 		<div>
 			<div
@@ -257,182 +243,31 @@ export function GossipView({ onBack, onTopicAdded }: Props) {
 				<h2 style={{ margin: 0, fontSize: 15 }}>吃瓜素材</h2>
 			</div>
 
-			{/* U6 可爬取渠道(白名单) */}
-			<div
-				style={{
-					border: "1px solid #d9d9d9",
-					borderRadius: 6,
-					padding: 10,
-					marginBottom: 12,
-					background: "#fafafa",
-				}}
-			>
-				<div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>
-					可爬取渠道(白名单)
-				</div>
-				<div style={{ fontSize: 11, color: "#8c8c8c", marginBottom: 8 }}>
-					只有列入此处的域名才能被爬取。新增即需操作者确认,入库前做
-					DNS/私网校验。
-				</div>
-				<div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
-					<input
-						type="text"
-						placeholder="域名,如 51cg1.com(钉死 https)"
-						value={newChannel}
-						onChange={(e) => setNewChannel(e.target.value)}
-						style={{
-							flex: 1,
-							padding: "4px 6px",
-							fontSize: 12,
-							border: "1px solid #d9d9d9",
-							borderRadius: 4,
-						}}
-					/>
-					<input
-						type="password"
-						placeholder="管理员口令(step-up)"
-						value={chanPassword}
-						onChange={(e) => setChanPassword(e.target.value)}
-						style={{
-							flex: 1,
-							padding: "4px 6px",
-							fontSize: 12,
-							border: "1px solid #d9d9d9",
-							borderRadius: 4,
-						}}
-					/>
-					<button
-						type="button"
-						onClick={() => void handleAddChannel()}
-						disabled={chanBusy}
-						style={{ ...btn, background: "#52c41a", color: "white" }}
-					>
-						{chanBusy ? "确认中…" : "确认新增"}
-					</button>
-				</div>
-				{chanError && (
-					<div style={{ fontSize: 12, color: "#cf1322", marginBottom: 6 }}>
-						⚠ {chanError}
-					</div>
-				)}
-				{channels.length === 0 ? (
-					<div style={{ fontSize: 12, color: "#8c8c8c" }}>尚无渠道</div>
-				) : (
-					channels.map((c) => (
-						<div
-							key={c.id}
-							style={{
-								display: "flex",
-								alignItems: "center",
-								gap: 6,
-								fontSize: 12,
-								padding: "2px 0",
-							}}
-						>
-							<span style={{ flex: 1 }}>{c.hostname}</span>
-							<button
-								type="button"
-								onClick={() => void handleDeleteChannel(c.id)}
-								style={{ ...btn, background: "#fff1f0", color: "#cf1322" }}
-							>
-								移除
-							</button>
-						</div>
-					))
-				)}
-			</div>
+			<ChannelWhitelistPanel
+				channels={channels}
+				newChannel={newChannel}
+				chanPassword={chanPassword}
+				chanError={chanError}
+				chanBusy={chanBusy}
+				onNewChannelChange={setNewChannel}
+				onChanPasswordChange={setChanPassword}
+				onAddChannel={() => void handleAddChannel()}
+				onDeleteChannel={(id) => void handleDeleteChannel(id)}
+			/>
 
-			{/* 新增站點 */}
-			<div
-				style={{
-					border: "1px solid #d9d9d9",
-					borderRadius: 6,
-					padding: 10,
-					marginBottom: 12,
-				}}
-			>
-				<div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
-					新增站點
-				</div>
-				<div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
-					<input
-						type="text"
-						placeholder="站點名稱"
-						value={newName}
-						onChange={(e) => setNewName(e.target.value)}
-						style={{
-							flex: 1,
-							padding: "4px 6px",
-							fontSize: 12,
-							border: "1px solid #d9d9d9",
-							borderRadius: 4,
-						}}
-					/>
-					<input
-						type="url"
-						placeholder="清單頁 URL (https://...)"
-						value={newUrl}
-						onChange={(e) => setNewUrl(e.target.value)}
-						style={{
-							flex: 2,
-							padding: "4px 6px",
-							fontSize: 12,
-							border: "1px solid #d9d9d9",
-							borderRadius: 4,
-						}}
-					/>
-					<button
-						type="button"
-						onClick={() => void handleAdd()}
-						disabled={addBusy}
-						style={{ ...btn, background: "#1677ff", color: "white" }}
-					>
-						{addBusy ? "新增中…" : "新增"}
-					</button>
-				</div>
-				{addError && (
-					<div style={{ fontSize: 12, color: "#cf1322" }}>{addError}</div>
-				)}
-				{addWarning && (
-					<div
-						role="status"
-						style={{
-							marginTop: 6,
-							padding: "8px 10px",
-							background: "#fffbe6",
-							border: "1px solid #ffe58f",
-							borderRadius: 4,
-							fontSize: 12,
-							color: "#7c4d00",
-						}}
-					>
-						<div style={{ marginBottom: 6 }}>
-							⚠ 域名 <strong>{addWarning.hostname}</strong>{" "}
-							未在渠道白名单，此站点爬取将被 SSRF
-							守卫拒绝。建议先在上方「可爬取渠道」中添加 {addWarning.hostname}。
-						</div>
-						<div style={{ display: "flex", gap: 8 }}>
-							<button
-								type="button"
-								onClick={() => void addWarning.proceed()}
-								disabled={addBusy}
-								style={{ ...btn, background: "#faad14", color: "white" }}
-							>
-								仍然继续
-							</button>
-							<button
-								type="button"
-								onClick={() => setAddWarning(null)}
-								style={{ ...btn, background: "#f0f0f0" }}
-							>
-								取消
-							</button>
-						</div>
-					</div>
-				)}
-			</div>
+			<AddSiteForm
+				newName={newName}
+				newUrl={newUrl}
+				addError={addError}
+				addBusy={addBusy}
+				addWarning={addWarning}
+				onNewNameChange={setNewName}
+				onNewUrlChange={setNewUrl}
+				onAdd={() => void handleAdd()}
+				onProceed={() => void addWarning?.proceed()}
+				onCancelWarning={() => setAddWarning(null)}
+			/>
 
-			{/* 站點清單 */}
 			{sites.length === 0 ? (
 				<div
 					style={{
@@ -446,125 +281,18 @@ export function GossipView({ onBack, onTopicAdded }: Props) {
 				</div>
 			) : (
 				sites.map((site) => (
-					<div
+					<SiteCard
 						key={site.id}
-						style={{
-							border: "1px solid #d9d9d9",
-							borderRadius: 6,
-							padding: 10,
-							marginBottom: 10,
-						}}
-					>
-						<div
-							style={{
-								display: "flex",
-								alignItems: "center",
-								gap: 6,
-								marginBottom: 8,
-							}}
-						>
-							<span style={{ fontWeight: 600, fontSize: 13 }}>{site.name}</span>
-							<span
-								style={{
-									fontSize: 11,
-									color: "#8c8c8c",
-									flex: 1,
-									overflow: "hidden",
-									textOverflow: "ellipsis",
-									whiteSpace: "nowrap",
-								}}
-							>
-								{site.listUrl}
-							</span>
-							<button
-								type="button"
-								onClick={() => void handleDiscover(site)}
-								disabled={discoverBusy[site.id]}
-								style={{ ...btn, background: "#f0f0f0" }}
-							>
-								{discoverBusy[site.id] ? "抓取中…" : "🔄 刷新"}
-							</button>
-							<button
-								type="button"
-								onClick={() => void handleDelete(site.id)}
-								style={{ ...btn, background: "#fff1f0", color: "#cf1322" }}
-							>
-								刪除
-							</button>
-						</div>
-
-						{discoverError[site.id] && (
-							<div style={{ fontSize: 12, color: "#cf1322", marginBottom: 6 }}>
-								⚠ {discoverError[site.id]}
-							</div>
-						)}
-
-						{discovered[site.id] === undefined && !discoverBusy[site.id] && (
-							<div style={{ fontSize: 12, color: "#8c8c8c" }}>
-								點「刷新」發現最新素材
-							</div>
-						)}
-
-						{discovered[site.id]?.length === 0 && (
-							<div style={{ fontSize: 12, color: "#8c8c8c" }}>
-								未發現新素材（可能已全部加入待審）
-							</div>
-						)}
-
-						{(discovered[site.id] ?? []).map((item) => (
-							<div
-								key={item.url}
-								style={{
-									display: "flex",
-									alignItems: "center",
-									gap: 6,
-									padding: "4px 0",
-									borderBottom: "1px solid #f0f0f0",
-									fontSize: 12,
-								}}
-							>
-								<span
-									style={{
-										flex: 1,
-										overflow: "hidden",
-										textOverflow: "ellipsis",
-										whiteSpace: "nowrap",
-									}}
-								>
-									{item.title ?? urlLabel(item.url)}
-								</span>
-								<div
-									style={{
-										display: "flex",
-										flexDirection: "column",
-										alignItems: "flex-end",
-										gap: 2,
-									}}
-								>
-									<button
-										type="button"
-										onClick={() =>
-											void handleGenerate(item, site.id, site.name)
-										}
-										disabled={genBusy[item.url]}
-										style={{
-											...btn,
-											background: "#1677ff",
-											color: "white",
-											whiteSpace: "nowrap",
-										}}
-									>
-										{genBusy[item.url] ? "生成中…" : "生成文章"}
-									</button>
-									{genError[item.url] && (
-										<span style={{ fontSize: 10, color: "#cf1322" }}>
-											⚠ {genError[item.url]}
-										</span>
-									)}
-								</div>
-							</div>
-						))}
-					</div>
+						site={site}
+						items={discovered[site.id]}
+						discoverBusy={discoverBusy[site.id] ?? false}
+						discoverError={discoverError[site.id]}
+						genBusy={genBusy}
+						genError={genError}
+						onDiscover={() => void handleDiscover(site)}
+						onDelete={() => void handleDelete(site.id)}
+						onGenerate={(item) => void handleGenerate(item, site.id, site.name)}
+					/>
 				))
 			)}
 		</div>
