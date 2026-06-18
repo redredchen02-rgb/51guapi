@@ -70,6 +70,41 @@ export type RejectionReason =
 	| "missing_facts"
 	| "other";
 
+/**
+ * 待审选题的 API / wire 契约（side panel ↔ backend 单一真相,取代扩展端原本的重复定义）。
+ * 后端「存储」表示(pending-store.PendingTopic:enrichment 对象 + facts 强类型 union)是实现
+ * 细节,经路由 toApiTopic 映射到此形状(enrichment→enrichmentText、route 注入 folded)。
+ *
+ * facts 用宽松可索引 dict:前后端都对 facts 做动态迭代/索引(后端 Object.entries / cast、
+ * 扩展 facts[k]),无一方依赖结构化字段访问 —— 宽松 Record 统一两端且零结构化损失,
+ * 免去强类型收窄的「界外 key 静默丢失」风险(沿用扩展端既有 `Record<string,string>`)。
+ */
+export interface PendingTopic {
+	id: string;
+	sourceUrl: string;
+	siteName: string;
+	title: string;
+	rawContent?: {
+		title: string;
+		body: string;
+		url: string;
+		metadata?: Record<string, string>;
+	};
+	facts: Record<string, string>;
+	confidence: number;
+	score?: number;
+	status: "pending" | "approved" | "rejected";
+	rejectedReason?: RejectionReason;
+	coverImageUrl?: string;
+	/** 质量分低于 fold_threshold 时由后端路由层标记折叠（route 注入,非存储字段）。 */
+	folded?: boolean;
+	/** 预格式化的 web 富化文本（route 由 enrichment 派生,非存储字段）。 */
+	enrichmentText?: string;
+	domain?: "acg" | "gossip";
+	createdAt: string;
+	updatedAt: string;
+}
+
 /** AI 评审单维度结果。 */
 export interface ReviewDimension {
 	name: string;
