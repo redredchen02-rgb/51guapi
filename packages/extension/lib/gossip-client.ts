@@ -1,5 +1,5 @@
-import { clearToken } from "./auth-client";
 import { apiFetch } from "./api-fetch";
+import { clearToken } from "./auth-client";
 
 export interface GossipSite {
 	id: string;
