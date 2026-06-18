@@ -95,6 +95,30 @@ DROP TABLE IF EXISTS published_posts;`,
 	// (007 create-then-drop),对既有 DB 清掉空表。
 	"011-drop-batches.sql": `\
 DROP TABLE IF EXISTS batches;`,
+	// 存储统一(P6-2):prompt 模板从 JSON 文件迁入 SQLite。few_shot_pairs 存 JSON 数组串。
+	// 注意:MIGRATIONS 按 Object.keys().sort() 字典序执行,故 key 必须零填充三位。
+	"012-prompt-templates.sql": `\
+CREATE TABLE IF NOT EXISTS prompt_templates (
+  id              TEXT PRIMARY KEY,
+  name            TEXT NOT NULL,
+  template        TEXT NOT NULL,
+  few_shot_pairs  TEXT NOT NULL DEFAULT '[]',
+  model           TEXT,
+  created_at      TEXT NOT NULL,
+  updated_at      TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_prompt_templates_updated ON prompt_templates(updated_at DESC);`,
+	// 存储统一(P6-2):吃瓜站点配置从 JSON 文件迁入 SQLite。enabled 存 0/1。
+	"013-gossip-sites.sql": `\
+CREATE TABLE IF NOT EXISTS gossip_sites (
+  id          TEXT PRIMARY KEY,
+  name        TEXT NOT NULL,
+  list_url    TEXT NOT NULL,
+  enabled     INTEGER NOT NULL DEFAULT 1,
+  created_at  TEXT NOT NULL,
+  updated_at  TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_gossip_sites_updated ON gossip_sites(updated_at DESC);`,
 };
 
 export function runMigrations(dbPath: string): void {

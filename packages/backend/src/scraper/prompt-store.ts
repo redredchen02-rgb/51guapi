@@ -1,7 +1,8 @@
+import { readdir, readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { FewShotPair } from "@51guapi/shared";
 import { dataDirEnv } from "../config/data-dir.js";
-import { JsonFileStore } from "../utils/json-store.js";
+import { getDb } from "./pending-db.js";
 
 // ---- 类型定义 ----
 
@@ -29,23 +30,33 @@ export interface PromptTemplateUpdate {
 	model?: string;
 }
 
-// ---- 文件持久层（轻量 JSON，与 pending-store.ts 一致） ----
+// ---- SQLite 持久层（prompt_templates 表;原 JSON 文件轨已迁入,见 migration 012） ----
 
-const DATA_DIR =
-	dataDirEnv() ||
-	join(dirname(new URL(import.meta.url).pathname), "..", "data");
-const PROMPTS_DIR = join(DATA_DIR, "prompts");
+interface PromptRow {
+	id: string;
+	name: string;
+	template: string;
+	few_shot_pairs: string;
+	model: string | null;
+	created_at: string;
+	updated_at: string;
+}
 
-const promptStore = new JsonFileStore<PromptTemplate>({
-	dirPath: PROMPTS_DIR,
-	updatedAtKey: "updatedAt",
-});
+function rowToPrompt(row: PromptRow): PromptTemplate {
+	return {
+		id: row.id,
+		name: row.name,
+		template: row.template,
+		fewShotPairs: JSON.parse(row.few_shot_pairs) as FewShotPair[],
+		model: row.model ?? undefined,
+		createdAt: row.created_at,
+		updatedAt: row.updated_at,
+	};
+}
 
-// ---- lazy-on-read 遷移：舊 JSON 含 fewShotExamples 字段时，自動 parse 回傳 ----
-// best-effort 一次性迁移:仅在 fewShotPairs 为空且存在旧字符串字段时触发。规范存储
-// 是结构化 fewShotPairs,迁移后即写回结构化,不再走文本往返(见 extension storage.ts
-// deriveFewShotExamples 注释)。旧字符串内含 ---/空行的歧义为历史遗留,无法完美还原。
-
+// ---- fewShotExamples（旧字符串格式）→ fewShotPairs（结构化）迁移 ----
+// 规范存储是结构化 fewShotPairs;旧 JSON 可能仅有 fewShotExamples 字符串。save 与 backfill
+// 都过此归一,故 SQLite 行恒为结构化。旧字符串内含 ---/空行的歧义为历史遗留,无法完美还原。
 type RawPrompt = PromptTemplate & { fewShotExamples?: string };
 
 function migratePairs(raw: RawPrompt): PromptTemplate {
@@ -66,17 +77,75 @@ function migratePairs(raw: RawPrompt): PromptTemplate {
 	return { ...raw, fewShotPairs: raw.fewShotPairs ?? [] };
 }
 
+function insertPrompt(t: PromptTemplate, replace: boolean): void {
+	const db = getDb();
+	const verb = replace ? "INSERT OR REPLACE" : "INSERT OR IGNORE";
+	db.prepare(
+		`${verb} INTO prompt_templates
+		   (id, name, template, few_shot_pairs, model, created_at, updated_at)
+		 VALUES (@id, @name, @template, @fewShotPairs, @model, @createdAt, @updatedAt)`,
+	).run({
+		id: t.id,
+		name: t.name,
+		template: t.template,
+		fewShotPairs: JSON.stringify(t.fewShotPairs ?? []),
+		model: t.model ?? null,
+		createdAt: t.createdAt,
+		updatedAt: t.updatedAt,
+	});
+}
+
+// ---- 一次性 JSON→SQLite backfill（幂等;现网通常 0 行,目录多不存在） ----
+const PROMPTS_DIR = join(
+	dataDirEnv() ||
+		join(dirname(new URL(import.meta.url).pathname), "..", "data"),
+	"prompts",
+);
+
+let backfilled = false;
+
+async function ensureBackfilled(): Promise<void> {
+	if (backfilled) return;
+	backfilled = true;
+	let files: string[];
+	try {
+		files = (await readdir(PROMPTS_DIR)).filter((f) => f.endsWith(".json"));
+	} catch {
+		return; // 目录不存在 → 无遗留 JSON,纯 SQLite。
+	}
+	for (const f of files) {
+		try {
+			const raw = JSON.parse(
+				await readFile(join(PROMPTS_DIR, f), "utf-8"),
+			) as RawPrompt;
+			insertPrompt(migratePairs(raw), false); // INSERT OR IGNORE:不覆盖已迁入的
+		} catch {
+			// 跳过坏/不可读文件
+		}
+	}
+}
+
+/** 测试用:重置 backfill 一次性闸（仅供 *.test.ts）。 */
+export function __resetBackfillForTest(): void {
+	backfilled = false;
+}
+
 export async function getAllPrompts(): Promise<PromptTemplate[]> {
-	const raws = (await promptStore.list()) as RawPrompt[];
-	return raws.map(migratePairs);
+	await ensureBackfilled();
+	const rows = getDb()
+		.prepare("SELECT * FROM prompt_templates ORDER BY updated_at DESC")
+		.all() as PromptRow[];
+	return rows.map(rowToPrompt);
 }
 
 export async function getPromptById(
 	id: string,
 ): Promise<PromptTemplate | null> {
-	const raw = (await promptStore.read(id)) as RawPrompt | null;
-	if (!raw) return null;
-	return migratePairs(raw);
+	await ensureBackfilled();
+	const row = getDb()
+		.prepare("SELECT * FROM prompt_templates WHERE id = ?")
+		.get(id) as PromptRow | undefined;
+	return row ? rowToPrompt(row) : null;
 }
 
 export async function loadPrompt(id: string): Promise<PromptTemplate | null> {
@@ -84,7 +153,10 @@ export async function loadPrompt(id: string): Promise<PromptTemplate | null> {
 }
 
 export async function savePrompt(template: PromptTemplate): Promise<void> {
-	return promptStore.write(template);
+	await ensureBackfilled();
+	// 归一旧格式 + 刷新 updatedAt（对齐原 JsonFileStore.write 全覆盖语义）。
+	const t = migratePairs(template as RawPrompt);
+	insertPrompt({ ...t, updatedAt: new Date().toISOString() }, true);
 }
 
 export async function listPrompts(): Promise<PromptTemplate[]> {
@@ -92,5 +164,9 @@ export async function listPrompts(): Promise<PromptTemplate[]> {
 }
 
 export async function deletePrompt(id: string): Promise<boolean> {
-	return promptStore.delete(id);
+	await ensureBackfilled();
+	const info = getDb()
+		.prepare("DELETE FROM prompt_templates WHERE id = ?")
+		.run(id);
+	return info.changes > 0;
 }

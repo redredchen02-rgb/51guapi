@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { initPendingDb } from "./pending-db.js";
 import {
 	deletePrompt,
 	getAllPrompts,
@@ -21,8 +22,9 @@ function makePrompt(overrides: Partial<PromptTemplate> = {}): PromptTemplate {
 	};
 }
 
-// 清空 prompts 目录，避免跨测试串扰
+// 数据已迁入 SQLite(migration 012);经 store API 清表实现跨测试隔离。
 async function clearAll() {
+	initPendingDb();
 	for (const p of await listPrompts()) await deletePrompt(p.id);
 }
 
