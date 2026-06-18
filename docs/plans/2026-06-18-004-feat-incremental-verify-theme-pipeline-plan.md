@@ -1,7 +1,7 @@
 ---
 title: "feat: 时间窗 from-url 守门 + 入池前验证关 + 题材分组选择"
 type: feat
-status: active
+status: completed
 date: 2026-06-18
 origin: docs/brainstorms/2026-06-12-001-gossip-site-pipeline-requirements.md
 deepened: 2026-06-18
@@ -264,7 +264,7 @@ graph TB
   U5 --> U6
 ```
 
-- [ ] **Unit 1: from-url 时间窗硬守 + 发布时间真实化(后端)**
+- [x] **Unit 1: from-url 时间窗硬守 + 发布时间真实化(后端)**
 
 **Goal:** `from-url` 抓取一条后按 `windowDays` 硬守(窗外不入池 + 用户可见原因);发布时间贯通到打分与 UI;
 缺失发布时间给中性 freshness(不回退 createdAt)。discover 预览尽力按列表日期过滤/排序(R10 可选)。
@@ -306,7 +306,7 @@ graph TB
 
 ---
 
-- [ ] **Unit 2: 验证关纯函数(shared)**
+- [x] **Unit 2: 验证关纯函数(shared)**
 
 **Goal:** `verifyCrawledTopic` 纯函数,组合四道检查,返回逐项判定 + `decision` 分级 + 内容指纹;
 显式承认 grounding 局限;质量比走软标;指纹基放宽;时间未知中性。
@@ -355,7 +355,7 @@ graph TB
 
 ---
 
-- [ ] **Unit 3: 验证接线 @ from-url + 指纹去重 + verified 列(后端)**
+- [x] **Unit 3: 验证接线 @ from-url + 指纹去重 + verified 列(后端)**
 
 **Goal:** 在 `from-url` 的「`gossipExtractFacts` 后、`savePendingTopic` 前」跑 `verifyCrawledTopic`(基准=不可变
 `rawContent`):硬拒不入池但**用户可见**;软标(含疑似重复)入池带标记;新增 `content_fingerprint` + `verified_at` 列。
@@ -400,7 +400,7 @@ graph TB
 
 ---
 
-- [ ] **Unit 4: 验证 UI + 人工二次核对(verified)+ 硬拒可见(扩展)**
+- [x] **Unit 4: 验证 UI + 人工二次核对(verified)+ 硬拒可见(扩展)**
 
 **Goal:** 卡片展示发布时间/新鲜度/四验证逐项(文字+图标徽章、带图例);软标字段改值后**重跑 grounding**;
 「确认」置 `verified_at` 才进题材池;硬拒项折叠次级列表可见可恢复;调和与现有「批准并生成」按钮的关系。
@@ -446,7 +446,7 @@ graph TB
 
 ---
 
-- [ ] **Unit 5: 题材分组 + 选择驱动生成(后端过滤 + UI)**
+- [x] **Unit 5: 题材分组 + 选择驱动生成(后端过滤 + UI)**
 
 **Goal:** pending 列表按 `熱度標籤` 题材过滤/分组(题材→计数),**仅 verified**;查询参数化 + json 取值 +
 多标签语义明确;UI 题材选择器含空/加载/选中/清除态;选题材 → 过滤 → 挑条目 → 生成(多题材去重)。
@@ -485,7 +485,7 @@ graph TB
 
 ---
 
-- [ ] **Unit 6: 端到端回归锁定(mock,无真实网络/LLM)**
+- [x] **Unit 6: 端到端回归锁定(mock,无真实网络/LLM)**
 
 **Goal:** mock 锁定全流程:from-url 时间窗丢旧瓜 → 验证关硬拒可见/软标低 grounding/疑似重复 → 人工确认置 verified →
 题材过滤 → 生成。守护不变量(R9)。
