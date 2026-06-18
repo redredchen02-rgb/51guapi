@@ -684,6 +684,18 @@ describe("gossip-routes", () => {
 function resetMetricsCounters() {
 	counters.scraperRuns.success = 0;
 	counters.scraperRuns.failed = 0;
+	counters.gossipVerify.skippedOld = 0;
+	counters.gossipVerify.rejected = 0;
+	counters.gossipVerify.flagged = 0;
+	counters.gossipVerify.suspectedDuplicate = 0;
+}
+
+function gossipVerifyCount(metricsText: string, outcome: string): number {
+	const re = new RegExp(
+		`guapi_gossip_verify_total\\{outcome="${outcome}"\\}\\s+(\\d+)`,
+	);
+	const m = metricsText.match(re);
+	return m ? Number(m[1]) : -1;
 }
 
 // counters 是模块级单例，app.ts 的 metrics 路由不在本测试的 buildApp 中注册，
@@ -824,6 +836,75 @@ describe("gossip-routes — recordScraperRun 接线（U2）", () => {
 		const res = await app.inject({ method: "GET", url: "/api/v1/metrics" });
 		expect(scraperSuccessCount(res.body)).toBe(0);
 		expect(scraperFailedCount(res.body)).toBe(0);
+	});
+
+	it("窗外跳过 → gossip_verify skipped_old +1", async () => {
+		mockFetchContent.mockResolvedValueOnce({
+			title: "旧瓜",
+			body: LONG_BODY,
+			url: "https://gossip.com/m-old",
+			metadata: { publishedTime: "2020-01-01T00:00:00.000Z" },
+		});
+		await app.inject({
+			method: "POST",
+			url: "/api/v1/gossip/topics/from-url",
+			payload: {
+				url: "https://gossip.com/m-old",
+				siteName: "站",
+				windowDays: 7,
+			},
+		});
+		const res = await app.inject({ method: "GET", url: "/api/v1/metrics" });
+		expect(gossipVerifyCount(res.body, "skipped_old")).toBe(1);
+	});
+
+	it("无效内容硬拒 → gossip_verify rejected +1", async () => {
+		mockFetchContent.mockResolvedValueOnce({
+			title: "无效",
+			body: "短",
+			url: "https://gossip.com/m-bad",
+		});
+		mockGossipExtractFacts.mockResolvedValueOnce(MOCK_FACTS);
+		await app.inject({
+			method: "POST",
+			url: "/api/v1/gossip/topics/from-url",
+			payload: { url: "https://gossip.com/m-bad", siteName: "站" },
+		});
+		const res = await app.inject({ method: "GET", url: "/api/v1/metrics" });
+		expect(gossipVerifyCount(res.body, "rejected")).toBe(1);
+	});
+
+	it("跨 URL 同内容 → gossip_verify suspected_duplicate +1", async () => {
+		// 用本用例独有 facts:metrics 块 beforeEach 只重置计数、不清 pending 表(DB 文件跨用例持久),
+		// 复用 MOCK_FACTS 会撞到前面用例已存的指纹,使首次调用即判重复。独有 facts 保证首次不撞库。
+		const uniqueFacts = {
+			...MOCK_FACTS,
+			facts: {
+				...MOCK_FACTS.facts,
+				當事人: "DUPTEST-唯一",
+				事件摘要: "唯一摘要",
+			},
+		};
+		for (const u of ["https://gossip.com/m-d1", "https://gossip.com/m-d2"]) {
+			mockFetchContent.mockResolvedValueOnce({
+				title: "同瓜",
+				body: LONG_BODY,
+				url: u,
+			});
+			mockGossipExtractFacts.mockResolvedValueOnce(uniqueFacts);
+		}
+		await app.inject({
+			method: "POST",
+			url: "/api/v1/gossip/topics/from-url",
+			payload: { url: "https://gossip.com/m-d1", siteName: "站" },
+		});
+		await app.inject({
+			method: "POST",
+			url: "/api/v1/gossip/topics/from-url",
+			payload: { url: "https://gossip.com/m-d2", siteName: "站" },
+		});
+		const res = await app.inject({ method: "GET", url: "/api/v1/metrics" });
+		expect(gossipVerifyCount(res.body, "suspected_duplicate")).toBe(1);
 	});
 });
 

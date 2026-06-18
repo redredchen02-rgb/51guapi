@@ -508,4 +508,20 @@ describe("U4/U5 — 验证核对 + 题材选择", () => {
 			),
 		);
 	});
+
+	it("选中题材 → 显示「题材池」上下文提示", async () => {
+		vi.mocked(fetchThemeCounts).mockResolvedValue([
+			{ theme: "出軌", count: 2 },
+		]);
+		render(
+			<PendingTopicsView
+				onBack={vi.fn()}
+				onDraftReady={vi.fn()}
+				onError={vi.fn()}
+			/>,
+		);
+		await waitFor(() => screen.getByText("出軌 2"));
+		fireEvent.click(screen.getByText("出軌 2"));
+		await waitFor(() => expect(screen.getByText(/题材池/)).toBeTruthy());
+	});
 });
