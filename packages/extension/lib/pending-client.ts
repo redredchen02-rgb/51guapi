@@ -10,6 +10,16 @@ export interface FetchPendingTopicsOptions {
 	sort_by?: "score" | "created_at";
 	fold_threshold?: number;
 	domain?: "gossip";
+	/** 按归一化题材（熱度標籤）过滤；U5 题材选择。 */
+	theme?: string;
+	/** true=只取已人工核对（题材池）；false=只取未核对；U4。 */
+	verified?: boolean;
+}
+
+/** 题材计数项（题材选择器用）。 */
+export interface ThemeCount {
+	theme: string;
+	count: number;
 }
 
 export interface PendingTopicsResponse {
@@ -57,6 +67,8 @@ export async function fetchPendingTopics(
 	if (opts.fold_threshold !== undefined)
 		qp.set("fold_threshold", String(opts.fold_threshold));
 	if (opts.domain) qp.set("domain", opts.domain);
+	if (opts.theme) qp.set("theme", opts.theme);
+	if (opts.verified !== undefined) qp.set("verified", String(opts.verified));
 	const params = qp.toString() ? `?${qp.toString()}` : "";
 
 	try {
@@ -172,6 +184,56 @@ export async function updatePendingStatus(
 		return res.ok;
 	} catch (e) {
 		logger.warn("pending-client", "updatePendingStatus failed", {
+			error: e instanceof Error ? e.message : String(e),
+		});
+		return false;
+	}
+}
+
+/**
+ * 拉取题材计数（题材选择器用）。默认只统计已核对的吃瓜（题材池）；U5。
+ */
+export async function fetchThemeCounts(
+	fetchFn?: typeof fetch,
+	timeoutMs = 10_000,
+): Promise<ThemeCount[]> {
+	try {
+		const res = await apiFetch("/api/v1/pending-topics/themes", {
+			fetchFn,
+			timeoutMs,
+		});
+		if (res.status === 401 || !res.ok) return [];
+		const data = (await res.json()) as { ok: boolean; themes?: ThemeCount[] };
+		return data.ok && data.themes ? data.themes : [];
+	} catch (e) {
+		logger.warn("pending-client", "fetchThemeCounts failed", {
+			error: e instanceof Error ? e.message : String(e),
+		});
+		return [];
+	}
+}
+
+/**
+ * 人工二次核对：置/撤销 verified（进/出题材池）；U4。
+ */
+export async function setPendingVerified(
+	id: string,
+	verified: boolean,
+	timeoutMs = 10_000,
+): Promise<boolean> {
+	try {
+		const res = await apiFetch(
+			`/api/v1/pending-topics/${encodeURIComponent(id)}`,
+			{
+				method: "PATCH",
+				body: JSON.stringify({ verified }),
+				timeoutMs,
+			},
+		);
+		if (res.status === 401) return false;
+		return res.ok;
+	} catch (e) {
+		logger.warn("pending-client", "setPendingVerified failed", {
 			error: e instanceof Error ? e.message : String(e),
 		});
 		return false;
