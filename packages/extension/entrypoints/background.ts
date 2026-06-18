@@ -1,4 +1,8 @@
-import type { FactsBlock, GenerateDraftResponse } from "@51guapi/shared";
+import type {
+	FactsBlock,
+	GenerateDraftResponse,
+	GossipFactsBlock,
+} from "@51guapi/shared";
 import {
 	type Batch,
 	type BatchItem,
@@ -9,7 +13,7 @@ import {
 } from "../lib/batch";
 import { generateDraft } from "../lib/llm";
 import { logger } from "../lib/logger";
-import type { RuntimeMessage } from "../lib/messages";
+import type { GenerateDraftOptions, RuntimeMessage } from "../lib/messages";
 import { assemblePrompt, buildConstraintSuffix } from "../lib/prompt-assembly";
 import {
 	getApiKey,
@@ -37,7 +41,7 @@ export interface BackgroundHandlerDeps {
 		opts: {
 			settings: import("@51guapi/shared").Settings;
 			apiKey: string;
-			facts?: FactsBlock;
+			facts?: FactsBlock | GossipFactsBlock;
 			enrichment?: string;
 		},
 	) => Promise<GenerateDraftResponse>;
@@ -53,6 +57,7 @@ export { buildConstraintSuffix };
 export function createHandlers(deps: BackgroundHandlerDeps) {
 	async function handleGenerate(
 		prompt: string,
+		options: GenerateDraftOptions = {},
 	): Promise<GenerateDraftResponse> {
 		try {
 			const [settings, apiKey] = await Promise.all([
@@ -64,6 +69,8 @@ export function createHandlers(deps: BackgroundHandlerDeps) {
 			return await deps.generateDraftFn(constrainedPrompt, {
 				settings,
 				apiKey,
+				facts: options.facts,
+				enrichment: options.enrichment,
 			});
 		} catch (err) {
 			logger.error("bg", "生成草稿失败", {
@@ -236,7 +243,7 @@ export default defineBackground(() => {
 
 	browser.runtime.onMessage.addListener((message: RuntimeMessage) => {
 		if (message?.type === "GENERATE_DRAFT")
-			return handlers.handleGenerate(message.prompt);
+			return handlers.handleGenerate(message.prompt, message.options);
 		if (message?.type === "RUN_BATCH")
 			return handlers.handleRunBatch(
 				message.topics,

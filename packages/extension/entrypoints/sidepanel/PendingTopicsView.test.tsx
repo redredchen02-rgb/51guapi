@@ -189,11 +189,12 @@ describe("R1 — inline fact editing", () => {
 
 	it("编辑 facts 后批准 → PATCH 含更新后的值", async () => {
 		const topic = makeTopic("t1");
+		const onDraftReady = vi.fn();
 		vi.mocked(fetchPendingTopics).mockResolvedValue([topic]);
 		render(
 			<PendingTopicsView
 				onBack={vi.fn()}
-				onDraftReady={vi.fn()}
+				onDraftReady={onDraftReady}
 				onError={vi.fn()}
 			/>,
 		);
@@ -220,6 +221,22 @@ describe("R1 — inline fact editing", () => {
 				}),
 			);
 		});
+		expect(requestGenerate).toHaveBeenCalledWith(
+			expect.stringContaining("改后人物名"),
+			expect.objectContaining({
+				facts: expect.objectContaining({
+					當事人: "改后人物名",
+					事件摘要: "测试摘要",
+					來源連結: null,
+				}),
+			}),
+		);
+		expect(onDraftReady).toHaveBeenCalledWith(
+			expect.objectContaining({
+				draft: expect.objectContaining({ id: "draft-1" }),
+				facts: expect.objectContaining({ 當事人: "改后人物名" }),
+			}),
+		);
 	});
 });
 
@@ -423,6 +440,22 @@ describe("R5 — 今日一键备稿", () => {
 		await waitFor(() =>
 			expect(vi.mocked(requestGenerate)).toHaveBeenCalledTimes(1),
 		);
-		await waitFor(() => expect(onDraftReady).toHaveBeenCalledTimes(1));
+		expect(requestGenerate).toHaveBeenCalledWith(
+			expect.stringContaining("测试人物"),
+			expect.objectContaining({
+				facts: expect.objectContaining({
+					當事人: "测试人物",
+					事件摘要: "测试摘要",
+				}),
+			}),
+		);
+		await waitFor(() =>
+			expect(onDraftReady).toHaveBeenCalledWith(
+				expect.objectContaining({
+					draft: expect.objectContaining({ id: "draft-1" }),
+					facts: expect.objectContaining({ 當事人: "测试人物" }),
+				}),
+			),
+		);
 	});
 });

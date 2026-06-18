@@ -100,6 +100,8 @@ export interface PendingTopic {
 	folded?: boolean;
 	/** 预格式化的 web 富化文本（route 由 enrichment 派生,非存储字段）。 */
 	enrichmentText?: string;
+	/** 提炼模式:strict=structured output;fallback=json_object 兼容模式。 */
+	extractionMode?: "strict" | "fallback";
 	domain?: "acg" | "gossip";
 	createdAt: string;
 	updatedAt: string;

@@ -2,6 +2,7 @@ import type {
 	ContentDraft,
 	FactsBlock,
 	GenerateDraftResponse,
+	GossipFactsBlock,
 	ReviewResult,
 	Settings,
 } from "@51guapi/shared";
@@ -11,7 +12,8 @@ import { getBackendUrl } from "./backend-url";
 export interface LlmDeps {
 	settings: Settings;
 	apiKey: string; // Left in interface for compatibility, but ignored in execution
-	facts?: FactsBlock;
+	facts?: FactsBlock | GossipFactsBlock;
+	enrichment?: string;
 	fetchFn?: typeof fetch;
 	now?: () => string;
 	genId?: () => string;
@@ -83,7 +85,7 @@ export async function generateDraft(
 	prompt: string,
 	deps: LlmDeps,
 ): Promise<GenerateDraftResponse> {
-	const { settings, facts } = deps;
+	const { settings, facts, enrichment } = deps;
 	const fetchFn = deps.fetchFn ?? fetch;
 	const timeoutMs = deps.timeoutMs ?? 60_000;
 
@@ -105,6 +107,7 @@ export async function generateDraft(
 				prompt,
 				settings,
 				facts,
+				enrichment,
 			}),
 			signal: controller.signal,
 		});

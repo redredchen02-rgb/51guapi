@@ -20,13 +20,17 @@ import {
 } from "../utils/schemas.js";
 
 /** 把后端 PendingTopic 转成 API 响应格式，附加预格式化的 enrichmentText 字段。 */
-function toApiTopic(
-	t: PendingTopic,
-): PendingTopic & { enrichmentText?: string } {
+function toApiTopic(t: PendingTopic): PendingTopic & {
+	enrichmentText?: string;
+	extractionMode?: "strict" | "fallback";
+} {
 	const enrichmentText = t.enrichment
 		? formatEnrichmentForPrompt(t.enrichment) || undefined
 		: undefined;
-	return { ...t, enrichmentText };
+	const rawMode = t.rawContent?.metadata?.extractionMode;
+	const extractionMode =
+		rawMode === "strict" || rawMode === "fallback" ? rawMode : undefined;
+	return { ...t, enrichmentText, extractionMode };
 }
 
 const VALID_REJECTION_REASONS = new Set<RejectionReason>([

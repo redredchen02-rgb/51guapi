@@ -223,12 +223,19 @@ export async function registerGossipRoutes(
 			}
 
 			const now = new Date().toISOString();
+			const rawContentWithExtractionMode = {
+				...rawContent,
+				metadata: {
+					...(rawContent.metadata ?? {}),
+					extractionMode: extracted.extractionMode,
+				},
+			};
 			const topic: PendingTopic = {
 				id: generateId("pending"),
 				sourceUrl: url,
 				siteName,
 				title: rawContent.title,
-				rawContent,
+				rawContent: rawContentWithExtractionMode,
 				facts: extracted.facts,
 				confidence: extracted.confidence,
 				status: "pending",

@@ -1,5 +1,6 @@
 import type { ContentDraft } from "@51guapi/shared";
 import { useCallback } from "react";
+import type { GenerateDraftOptions } from "../../../lib/messages";
 import { requestGenerate } from "../../../lib/messaging";
 
 /**
@@ -24,14 +25,20 @@ export type DraftGenerationResult =
 	| { status: "exception"; error: unknown };
 
 interface UseDraftGenerationReturn {
-	generate: (prompt: string) => Promise<DraftGenerationResult>;
+	generate: (
+		prompt: string,
+		options?: GenerateDraftOptions,
+	) => Promise<DraftGenerationResult>;
 }
 
 export function useDraftGeneration(): UseDraftGenerationReturn {
 	const generate = useCallback(
-		async (prompt: string): Promise<DraftGenerationResult> => {
+		async (
+			prompt: string,
+			options?: GenerateDraftOptions,
+		): Promise<DraftGenerationResult> => {
 			try {
-				const res = await requestGenerate(prompt);
+				const res = await requestGenerate(prompt, options);
 				if (res.ok) {
 					return { status: "ok", draft: res.draft };
 				}

@@ -53,6 +53,7 @@ describe("prompt-routes", () => {
 
 	afterEach(async () => {
 		await app.close();
+		cleanPrompts();
 	});
 
 	// ---- GET /api/v1/prompts ----
@@ -252,11 +253,13 @@ describe("prompt-routes — JWT 守護", () => {
 
 	beforeEach(async () => {
 		process.env.JWT_SECRET = SECRET;
+		cleanPrompts();
 		app = await buildAppWithAuth();
 	});
 
 	afterEach(async () => {
 		await app.close();
+		cleanPrompts();
 		delete process.env.JWT_SECRET;
 	});
 
