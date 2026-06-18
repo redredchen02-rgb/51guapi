@@ -1,4 +1,5 @@
 import type { ContentDraft, GossipFactsBlock } from "@51guapi/shared";
+import { DraftReviewPanel } from "./DraftReviewPanel.js";
 import { ExportPanel } from "./ExportPanel.js";
 
 function Field({
@@ -85,31 +86,6 @@ export function DraftPreview({
 					非 AI 字段(人工设定)
 				</summary>
 				<div style={{ marginTop: "var(--space-lg)" }}>
-					<Field label="状态(0=隐藏 / 1=显示)">
-						<input
-							className="field-input"
-							value={draft.postStatus}
-							onChange={(e) =>
-								set({
-									postStatus: e.target.value === "1" ? "1" : "0",
-								})
-							}
-						/>
-					</Field>
-					<Field label="发布时间(yyyy-MM-dd)">
-						<input
-							className="field-input"
-							value={draft.publishedAt}
-							onChange={(e) => set({ publishedAt: e.target.value })}
-						/>
-					</Field>
-					<Field label="作品 id">
-						<input
-							className="field-input"
-							value={draft.mediaId}
-							onChange={(e) => set({ mediaId: e.target.value })}
-						/>
-					</Field>
 					<Field label="封面图 URL(仅预览,MVP 不自动填,请人工上传)">
 						<input
 							className="field-input"
@@ -131,6 +107,7 @@ export function DraftPreview({
 					)}
 				</div>
 			</details>
+			<DraftReviewPanel draft={draft} onApply={onChange} />
 			<ExportPanel draft={draft} facts={facts} />
 		</div>
 	);

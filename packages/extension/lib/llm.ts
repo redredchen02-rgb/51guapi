@@ -252,7 +252,7 @@ export async function rewriteDraft(
 	}
 }
 
-/** 白名单合并：根据 failedDims 决定取 rewrite 的哪些字段；id/coverImageUrl/mediaId 始终保留 original。 */
+/** 白名单合并：根据 failedDims 决定取 rewrite 的哪些字段；id/coverImageUrl 始终保留 original。 */
 export function mergeRewriteResult(
 	original: ContentDraft,
 	rewrite: Partial<ContentDraft>,
@@ -274,7 +274,6 @@ export function mergeRewriteResult(
 	// 以下字段始终保留 original 值（非 AI 生成字段）
 	merged.id = original.id;
 	merged.coverImageUrl = original.coverImageUrl;
-	merged.mediaId = original.mediaId;
 	return merged;
 }
 

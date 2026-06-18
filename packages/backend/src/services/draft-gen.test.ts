@@ -183,7 +183,6 @@ describe("generateDraft (结构化组装)", () => {
 			// 分类经 normalizeCategory:模型给后台 value '2' → 归一化为后台真实 label(fillNativeSelect 按文本命中)。
 			expect(res.draft.category).toBe("漫畫文章");
 			expect(res.draft.status).toBe("draft");
-			expect(res.draft.postStatus).toBe("0"); // 默认隐藏发布
 			expect(res.draft.createdAt).toBe("2026-06-03T00:00:00.000Z");
 		}
 	});
@@ -494,7 +493,6 @@ describe("toDraft", () => {
 		expect(d.body).toContain("<p>B</p>");
 		expect(d.category).toBe("3");
 		expect(d.tags).toEqual(["a"]);
-		expect(d.postStatus).toBe("0");
 		expect(d.status).toBe("draft");
 		expect(d.id).toBe("id1");
 		expect(d.createdAt).toBe("2026-06-03T00:00:00.000Z");

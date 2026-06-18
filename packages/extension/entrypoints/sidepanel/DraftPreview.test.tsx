@@ -16,9 +16,6 @@ function makeDraft(overrides: Partial<ContentDraft> = {}): ContentDraft {
 		body: "<p>正文</p>",
 		tags: ["标签A", "标签B"],
 		description: "描述",
-		postStatus: "1",
-		publishedAt: "2026-06-15",
-		mediaId: "m1",
 		status: "draft",
 		createdAt: "2026-06-15T00:00:00Z",
 		...overrides,
@@ -53,25 +50,6 @@ describe("DraftPreview", () => {
 		});
 		expect(onChange).toHaveBeenCalledWith(
 			expect.objectContaining({ tags: ["x", "y", "z"] }),
-		);
-	});
-
-	it("postStatus 输入 '1' → 归一为 '1'，其它 → '0'", () => {
-		const onChange = vi.fn();
-		render(
-			<DraftPreview
-				draft={makeDraft({ postStatus: "0" })}
-				onChange={onChange}
-			/>,
-		);
-		const statusInput = screen.getByDisplayValue("0");
-		fireEvent.change(statusInput, { target: { value: "1" } });
-		expect(onChange).toHaveBeenCalledWith(
-			expect.objectContaining({ postStatus: "1" }),
-		);
-		fireEvent.change(statusInput, { target: { value: "9" } });
-		expect(onChange).toHaveBeenLastCalledWith(
-			expect.objectContaining({ postStatus: "0" }),
 		);
 	});
 

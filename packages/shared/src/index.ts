@@ -23,7 +23,11 @@ export {
 export type { FetchWithTimeoutOptions } from "./fetch.js";
 export { fetchWithTimeout } from "./fetch.js";
 export type { GossipFactKey, GossipFactsBlock } from "./gossip-facts.js";
-export { GOSSIP_FACT_KEYS, GOSSIP_FACTS_SCHEMA } from "./gossip-facts.js";
+export {
+	GOSSIP_FACT_KEYS,
+	GOSSIP_FACTS_SCHEMA,
+	gossipFactUrls,
+} from "./gossip-facts.js";
 export type { LinkCheck } from "./link-source.js";
 export {
 	extractLinks,

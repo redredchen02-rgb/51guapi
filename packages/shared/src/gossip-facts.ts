@@ -12,6 +12,26 @@ export interface GossipFactsBlock {
 
 export type GossipFactKey = keyof GossipFactsBlock;
 
+/** 含 URL 的吃瓜事实字段(grounding 来源校验的允许集来自这些;对应 ACG 的 URL_FIELDS)。 */
+const GOSSIP_URL_FIELDS: GossipFactKey[] = ["來源連結"];
+
+/**
+ * 收集吃瓜 facts 里出现的所有 URL(grounding 校验的允许集)。
+ * 镜像 facts.factUrls(ACG),但读吃瓜的「來源連結」—— 让后端 grounding 闸对吃瓜
+ * 草稿也有正确允许集(否则允许集恒空,合法来源链接会被误判 unsourced)。
+ */
+export function gossipFactUrls(facts: GossipFactsBlock): string[] {
+	const urls: string[] = [];
+	const urlRe = /https?:\/\/[^\s|]+/gi;
+	for (const k of GOSSIP_URL_FIELDS) {
+		const v = facts[k];
+		if (!v) continue;
+		const m = v.match(urlRe);
+		if (m) urls.push(...m);
+	}
+	return urls;
+}
+
 export const GOSSIP_FACT_KEYS: GossipFactKey[] = [
 	"當事人",
 	"事件摘要",

@@ -165,9 +165,6 @@ const DRAFT = {
 	body: "正文",
 	tags: ["标签"],
 	description: "描述",
-	postStatus: "",
-	publishedAt: "",
-	mediaId: "",
 	status: "",
 	createdAt: "",
 };

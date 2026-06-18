@@ -42,9 +42,6 @@ describe("callLlmForJson(review/rewrite)429/5xx 退避 + 不-throw 契约", () =
 		body: "<p>b</p>",
 		tags: [],
 		description: "",
-		postStatus: "0",
-		publishedAt: "2026-06-04",
-		mediaId: "1",
 		status: "draft",
 		createdAt: "2026-06-04T00:00:00.000Z",
 	} as unknown as Parameters<typeof reviewDraftLlm>[0];
