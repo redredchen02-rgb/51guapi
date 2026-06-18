@@ -31,7 +31,12 @@
 		"onlyBuiltDependencies": [
 			"esbuild",
 			"better-sqlite3"
-		]
+		],
+		"overrides": {
+			"esbuild": "^0.28.1",
+			"shell-quote": "^1.8.4",
+			"tmp": "^0.2.6"
+		}
 	},
 	"version": "0.2.1"
 }
