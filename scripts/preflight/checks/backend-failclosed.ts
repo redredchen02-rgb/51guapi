@@ -20,19 +20,11 @@ const BAD_SAMPLES: { label: string; env: NodeJS.ProcessEnv }[] = [
 			CORS_ORIGIN: "chrome-extension://abc",
 		},
 	},
-	{
-		label: "无效 JWT_ADMIN_PASSWORD_HASH",
-		env: {
-			JWT_SECRET: "a".repeat(48),
-			JWT_ADMIN_PASSWORD_HASH: "not-a-hash",
-			CORS_ORIGIN: "chrome-extension://abc",
-		},
-	},
+	// 自用模式:免密登入,不再校验 JWT_ADMIN_PASSWORD_HASH(原「无效 hash」坏样本已移除)。
 	{
 		label: "CORS_ORIGIN 通配 '*'",
 		env: {
 			JWT_SECRET: "a".repeat(48),
-			JWT_ADMIN_PASSWORD_HASH: `${"a".repeat(32)}:${"b".repeat(128)}`,
 			CORS_ORIGIN: "*",
 		},
 	},

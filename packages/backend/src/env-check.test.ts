@@ -43,11 +43,12 @@ describe("checkEnv", () => {
 		expect(errors.some((e) => e.includes("JWT_SECRET"))).toBe(true);
 	});
 
-	it("rejects a missing or placeholder admin hash", () => {
-		expect(checkEnv(goodEnv({ JWT_ADMIN_PASSWORD_HASH: "" })).length).toBe(1);
+	// 自用模式(plan 2026-06-18-003):免密登入,JWT_ADMIN_PASSWORD_HASH 不再被校验。
+	it("does not require admin hash (passwordless mode)", () => {
+		expect(checkEnv(goodEnv({ JWT_ADMIN_PASSWORD_HASH: "" }))).toEqual([]);
 		expect(
-			checkEnv(goodEnv({ JWT_ADMIN_PASSWORD_HASH: "change-this" })).length,
-		).toBe(1);
+			checkEnv(goodEnv({ JWT_ADMIN_PASSWORD_HASH: "change-this" })),
+		).toEqual([]);
 	});
 
 	it("rejects missing CORS_ORIGIN", () => {

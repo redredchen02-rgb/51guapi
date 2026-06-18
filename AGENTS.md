@@ -19,14 +19,13 @@ pre-push secret scan (install `gitleaks` for the strong scan; a pattern
 fallback runs otherwise).
 
 Backend env: copy `packages/backend/.env.example` → `.env` and fill real
-values. The backend refuses to start on weak/placeholder `JWT_SECRET` or
-`JWT_ADMIN_PASSWORD_HASH` (fail-closed). Generate strong values:
+values. The backend refuses to start on weak/placeholder `JWT_SECRET` or a
+missing/`*` `CORS_ORIGIN` (fail-closed). Self-use mode (plan 2026-06-18-003):
+login is passwordless, so `JWT_ADMIN_PASSWORD_HASH` is no longer used. Generate
+the JWT secret:
 
 ```
-# JWT secret
 node -e "console.log(require('node:crypto').randomBytes(48).toString('hex'))"
-# Admin password hash (salt:scryptHex) — prompts for the password
-node packages/backend/scripts/hash-password.mjs
 ```
 
 Build order matters: `@51guapi/shared` must build its `dist/` before

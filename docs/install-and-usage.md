@@ -47,16 +47,14 @@ cp packages/backend/.env.example packages/backend/.env
 | `LLM_API_KEY` | 你在 la-sealion 平台的 API Key | `sk-...` |
 | `CORS_ORIGIN` | 扩展的 `chrome-extension://` ID（见下方说明） | `chrome-extension://abcdef...` |
 | `JWT_SECRET` | 随机强密钥（≥32 字符） | 见下方生成命令 |
-| `JWT_ADMIN_PASSWORD_HASH` | 管理密码的哈希值 | 见下方生成命令 |
+
+> 自用模式：登入免密，无需 `JWT_ADMIN_PASSWORD_HASH`。
 
 **生成强密钥（在终端运行）：**
 
 ```bash
 # 生成 JWT_SECRET
 node -e "console.log(require('node:crypto').randomBytes(48).toString('hex'))"
-
-# 生成 JWT_ADMIN_PASSWORD_HASH（按提示输入你的管理员密码）
-node packages/backend/scripts/hash-password.mjs
 ```
 
 > **`CORS_ORIGIN` 怎么找？** 先跳到第四步构建并加载扩展，然后打开 `chrome://extensions`，找到 51guapi 扩展，复制 ID（格式如 `abcdef123456`），填入 `chrome-extension://abcdef123456`。多个 ID 用逗号分隔。
@@ -230,7 +228,7 @@ TG_CHAT_ID=<你的 chat id>
 | 生成报「未返回合法 JSON」 | 模型不稳或 prompt 被改坏；重试或点「恢复默认」。 |
 | 草稿连结被红标 ✗ | AI 编造了不在你输入里的 URL，**别发**，改用你的真连结或留【待补】。 |
 | 正文显示「需手动」 | 极端情况 Quill 不可用，走兜底写入；点「复制正文」手动粘贴。 |
-| 后端启动报「fail-closed」 | `CORS_ORIGIN` 未填或填了 `*`；`JWT_SECRET` / `JWT_ADMIN_PASSWORD_HASH` 是占位值。按第三步重新生成。 |
+| 后端启动报「fail-closed」 | `CORS_ORIGIN` 未填或填了 `*`；`JWT_SECRET` 是占位值。按第三步重新生成。 |
 | 后台改版后填充错位 | 选择器漂移；轻则改「⚙ 设置 → 字段映射」，重则需改代码，见 [`docs/field-mapping-guide.md`](field-mapping-guide.md)。 |
 | 改了 content script 后无效 | 须到 `chrome://extensions` 点 **↻ 刷新**，并刷新目标后台页；旧脚本否则仍驻留。 |
 

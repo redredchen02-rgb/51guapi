@@ -42,11 +42,7 @@ export async function registerPreflightRoutes(
 					label: "JWT_SECRET 已设置且足够强",
 					pass: !hasErr("JWT_SECRET"),
 				},
-				{
-					id: "jwt-admin-hash",
-					label: "JWT_ADMIN_PASSWORD_HASH 格式有效",
-					pass: !hasErr("JWT_ADMIN_PASSWORD_HASH"),
-				},
+				// 自用模式:免密登入,不再校验 JWT_ADMIN_PASSWORD_HASH。
 				{
 					id: "cors-origin-configured",
 					label: "CORS_ORIGIN 已设置且非通配 '*'",
