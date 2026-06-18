@@ -10,7 +10,7 @@ origin: docs/brainstorms/2026-06-11-release-readiness-requirements.md
 
 ## Overview
 
-把 51publisher 从「五阶段开发完毕」推到「单操作者每天安心跑批量」。工作分四块:合入基线(MR!6/!7 → main)、安全闭环(凭证轮换 + CORS 收紧)、真发批次验收、运营 runbook。功能开发冻结,只做 hardening 与收尾。
+把 51guapi 从「五阶段开发完毕」推到「单操作者每天安心跑批量」。工作分四块:合入基线(MR!6/!7 → main)、安全闭环(凭证轮换 + CORS 收紧)、真发批次验收、运营 runbook。功能开发冻结,只做 hardening 与收尾。
 
 ## Problem Frame
 
@@ -46,7 +46,7 @@ origin: docs/brainstorms/2026-06-11-release-readiness-requirements.md
 - `runBatch` 的 `filterReentrantTopics` 会过滤已发布/隔离题目——重跑同批需 `bypassReentry`,否则静默丢题
 - 真发冒烟陷阱:layuiAdmin **iframe 架构**(字段全未找到先想 iframe)、`pickAdminTabId` tab 定位、改 content script 必须「重载扩展+刷新后台页」两步
 - LLM key 已两次曝光记录;新 key 仅 `gemma4-*-heretic` 两模型可用,轮换后注意权限范围
-- 备份既有位置 `~/51publisher-backups/`;存储双轨 JSON+SQLite
+- 备份既有位置 `~/51guapi-backups/`;存储双轨 JSON+SQLite
 
 ## Key Technical Decisions
 
@@ -130,7 +130,7 @@ origin: docs/brainstorms/2026-06-11-release-readiness-requirements.md
 - Test: `packages/extension/lib/storage.test.ts`、`entrypoints/sidepanel/Settings.test.tsx`
 - Modify: `TODOS.md`(两条 P1 核销:dailyBatchSize 完成;grounding gate 标注已于 phase5 分支实现)
 
-**Approach:** 先 `pnpm --filter @51publisher/shared build` 出新鲜 dist,再以 `pnpm compile` 全绿为修复完成判据。
+**Approach:** 先 `pnpm --filter @51guapi/shared build` 出新鲜 dist,再以 `pnpm compile` 全绿为修复完成判据。
 
 **Patterns to follow:** `lib/storage.ts` 既有 clampDailyBatchSize;Settings.tsx 既有字段编辑模式。
 
@@ -221,7 +221,7 @@ origin: docs/brainstorms/2026-06-11-release-readiness-requirements.md
 - Modify: `TODOS.md` 或 `.ai-memory`(首周观察记录位置)
 
 **Approach:**
-- 章节:后端启停(`scripts/start-backend.sh`)、每日批量步骤(引用 `docs/batch-usage-guide.md` 与冒烟实测)、备份(每周+真发后;**停后端后拷贝或对 .sqlite 用 `sqlite3 .backup`**;目标 `~/51publisher-backups/`,仓库外、不入同步盘;不含 `.env`)、一次性恢复演练(备份→清 data/→恢复→后端启动验证)、常见故障(token 过期→重登、后端挂、扩展 ID 变更→更新 CORS_ORIGIN、填充失效→fixture 重抓慢循环、字段全未找到→iframe、无法连接→tab/重载两步)
+- 章节:后端启停(`scripts/start-backend.sh`)、每日批量步骤(引用 `docs/batch-usage-guide.md` 与冒烟实测)、备份(每周+真发后;**停后端后拷贝或对 .sqlite 用 `sqlite3 .backup`**;目标 `~/51guapi-backups/`,仓库外、不入同步盘;不含 `.env`)、一次性恢复演练(备份→清 data/→恢复→后端启动验证)、常见故障(token 过期→重登、后端挂、扩展 ID 变更→更新 CORS_ORIGIN、填充失效→fixture 重抓慢循环、字段全未找到→iframe、无法连接→tab/重载两步)
 - 首周观察两档:阻断性异常(填充失效、闸门误放行)当日处理走慢循环;非阻断累计记录、周末回顾
 - 脱敏约束:不含任何真实凭证/token/hash,仅引用 .env 变量名与生成命令;提交前人工核对
 
@@ -251,4 +251,4 @@ origin: docs/brainstorms/2026-06-11-release-readiness-requirements.md
 - **Origin document:** [docs/brainstorms/2026-06-11-release-readiness-requirements.md](../brainstorms/2026-06-11-release-readiness-requirements.md)
 - Related code: `packages/extension/lib/batch-orchestrator.ts`、`packages/shared/src/types.ts`、`packages/backend/src/env-check.ts`、`packages/extension/wxt.config.ts`
 - Related MRs: GitLab !6、!7
-- Learnings: `.ai-memory/project_51publisher.md`、auto-memory `repo-ops-gotchas` / `content-quality-gated-baseline` / `intelligent-publisher-roadmap`、`docs/solutions/developer-experience/claude-in-chrome-script-redaction-backend-verify-2026-06-05.md`
+- Learnings: `.ai-memory/project_51guapi.md`、auto-memory `repo-ops-gotchas` / `content-quality-gated-baseline` / `intelligent-publisher-roadmap`、`docs/solutions/developer-experience/claude-in-chrome-script-redaction-backend-verify-2026-06-05.md`

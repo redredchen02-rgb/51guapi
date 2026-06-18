@@ -86,7 +86,7 @@ Expected: FAIL with "Cannot find module './AppContext'"
 ```typescript
 // packages/extension/entrypoints/sidepanel/context/AppContext.tsx
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
-import type { ContentDraft } from '@51publisher/shared';
+import type { ContentDraft } from '@51guapi/shared';
 
 interface AppState {
   topic: string;
@@ -898,7 +898,7 @@ export function App() {
           marginBottom: 8,
         }}
       >
-        <h1 style={{ fontSize: 16, margin: 0 }}>51publisher 填充助手</h1>
+        <h1 style={{ fontSize: 16, margin: 0 }}>51guapi 填充助手</h1>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
           {/* ... 现有按钮 */}
           <button

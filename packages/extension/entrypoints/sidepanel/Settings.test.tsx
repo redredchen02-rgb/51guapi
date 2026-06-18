@@ -22,7 +22,7 @@ vi.mock("./hooks/useSettingsForm", () => ({
 			promptTemplate: "",
 			fewShotPairs: [],
 			recommendedTags: [],
-			backendUrl: "http://localhost:3001",
+			backendUrl: "http://localhost:3002",
 			reviewCriteriaPrompt: "",
 			dailyBatchSize: 5,
 		},

@@ -14,7 +14,7 @@ origin: docs/brainstorms/2026-06-10-tech-debt-optimization-requirements.md
 
 ## Summary
 
-Complete the remaining integration work for 51publisher's monorepo teardown: wire TypeBox validation into pending-routes, configure Rate Limit and CORS with production-safe env-based defaults, register a unified error handler, wrap extension panels in ErrorBoundary, connect Loading states, migrate Settings.tsx to CSS Modules, add a structured extension logger, and verify that config persistence (already implemented) works correctly.
+Complete the remaining integration work for 51guapi's monorepo teardown: wire TypeBox validation into pending-routes, configure Rate Limit and CORS with production-safe env-based defaults, register a unified error handler, wrap extension panels in ErrorBoundary, connect Loading states, migrate Settings.tsx to CSS Modules, add a structured extension logger, and verify that config persistence (already implemented) works correctly.
 
 ---
 
@@ -81,7 +81,7 @@ The 2026-06-09 optimization plan was 50-60% implemented during Plans 001+002. Th
 - **Rate Limit routes**: auth/login at 5 req/min, pending/generate (which doesn't exist as a route — see R2 note) at 20 req/min. Actually reviewing the code, there is no `pending/generate` route; the scraper routes are at `/api/v1/pending-topics POST`. Apply the stricter limit to `POST /api/v1/pending-topics` and `POST /api/v1/auth/login` instead.
 - **setErrorHandler scope**: catches Fastify-validation 400s, unhandled route errors, 404s — all formatted via `err()` helper from `error-response.ts`. Only applied to Fastify-level errors; route-level errors already use `err()` explicitly.
 - **CSS Modules scope**: Only migrate components that have 3+ inline style objects to justify the `.module.css` file. Settings.tsx (2) and PendingTopicsView.tsx (1+ growing) qualify; BatchView.tsx has minimal inline styles.
-- **Logger format**: `[51publisher] [level] message {context}` — matches existing `[module-name]` console pattern but adds level and structured context.
+- **Logger format**: `[51guapi] [level] message {context}` — matches existing `[module-name]` console pattern but adds level and structured context.
 - **R10 already implemented**: config-store.ts reads/writes `config_store` table in `pending.db`. The `002-config-store.sql` migration creates the table. Config-routes persist field mappings to this table on PUT and reload on GET. Verified: no code changes needed.
 
 ---
@@ -278,7 +278,7 @@ The 2026-06-09 optimization plan was 50-60% implemented during Plans 001+002. Th
   type LogLevel = 'info' | 'warn' | 'error' | 'debug';
   type LogContext = Record<string, unknown>;
   
-  const PREFIX = '[51publisher]';
+  const PREFIX = '[51guapi]';
   const ENABLED_LEVELS: Record<LogLevel, boolean> = {
     debug: import.meta.env.DEV ?? true,
     info: true,
@@ -311,9 +311,9 @@ The 2026-06-09 optimization plan was 50-60% implemented during Plans 001+002. Th
 - Existing console.warn format: `[batch-orchestrator] 轨迹快照含机密被丢弃...` → migrate to `logger.warn('batch-orchestrator', '轨迹快照含机密被丢弃', { itemId })`
 
 **Test scenarios:**
-- Happy: `logger.info('test', 'hello', { id: 1 })` → console output matches `[51publisher] [info] [test] hello {"id":1}`
+- Happy: `logger.info('test', 'hello', { id: 1 })` → console output matches `[51guapi] [info] [test] hello {"id":1}`
 - Edge: `logger.debug('test', 'verbose')` → silent in production mode
-- Edge: No context → output `[51publisher] [info] [test] hello` without trailing JSON
+- Edge: No context → output `[51guapi] [info] [test] hello` without trailing JSON
 
 **Verification:**
 - `__TEST__` run of logger.ts produces expected console output format
@@ -363,6 +363,6 @@ Verification checklist:
 
 ## Sources & References
 
-- **Origin document:** [docs/brainstorms/2026-06-10-tech-debt-optimization-requirements.md](file:///Users/dex/YDEX/INPORTANT%20WORK/发帖/51publisher/docs/brainstorms/2026-06-10-tech-debt-optimization-requirements.md)
+- **Origin document:** [docs/brainstorms/2026-06-10-tech-debt-optimization-requirements.md](file:///Users/dex/YDEX/INPORTANT%20WORK/发帖/51guapi/docs/brainstorms/2026-06-10-tech-debt-optimization-requirements.md)
 - Fastify setErrorHandler: https://fastify.dev/docs/latest/Reference/Server/#seterrorhandler
 - @fastify/rate-limit route config: https://github.com/fastify/fastify-rate-limit#route-configuration

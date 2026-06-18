@@ -21,7 +21,7 @@ origin: docs/brainstorms/2026-06-10-stabilize-first-flight-security-requirements
 
 ## Overview
 
-把 51publisher 从「三重不稳定」（约 116 个文件未入库、存储迁移半成品、后端测试红）恢复为绿色可还原的基线，随后用两条路径的真实发布完成产品闭环首飞（G2），最后修复 4 个高危 + 3 个低成本中危安全项。三阶段强顺序、阶段内并行，全部决策承接自源需求文档（经两轮六人格评审定稿）。
+把 51guapi 从「三重不稳定」（约 116 个文件未入库、存储迁移半成品、后端测试红）恢复为绿色可还原的基线，随后用两条路径的真实发布完成产品闭环首飞（G2），最后修复 4 个高危 + 3 个低成本中危安全项。三阶段强顺序、阶段内并行，全部决策承接自源需求文档（经两轮六人格评审定稿）。
 
 ## Problem Frame
 
@@ -162,7 +162,7 @@ flowchart TB
 3. **重测基线**：此时只测「编译 + git 状态」两项；测试项留到备份完成后再跑。
 4. **装扫描工具**：`brew install gitleaks`（本机实测 gitleaks/trufflehog 均未安装——模式 grep 只能作补充，不可作为首次大规模推送的唯一防线）。
 5. **热索引整理**：`git status --porcelain -uall` 审计；88 个已暂存的 coverage/ 生成物 `git rm -r --cached` 退出索引（后续 Unit 5 再补 .gitignore）；暂存与工作区有分歧的文件以**工作区**为准。
-6. **fixture 闸门**：`pnpm --filter publisher-fill-assistant check:fixtures`（该脚本只在 extension 包内，根目录直接跑会报错）。
+6. **fixture 闸门**：`pnpm --filter 51guapi-extension check:fixtures`（该脚本只在 extension 包内，根目录直接跑会报错）。
 7. **密钥扫描**：gitleaks 扫全部待快照文件（重点：`.ai-memory/`、CI 配置、测试夹具）——**扫描先于推送**；命中则先排除/轮换再推。
 8. **快照提交并推送**：以工作区状态提交 rescue 分支（排除 .env、data/ 等忽略项）；推送成功后才允许开始 Unit 2。
 - `scripts/probe-grounding.mjs` 已不在工作区：运营者确认是否有意删除；仓库外任何残留副本（废纸篓/备份盘/其他 checkout）一律视为已暴露——**Unit 8 的 LLM_API_KEY 轮换因此无条件执行**。
@@ -199,7 +199,7 @@ flowchart TB
 - Edge case：`data/` 为空目录时首次写入自建子目录（ensureDir 既有行为）。
 
 **Verification:**
-- `pnpm --filter publisher-backend compile` 零错误；启动路径无废弃迁移代码；上述往返实测通过。
+- `pnpm --filter 51guapi-backend compile` 零错误；启动路径无废弃迁移代码；上述往返实测通过。
 
 - [x] **Unit 3: 扩展侧 tsc 错误修复（R13）**
 
@@ -211,7 +211,7 @@ flowchart TB
 
 **Files:**
 - Modify: `packages/extension/lib/link-source.ts`、`packages/extension/tests/e2e/probe-grounding.test.ts`、`packages/extension/tests/e2e/validate-grounding.test.ts`
-- Test: 以 `pnpm --filter publisher-fill-assistant compile` 全绿为验收（类型层修复）
+- Test: 以 `pnpm --filter 51guapi-extension compile` 全绿为验收（类型层修复）
 
 **Approach:**
 - 只修类型错误，不改运行行为；e2e 测试文件如硬编码真实 LLM endpoint 默认值，顺手改为占位/env 读取（与 Unit 1 扫描联动）。
@@ -239,7 +239,7 @@ flowchart TB
 - **测试与运行数据隔离（根治）**：本单元顺手为后端测试注入隔离数据目录（store/db 模块读 `DATA_DIR` env 或测试 setup 重定向到临时目录），使测试永不触碰真实 `data/`——否则阶段 C 与首飞窗口穿插时，任何一次跑测试都会清空待审池（首飞路径之一的数据源）。隔离落地前的过渡纪律：**首飞准备（U8）到首飞完成（U9）之间禁止运行后端测试**。
 
 **Test scenarios:**
-- Happy path：`pnpm --filter publisher-backend test` 全绿（快照预期 74/74）。
+- Happy path：`pnpm --filter 51guapi-backend test` 全绿（快照预期 74/74）。
 - Error path：若存活失败 → 按「重测基线→定位→修复→复测」循环，记录根因。
 
 **Verification:**
@@ -266,7 +266,7 @@ flowchart TB
 - shared 的新脚本形态：`compile` = 产出 dist 的 `tsc` 构建（不是 --noEmit）——backend/extension 的类型检查依赖 shared dist 存在。
 
 **Test scenarios:**
-- Happy path：**临时 clone 已推送的 rescue 分支**到 scratch 目录，跑 `pnpm install && pnpm --filter @51publisher/shared build && pnpm -r compile && pnpm -r test` 全绿（rescue 分支天然无 .env/data，正好满足「无凭证环境」要求）。**禁用 `git stash -u` 方案**：它不会移除被忽略的 .env（验证无效），且在 153 个暂存新文件未提交时 stash 会把工作区打回旧布局、stash-pop 冲突正是阶段 A 要消灭的数据风险。
+- Happy path：**临时 clone 已推送的 rescue 分支**到 scratch 目录，跑 `pnpm install && pnpm --filter @51guapi/shared build && pnpm -r compile && pnpm -r test` 全绿（rescue 分支天然无 .env/data，正好满足「无凭证环境」要求）。**禁用 `git stash -u` 方案**：它不会移除被忽略的 .env（验证无效），且在 153 个暂存新文件未提交时 stash 会把工作区打回旧布局、stash-pop 冲突正是阶段 A 要消灭的数据风险。
 - Error path：pre-push hook 对注入的假密钥样本（如 `AKIA...` 测试串）正确拦截。
 
 **Verification:**
@@ -306,7 +306,7 @@ flowchart TB
 **Dependencies:** Unit 6
 
 **Files:**
-- Modify: `.ai-memory/project_51publisher.md`、`.ai-memory/MEMORY.md`
+- Modify: `.ai-memory/project_51guapi.md`、`.ai-memory/MEMORY.md`
 - Modify: `docs/plans/2026-06-09-001-refactor-comprehensive-optimization-plan.md`（标注：已完成/已回退/延后逐项）
 - Modify: `docs/plans/2026-06-10-001-refactor-tech-debt-optimization-plan.md`（并发会话产物——标注其与本计划的关系与废止/吸收结论）
 

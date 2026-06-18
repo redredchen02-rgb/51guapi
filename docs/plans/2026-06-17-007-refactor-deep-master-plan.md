@@ -13,7 +13,7 @@ verify: bash scripts/check-all.sh && pnpm test:preflight
 
 ## 背景与目标
 
-51guapi(吃瓜小帮手)由旧的 **51publisher**(往站点 iframe 表单填发帖)重塑而来,现在**只爬取 URL → AI 提炼吃瓜草稿 → 人工预览/编辑 → 导出 JSON/Markdown,绝不发布/填充/写回任何站点**。重塑在文件级已完成(content script、`body-responder`、`frame-resolve`、`BatchReviewPanel` 等整文件均已删),但留下了**概念残渣**:无调用方的发布器度量/schema/表、悬空的「填充到当前页」快捷键、遗留字段、旧项目名。
+51guapi(吃瓜小帮手)由旧的 **51guapi**(往站点 iframe 表单填发帖)重塑而来,现在**只爬取 URL → AI 提炼吃瓜草稿 → 人工预览/编辑 → 导出 JSON/Markdown,绝不发布/填充/写回任何站点**。重塑在文件级已完成(content script、`body-responder`、`frame-resolve`、`BatchReviewPanel` 等整文件均已删),但留下了**概念残渣**:无调用方的发布器度量/schema/表、悬空的「填充到当前页」快捷键、遗留字段、旧项目名。
 
 本总纲基于一次四路并行 deep research(backend / extension / shared / 计划对账)的发现,目标:
 

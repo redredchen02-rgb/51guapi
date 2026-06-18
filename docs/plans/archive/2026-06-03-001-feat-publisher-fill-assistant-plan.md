@@ -1,17 +1,17 @@
 ---
-title: 'feat: 51publisher 发帖填充助手(Chrome 扩展)'
+title: 'feat: 51guapi 发帖填充助手(Chrome 扩展)'
 type: feat
 status: completed
 date: 2026-06-03
-origin: docs/brainstorms/2026-06-03-publisher-fill-assistant-requirements.md
+origin: docs/brainstorms/2026-06-03-51guapi-extension-requirements.md
 deepened: 2026-06-03
 ---
 
-# feat: 51publisher 发帖填充助手(Chrome 扩展)
+# feat: 51guapi 发帖填充助手(Chrome 扩展)
 
 ## Overview
 
-构建一个 Manifest V3 Chrome 扩展,辅助 51publisher 后台的内容运营:在 side panel 里用大模型生成一条草稿 → 人工预览/编辑 → 一键填进后台发帖表单(正文走 Quill API)→ 人工审核修改 → **人工手动点发布**。扩展只"填充",绝不自动提交。技术栈:WXT + TypeScript + React。
+构建一个 Manifest V3 Chrome 扩展,辅助 51guapi 后台的内容运营:在 side panel 里用大模型生成一条草稿 → 人工预览/编辑 → 一键填进后台发帖表单(正文走 Quill API)→ 人工审核修改 → **人工手动点发布**。扩展只"填充",绝不自动提交。技术栈:WXT + TypeScript + React。
 
 ## Problem Frame
 
@@ -33,7 +33,7 @@ deepened: 2026-06-03
 - R12. 设置页可配:endpoint、API key、prompt 模板、字段映射(see origin: R12)
 - R13. AI 生成内容初始状态 `draft`(see origin: R13)
 - R14. 定义 `ContentDraft` 接口(id/title/subtitle/category/coverImageUrl/body/tags/status/createdAt);`coverImageUrl` 保留作预览,MVP 不填进表单(see origin: R14)
-- R15. `host_permissions` 只声明 51publisher 后台域名(see origin: R15)
+- R15. `host_permissions` 只声明 51guapi 后台域名(see origin: R15)
 - R16. 不存储敏感凭证明文(用户自填 API key 除外,需风险提示)(see origin: R16)
 
 **review 新增(深化派生,非新增产品范围)**
@@ -158,7 +158,7 @@ flowchart TB
 
 - [x] **Unit 0: 现场 DOM 与 Quill 勘查(前置,有交付物)— ✅ 已完成 2026-06-03**
 
-**Goal:** 在真实 51publisher 发帖页实地勘查,产出 U4/U5 编码所需的事实,避免按假设返工。
+**Goal:** 在真实 51guapi 发帖页实地勘查,产出 U4/U5 编码所需的事实,避免按假设返工。
 
 **Requirements:** 解锁 R6/R7/R8/R9
 
@@ -189,7 +189,7 @@ flowchart TB
 
 **Approach:**
 
-- 用 WXT 的 React 模板初始化;`wxt.config.ts` 里声明 `host_permissions` 仅含 51publisher 域名占位符(实现时替换真实域名)。`permissions` 取最小:`['storage', 'sidePanel']`——**确认是否真需 `scripting`**:若 U5 走静态 `world:'MAIN'` 入口(WXT 自动写进 `content_scripts`)则不需要;若改走 `injectScript`,被注入脚本需声明为 unlisted + `web_accessible_resources`(deepen: feasibility,R15 最小权限)。
+- 用 WXT 的 React 模板初始化;`wxt.config.ts` 里声明 `host_permissions` 仅含 51guapi 域名占位符(实现时替换真实域名)。`permissions` 取最小:`['storage', 'sidePanel']`——**确认是否真需 `scripting`**:若 U5 走静态 `world:'MAIN'` 入口(WXT 自动写进 `content_scripts`)则不需要;若改走 `injectScript`,被注入脚本需声明为 unlisted + `web_accessible_resources`(deepen: feasibility,R15 最小权限)。
 - side panel 用 `default_path` 指向 sidepanel 入口;在 `background.main()` 里调 `chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true })` 实现点图标打开(deepen: feasibility)。
 
 **Patterns to follow:** WXT 文件式入口默认约定。
@@ -463,7 +463,7 @@ flowchart TB
 
 ## Sources & References
 
-- **Origin document:** [docs/brainstorms/2026-06-03-publisher-fill-assistant-requirements.md](docs/brainstorms/2026-06-03-publisher-fill-assistant-requirements.md)
+- **Origin document:** [docs/brainstorms/2026-06-03-51guapi-extension-requirements.md](docs/brainstorms/2026-06-03-51guapi-extension-requirements.md)
 - WXT 内容脚本与主世界注入:https://wxt.dev/guide/essentials/content-scripts
 - WXT 入口配置:https://wxt.dev/guide/essentials/entrypoints
 - Quill API(`find`/`setContents`):https://quilljs.com/docs/api

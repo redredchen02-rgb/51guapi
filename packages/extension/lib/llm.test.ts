@@ -39,7 +39,7 @@ function mockFetch(
 }
 
 const settings: Settings = {
-	endpoint: "http://127.0.0.1:3001",
+	endpoint: "http://127.0.0.1:3002",
 	model: "gpt-4o-mini",
 	fallbackModel: "",
 	promptTemplate: "test template",
@@ -64,7 +64,7 @@ describe("Extension LLM client proxy", () => {
 			expect(res.draft.title).toBe("hello");
 		}
 		expect(f).toHaveBeenCalledWith(
-			"http://127.0.0.1:3001/api/v1/drafts/generate",
+			"http://127.0.0.1:3002/api/v1/drafts/generate",
 			expect.objectContaining({
 				method: "POST",
 				body: JSON.stringify({
@@ -135,14 +135,14 @@ describe("Extension LLM client proxy", () => {
 	it("listModels calls backend list models endpoint", async () => {
 		const f = mockFetch({ ok: true, models: ["model-1", "model-2"] });
 
-		const res = await listModels("http://127.0.0.1:3001", "", f);
+		const res = await listModels("http://127.0.0.1:3002", "", f);
 
 		expect(res.ok).toBe(true);
 		if (res.ok) {
 			expect(res.models).toEqual(["model-1", "model-2"]);
 		}
 		expect(f).toHaveBeenCalledWith(
-			"http://127.0.0.1:3001/api/v1/models",
+			"http://127.0.0.1:3002/api/v1/models",
 			expect.objectContaining({
 				headers: { "Content-Type": "application/json" },
 			}),
@@ -176,7 +176,7 @@ describe("reviewDraft proxy", () => {
 		expect(res.ok).toBe(true);
 		if (res.ok) expect(res.result.dimensions?.[0]?.name).toBe("body_richness");
 		expect(f).toHaveBeenCalledWith(
-			"http://127.0.0.1:3001/api/v1/drafts/review",
+			"http://127.0.0.1:3002/api/v1/drafts/review",
 			expect.objectContaining({ method: "POST" }),
 		);
 	});
@@ -215,7 +215,7 @@ describe("rewriteDraft proxy", () => {
 		expect(res.ok).toBe(true);
 		if (res.ok) expect(res.draft.title).toBe("新标题");
 		expect(f).toHaveBeenCalledWith(
-			"http://127.0.0.1:3001/api/v1/drafts/rewrite",
+			"http://127.0.0.1:3002/api/v1/drafts/rewrite",
 			expect.objectContaining({ method: "POST" }),
 		);
 	});

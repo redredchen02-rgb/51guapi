@@ -116,7 +116,7 @@ graph TB
 - Security：next 指向**不同 host** → 不跟隨（不請求）；next 路徑不符 channel `pathPrefix` → `enforcePathPrefix` 拒（複用既有，斷該頁不中斷整體看實作）；DNS 在測試 mock。
 - Edge：累積詳情 URL 超上限時截斷。
 
-**Verification:** `pnpm --filter publisher-backend test` 綠；`fetchListPaged` 在 mock 下正確跟隨/停止/防環/拒跨 host。
+**Verification:** `pnpm --filter 51guapi-backend test` 綠；`fetchListPaged` 在 mock 下正確跟隨/停止/防環/拒跨 host。
 
 ---
 

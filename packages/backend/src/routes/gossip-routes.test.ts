@@ -34,7 +34,7 @@ const mockGetChannel = vi.mocked(getChannelByHostname);
 const mockFetchContent = vi.mocked(fetchContent);
 const mockGossipExtractFacts = vi.mocked(gossipExtractFacts);
 
-const DATA_DIR = process.env.PUBLISHER_DATA_DIR!;
+const DATA_DIR = process.env.GUAPI_DATA_DIR!;
 
 function cleanData() {
 	initPendingDb();

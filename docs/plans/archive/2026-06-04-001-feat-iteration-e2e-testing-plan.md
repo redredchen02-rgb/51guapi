@@ -378,5 +378,5 @@ graph TB
 
 - **Origin document:** [docs/brainstorms/2026-06-04-iteration-and-e2e-testing-requirements.md](../brainstorms/2026-06-04-iteration-and-e2e-testing-requirements.md)
 - 字段映射与勘查:[docs/field-mapping-guide.md](../field-mapping-guide.md)
-- 既有计划:[docs/plans/2026-06-03-001-feat-publisher-fill-assistant-plan.md](2026-06-03-001-feat-publisher-fill-assistant-plan.md)
+- 既有计划:[docs/plans/2026-06-03-001-feat-51guapi-extension-plan.md](2026-06-03-001-feat-51guapi-extension-plan.md)
 - 关键代码:`lib/fillers.ts`、`lib/quill-paste.ts`、`lib/body-bridge.ts`、`entrypoints/quill-bridge.content.ts`、`entrypoints/content.ts`

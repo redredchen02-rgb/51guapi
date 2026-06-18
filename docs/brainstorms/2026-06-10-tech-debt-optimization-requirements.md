@@ -7,7 +7,7 @@ topic: tech-debt-optimization
 
 ## Summary
 
-对 51publisher codebase 的执行现有 7 维度优化计划的修订版本——在已实现 50–60% 的基础上，完成剩余的 TypeBox 接入、Rate Limit 启用、CORS 收窄、错误标准化、Loading states、CSS Modules、结构化日志、Config 持久化等工作。预计工作量约 3–4 天。
+对 51guapi codebase 的执行现有 7 维度优化计划的修订版本——在已实现 50–60% 的基础上，完成剩余的 TypeBox 接入、Rate Limit 启用、CORS 收窄、错误标准化、Loading states、CSS Modules、结构化日志、Config 持久化等工作。预计工作量约 3–4 天。
 
 ---
 
@@ -37,7 +37,7 @@ topic: tech-debt-optimization
 
 **[Phase E：运维安全]**
 
-- R9. Extension 端 logger 抽象：`lib/logger.ts`，提供 `info()` / `error()` / `warn()`，统一格式 `[51publisher] [level] message {context}`，开发环境输出 console，生产可静默。
+- R9. Extension 端 logger 抽象：`lib/logger.ts`，提供 `info()` / `error()` / `warn()`，统一格式 `[51guapi] [level] message {context}`，开发环境输出 console，生产可静默。
 - R10. Config routes 持久化：将 `config-store.ts` 的 site/scraper mappings 从内存写入 `pending-db.sqlite` 的 config 表（或独立 config.json），启动时读取，写入时双写。
 
 ---
@@ -50,7 +50,7 @@ topic: tech-debt-optimization
 - ErrorBoundary: 在 Settings 或 BatchView 内 `throw new Error()` 后不白屏，显示 fallback UI 和重试按钮。
 - Loading states: PendingTopicsView 在数据返回前显示灰色 skeleton，不闪烁空白。
 - CSS Modules: Settings.tsx 中无 `style={{ }}` 内联对象，全量引用 `.module.css`。
-- Logger: `logger.info('batch', { id })` 输出 `[51publisher] [info] batch {id: ...}`。
+- Logger: `logger.info('batch', { id })` 输出 `[51guapi] [info] batch {id: ...}`。
 - Config 持久化：重启后端后 `GET /api/v1/config/scraper-mapping` 返回重启前设置的值。
 
 ---

@@ -105,7 +105,7 @@ date: 2026-06-15
 - Error:getBatch 返回 null → null。
 - Integration:对该 item 派发 FILL_PAGE(仿 handleApproveBatch 的 fill 断言)。
 - **Integration(draftOverrides 预存):`APPROVE_BATCH` 带非空 draftOverrides → 在 approveBatch 之前发生 `patchBatchDrafts`+`saveBatch`,钉死 call order 与 save 次数。**
-**Verification:** 新测在确定的 baseline 上全绿;`pnpm --filter publisher-fill-assistant test` 绿。
+**Verification:** 新测在确定的 baseline 上全绿;`pnpm --filter 51guapi-extension test` 绿。
 
 - [x] **Unit 2: 合并 approve 双 handler**
 
@@ -180,4 +180,4 @@ date: 2026-06-15
 - 关键代码:`packages/extension/entrypoints/background.ts`(approve handlers 278–403、config-read 163/228/439)、`packages/extension/lib/batch-orchestrator.ts`、`publish-orchestrator.ts`
 - 测试网:`batch-orchestrator.test.ts`(1179)、`__tests__/entrypoints/background.test.ts`(480)
 - 既有错误格式:`packages/backend/src/error-response.ts`、`src/utils/schemas.ts`
-- `.ai-memory/feedback_frontend-backend-separation.md`、`project_51publisher.md`
+- `.ai-memory/feedback_frontend-backend-separation.md`、`project_51guapi.md`

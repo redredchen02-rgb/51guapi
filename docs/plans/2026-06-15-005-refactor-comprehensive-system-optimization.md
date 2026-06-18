@@ -11,7 +11,7 @@ supersedes: []
 
 ## Overview
 
-51publisher 经历了多轮迭代优化（2026-06-09 七维度大重构 → 06-10 技术债清理 → 06-11 Phase2-5 功能迭代 → 06-15 上线就绪修复），核心脊椎（三世界模型、防幻觉事实注入、安全闸门链、CI 管线）已硬。但多轮迭代后仍残留若干**已知但延后**的缺口。
+51guapi 经历了多轮迭代优化（2026-06-09 七维度大重构 → 06-10 技术债清理 → 06-11 Phase2-5 功能迭代 → 06-15 上线就绪修复），核心脊椎（三世界模型、防幻觉事实注入、安全闸门链、CI 管线）已硬。但多轮迭代后仍残留若干**已知但延后**的缺口。
 
 本计划对所有剩余优化项做**一次完整收口**，让项目从「功能完备」进入「生产就绪」状态。
 
@@ -138,7 +138,7 @@ supersedes: []
 - Edge: 非数字 `:id` param → 404 或 400
 
 **Verification:**
-- `pnpm --filter publisher-backend test` 全绿
+- `pnpm --filter 51guapi-backend test` 全绿
 - 每个缺失 schema 的 route 补完后独立验证
 
 ### U1.2. Migrations 编号整理
@@ -223,7 +223,7 @@ export const logger = {
 };
 ```
 
-Format: `[51publisher] [level] [module] message {json_context}`
+Format: `[51guapi] [level] [module] message {json_context}`
 
 Debug level gated by `import.meta.env.DEV` — silent in production build.
 
@@ -323,7 +323,7 @@ Debug level gated by `import.meta.env.DEV` — silent in production build.
 
 **归档判定标准:**
 ```
-docs/plans/2026-06-03-001-feat-publisher-fill-assistant-plan.md          ← completed
+docs/plans/2026-06-03-001-feat-51guapi-extension-plan.md          ← completed
 docs/plans/2026-06-04-001-feat-iteration-e2e-testing-plan.md             ← completed
 docs/plans/2026-06-04-002-feat-autonomous-publisher-pivot-plan.md        ← superseded
 docs/plans/2026-06-04-003-refactor-batch-orchestrator-plan.md            ← completed
@@ -471,7 +471,7 @@ const server = Fastify({ bodyLimit: 1048576 }) // 1MB
 
 **Approach:**
 ```bash
-hyperfine --warmup 1 'pnpm --filter publisher-backend build' 'pnpm --filter publisher-fill-assistant build'
+hyperfine --warmup 1 'pnpm --filter 51guapi-backend build' 'pnpm --filter 51guapi-extension build'
 ```
 
 记录结果到 `docs/baselines/build-baseline.md`。

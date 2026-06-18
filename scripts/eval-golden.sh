@@ -39,7 +39,7 @@ fi
 MODEL="${LLM_MODEL:-gpt-4o-mini}"
 
 # 後端 URL（eval 直接呼叫 LLM，不經後端）
-BACKEND_URL="${BACKEND_URL:-http://localhost:3001}"
+BACKEND_URL="${BACKEND_URL:-http://localhost:3002}"
 
 echo "=== Golden-Set Eval Run: $RUN_ID ==="
 echo "Model: $MODEL"

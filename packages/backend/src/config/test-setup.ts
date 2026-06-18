@@ -6,4 +6,4 @@ import { join } from "node:path";
 // isolated temp dir so tests never touch the real packages/backend/data.
 // Runs before any test module is imported, so module-level DATA_DIR constants
 // pick up the override.
-process.env.PUBLISHER_DATA_DIR = mkdtempSync(join(tmpdir(), "publisher-test-"));
+process.env.GUAPI_DATA_DIR = mkdtempSync(join(tmpdir(), "guapi-test-"));

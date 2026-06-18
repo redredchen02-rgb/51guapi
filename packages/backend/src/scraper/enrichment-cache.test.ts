@@ -1,5 +1,5 @@
 // enrichment-cache 单元测试：首个直接驱动 enrichment_cache 表的测试。
-// 继承 config/test-setup.ts（临时 PUBLISHER_DATA_DIR）；DB 用例用每用例唯一 key，
+// 继承 config/test-setup.ts（临时 GUAPI_DATA_DIR）；DB 用例用每用例唯一 key，
 // 避免 SQLite 行跨用例泄漏。
 
 import { afterAll, beforeEach, describe, expect, it } from "vitest";

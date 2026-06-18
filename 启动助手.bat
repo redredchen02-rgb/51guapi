@@ -3,7 +3,7 @@ chcp 65001 >nul
 cd /d "%~dp0"
 
 echo.
-echo  51publisher 发帖填充助手 — 启动向导
+echo  51guapi 吃瓜小帮手 — 启动向导
 echo  ════════════════════════════════════
 echo.
 

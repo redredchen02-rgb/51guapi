@@ -20,7 +20,7 @@ export const demoAdapter: SiteAdapter = {
 		const res = await safeFetch(url, {
 			headers: {
 				"User-Agent":
-					"Mozilla/5.0 (compatible; 51guapi-scraper/1.0; +http://127.0.0.1:3001)",
+					"Mozilla/5.0 (compatible; 51guapi-scraper/1.0; +http://127.0.0.1:3002)",
 			},
 		});
 

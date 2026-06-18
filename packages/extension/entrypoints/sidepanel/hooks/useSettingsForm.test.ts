@@ -46,7 +46,7 @@ const DEFAULT_SETTINGS_MOCK = {
 	fewShotPairs: [],
 	recommendedTags: ["漢化", "無修正"],
 	fallbackModel: undefined,
-	backendUrl: "http://localhost:3001",
+	backendUrl: "http://localhost:3002",
 	reviewCriteriaPrompt: "",
 	dailyBatchSize: 5,
 };

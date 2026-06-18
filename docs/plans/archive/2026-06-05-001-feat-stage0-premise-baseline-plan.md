@@ -10,7 +10,7 @@ origin: docs/brainstorms/2026-06-05-content-quality-and-first-flight-requirement
 
 ## Overview
 
-51publisher 工程地基已过度建设(v1+plan-004+005、217 测试绿、可 build),但**产品 0% 验证**:
+51guapi 工程地基已过度建设(v1+plan-004+005、217 测试绿、可 build),但**产品 0% 验证**:
 草稿合格率从没测过、authorized 真实发布一次没跑通。本计划**不写功能代码**,而是一份**可照做的执行 runbook**:
 用现版扩展跑一批真实题材拿数据,过一道 go/no-go 闸门,**用数据决定**是否值得投入阶段 1 的源接地架构(R4–R8)。
 

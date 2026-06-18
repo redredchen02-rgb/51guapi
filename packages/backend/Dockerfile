@@ -22,9 +22,9 @@ COPY --from=builder /app/packages/shared/dist ./packages/shared/dist
 COPY --from=builder /app/node_modules ./node_modules
 
 ENV NODE_ENV=production
-EXPOSE 3001
+EXPOSE 3002
 
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
-  CMD curl -f http://localhost:3001/api/v1/healthz || exit 1
+  CMD curl -f http://localhost:3002/api/v1/healthz || exit 1
 
 CMD ["node", "dist/index.js"]

@@ -17,7 +17,7 @@ describe("getBackendUrl", () => {
 	});
 
 	it("未配置时返回默认值", async () => {
-		expect(await getBackendUrl()).toBe("http://127.0.0.1:3001");
+		expect(await getBackendUrl()).toBe("http://127.0.0.1:3002");
 	});
 
 	it("结果被缓存", async () => {

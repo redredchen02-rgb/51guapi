@@ -3,7 +3,7 @@ import { defineConfig } from "wxt";
 // 本地后端地址:声明为 host_permission,使扩展(SW/sidepanel)调用 loopback
 // 不被 Chrome 的 Local Network Access(私有网络访问)拦截。
 // U1:发布/填充机器已拆除,扩展不再注入任何第三方站点,故只保留后端 loopback。
-const BACKEND_HOSTS = ["http://127.0.0.1:3001/*", "http://localhost:3001/*"];
+const BACKEND_HOSTS = ["http://127.0.0.1:3002/*", "http://localhost:3002/*"];
 
 function parseHosts(): string[] {
 	return [...BACKEND_HOSTS];

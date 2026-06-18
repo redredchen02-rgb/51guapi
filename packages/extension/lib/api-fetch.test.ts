@@ -28,10 +28,10 @@ describe("apiFetch", () => {
 		fakeBrowser.reset();
 	});
 
-	it("以 / 开头的 path → 前缀 backendUrl(默认 127.0.0.1:3001)", async () => {
+	it("以 / 开头的 path → 前缀 backendUrl(默认 127.0.0.1:3002)", async () => {
 		const { captured, fn } = mockFetch();
 		await apiFetch("/api/v1/ping", { fetchFn: fn });
-		expect(captured[0]?.url).toBe("http://127.0.0.1:3001/api/v1/ping");
+		expect(captured[0]?.url).toBe("http://127.0.0.1:3002/api/v1/ping");
 	});
 
 	it("注入 Content-Type;有 token 时注入 Authorization", async () => {

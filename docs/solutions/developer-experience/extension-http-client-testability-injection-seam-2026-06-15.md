@@ -8,7 +8,7 @@ component: extension-http-clients
 severity: medium
 applies_when:
   - 给 extension 的后端 HTTP 客户端(*-client.ts)补单测
-  - 客户端内部走 @51publisher/shared 的 fetchWithTimeout 而非裸 fetch
+  - 客户端内部走 @51guapi/shared 的 fetchWithTimeout 而非裸 fetch
   - 看到形如 `_fetchFn: typeof fetch = fetch` 的参数,想注入 mock
 tags: [testing, dependency-injection, fetch, mock, fetchWithTimeout, wxt, vitest, extension]
 ---
@@ -48,7 +48,7 @@ export async function fetchX(
 
 ## Why This Matters
 
-`_fetchFn`(下划线前缀)是「声明了但故意不用」的信号——注入它**不会拦截请求**,测试会以为在测客户端、实际打了真 fetchWithTimeout(或被 wxt 环境拦),要么误绿要么误红。同理,客户端走 `fetchWithTimeout`(来自 shared)而非裸 `fetch` 时,`vi.stubGlobal("fetch", ...)` 也拦不到——必须走参数注入,或 `vi.mock("@51publisher/shared")`。
+`_fetchFn`(下划线前缀)是「声明了但故意不用」的信号——注入它**不会拦截请求**,测试会以为在测客户端、实际打了真 fetchWithTimeout(或被 wxt 环境拦),要么误绿要么误红。同理,客户端走 `fetchWithTimeout`(来自 shared)而非裸 `fetch` 时,`vi.stubGlobal("fetch", ...)` 也拦不到——必须走参数注入,或 `vi.mock("@51guapi/shared")`。
 
 ## When to Apply
 

@@ -50,7 +50,7 @@ export interface Settings {
 	fewShotPairs?: FewShotPair[];
 	/** 运营者维护的推荐标签子集(~20-50 条);注入 prompt 约束,防模型造词(R5-R6)。 */
 	recommendedTags?: string[];
-	/** 吃瓜小帮手 后端 URL（http://localhost:3001 等）;空=不启用后端双写。 */
+	/** 吃瓜小帮手 后端 URL（http://localhost:3002 等）;空=不启用后端双写。 */
 	backendUrl?: string;
 	/** AI 评审标准 prompt（Phase 3）;空时使用内置四维默认标准。 */
 	reviewCriteriaPrompt?: string;

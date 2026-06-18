@@ -7,17 +7,17 @@ expires: 2026-09-18
 platform: universal
 ---
 
-# 51guapi 项目状态(原 51publisher,已重塑)
+# 51guapi 项目状态(原 51guapi,已重塑)
 
 ## 重大转向(勿再漂移）
-项目**已从「51publisher」(往站点 iframe 表单填发帖)重塑为「51guapi 吃瓜小帮手」**:
+项目**已从「51guapi」(往站点 iframe 表单填发帖)重塑为「51guapi 吃瓜小帮手」**:
 **只爬取 URL → AI 提炼吃瓜草稿 → 人工预览/编辑 → 导出 JSON/Markdown。绝不发布/填充/写回任何站点(硬约束)。**
 
 发布器时代的整文件已删:`content.ts`、`body-responder.ts`、`frame-resolve.ts`、`BatchReviewPanel`、`TodayBatchView`、iframe 填充、首飞 runbook 全部不复存在。**任何提到 iframe 填充/发帖/batch 双写/first-flight 的旧说法都是历史,勿信。**
 
 ## 仓库现实
-- **remote = GitHub** `github.com/redredchen02-rgb/51guapi`(已从 51publisher 改名)。活跃 CI = `.github/workflows/`(`ci.yml` push/PR 真闸:fixture 闸 + compile + lint + test + 产物校验 + gitleaks job)+ `release.yml`(`v*` tag)。**无** `.gitlab-ci.yml`。
-- Monorepo(pnpm):`packages/backend/`(Fastify 5,port 3001)+ `packages/extension/`(WXT + React 19 + MV3)+ `packages/shared/`(`@51guapi/shared`)。
+- **remote = GitHub** `github.com/redredchen02-rgb/51guapi`(已从 51guapi 改名)。活跃 CI = `.github/workflows/`(`ci.yml` push/PR 真闸:fixture 闸 + compile + lint + test + 产物校验 + gitleaks job)+ `release.yml`(`v*` tag)。**无** `.gitlab-ci.yml`。
+- Monorepo(pnpm):`packages/backend/`(Fastify 5,port 3002)+ `packages/extension/`(WXT + React 19 + MV3)+ `packages/shared/`(`@51guapi/shared`)。
 - 扩展:`entrypoints/background.ts`(调度 + LLM,API key 只在此)+ `entrypoints/sidepanel/`(React UI,**无 content script**)。视图:App / AuthView / DraftPreview / ExportPanel / GossipView / MetricsView / PendingTopicsView / Settings。
 - 存储:pending/config 用 SQLite(better-sqlite3),prompt 用 JSON 文件(双轨,Phase 6 拟统一);均读 `PUBLISHER_DATA_DIR`(遗留旧名,Phase 2 拟改 `GUAPI_DATA_DIR` + fallback);vitest 经 `src/test-setup.ts` 指临时目录。
 - API 统一 `{ ok }` 包络;JWT(HS256,24h);扩展调后端统一走 `apiFetch`(getAuthHeaders → getBackendUrl → fetchWithTimeout → 401→clearToken)。

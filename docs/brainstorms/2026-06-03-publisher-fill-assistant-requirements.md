@@ -1,13 +1,13 @@
 ---
 date: 2026-06-03
-topic: publisher-fill-assistant
+topic: 51guapi-extension
 ---
 
-# 51publisher 发帖填充助手(Chrome 扩展)
+# 51guapi 发帖填充助手(Chrome 扩展)
 
 ## Problem Frame
 
-内容运营在 51publisher 后台逐条发帖,每条都要把标题、副标题、分类、正文、标签手动敲进表单,重复且慢。目标是用一个 Chrome 扩展把"AI 生成草稿 → 填进发帖表单"这段机械劳动自动化,把人留在真正需要判断的环节:**审核、修改、点发布**。
+内容运营在 51guapi 后台逐条发帖,每条都要把标题、副标题、分类、正文、标签手动敲进表单,重复且慢。目标是用一个 Chrome 扩展把"AI 生成草稿 → 填进发帖表单"这段机械劳动自动化,把人留在真正需要判断的环节:**审核、修改、点发布**。
 
 **硬约束(不可妥协):插件只填充、只辅助,绝不自动提交、绝不自动点发布。最终发布动作必须是人工。**
 
@@ -56,12 +56,12 @@ flowchart TB
 
 **安全与权限**
 
-- R15. `host_permissions` 只声明 51publisher 自己的后台域名,最小权限原则。
+- R15. `host_permissions` 只声明 51guapi 自己的后台域名,最小权限原则。
 - R16. 不存储任何敏感凭证明文(除用户自填的 API key,且需风险提示)。
 
 ## Success Criteria
 
-- 在真实 51publisher 发帖页,点一次「填充到当前页」,标题/副标题/分类/正文/标签被正确填入,正文在 Quill 里显示正常(格式不乱、编辑器状态正常可继续编辑)。
+- 在真实 51guapi 发帖页,点一次「填充到当前页」,标题/副标题/分类/正文/标签被正确填入,正文在 Quill 里显示正常(格式不乱、编辑器状态正常可继续编辑)。
 - 全流程没有任何一步会自动提交或自动发布——发布按钮始终由人工点击。
 - 后台若小改版,只需改字段映射 map 一处即可恢复,不必动核心代码。
 - 一条草稿从「生成」到「填好待审核」的耗时,显著低于纯手工录入。
@@ -83,7 +83,7 @@ flowchart TB
 
 ## Dependencies / Assumptions
 
-- 假设 51publisher 后台发帖页可被 content script 注入,且 Quill 实例可通过向页面主世界注入脚本访问到。
+- 假设 51guapi 后台发帖页可被 content script 注入,且 Quill 实例可通过向页面主世界注入脚本访问到。
 - 假设用户自备可用的大模型 API key 与 endpoint。
 
 ## Outstanding Questions
@@ -94,10 +94,10 @@ flowchart TB
 
 ### Deferred to Planning
 
-- [Affects R6/R7][Technical][Needs research] 51publisher 发帖页实际 DOM:各字段的稳定选择器、Quill 实例如何挂载与访问(主世界注入方式)、分类与标签控件的真实形态——需用浏览器实地打开发帖页检查后再写映射。
+- [Affects R6/R7][Technical][Needs research] 51guapi 发帖页实际 DOM:各字段的稳定选择器、Quill 实例如何挂载与访问(主世界注入方式)、分类与标签控件的真实形态——需用浏览器实地打开发帖页检查后再写映射。
 - [Affects R10/R12][Technical] 直连哪家大模型、请求/响应格式、流式与否、错误处理。
 - [Affects 构建] 构建工具选型(倾向 **WXT**:对 MV3 + side panel + content script 主世界注入的脚手架与类型支持更完整,省去 crxjs 手工配置;最终在 plan 阶段定)。
 
 ## Next Steps
 
-→ `/ce:plan` for structured implementation planning(产品边界已清晰,可直接进技术规划;规划第一步应实地检查 51publisher 发帖页 DOM)
+→ `/ce:plan` for structured implementation planning(产品边界已清晰,可直接进技术规划;规划第一步应实地检查 51guapi 发帖页 DOM)

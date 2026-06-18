@@ -18,7 +18,7 @@ origin: docs/brainstorms/2026-06-09-comprehensive-capability-upgrade-requirement
 
 ## Overview
 
-Four targeted improvements that transform 51publisher from a manually-fed draft machine into a system an operator can run daily without JSON editing or copy-paste gymnastics:
+Four targeted improvements that transform 51guapi from a manually-fed draft machine into a system an operator can run daily without JSON editing or copy-paste gymnastics:
 
 1. **Auto-scraping pipeline completion** — PendingTopicsView inline fact editing, cover thumbnail preview, scraper trigger button, and a developer scaffold for new adapters.
 2. **Category/tag accuracy** — Prompt-level constraint (embed curated vocab in every generation call) + fine-grained degrade messages in fillers.ts to close the feedback loop.
@@ -29,7 +29,7 @@ Four targeted improvements that transform 51publisher from a manually-fed draft 
 
 ## Problem Frame
 
-51publisher's engine is technically sound but operators face three daily friction points:
+51guapi's engine is technically sound but operators face three daily friction points:
 
 - **Scraping review is read-only** — expanding a pending topic shows facts as uneditable text, forcing the operator to approve imperfect facts or reject and restart.
 - **Tags degrade silently** — model outputs free-text tag words that miss the checkbox list, the fill silently degrades, and the operator only discovers missing tags after checking the form. No signal which words to add to a curated list.

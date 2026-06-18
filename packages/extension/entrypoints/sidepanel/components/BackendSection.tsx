@@ -40,13 +40,13 @@ export function BackendSection({
 			<div className="section-header">后端连接（可选）</div>
 			<div className="field-group">
 				<label htmlFor="backend-url" className="field-label">
-					后端 URL（http://localhost:3001）
+					后端 URL（http://localhost:3002）
 				</label>
 				<input
 					id="backend-url"
 					className="field-input"
 					value={backendUrl}
-					placeholder="http://localhost:3001"
+					placeholder="http://localhost:3002"
 					onChange={(e) => setBackendUrl(e.target.value)}
 				/>
 			</div>

@@ -7,7 +7,7 @@ topic: autonomous-publisher-pivot
 
 ## Problem Frame
 
-51publisher 当前是「只填充、绝不自动提交」的 Chrome 扩展,人必须逐条点发布。
+51guapi 当前是「只填充、绝不自动提交」的 Chrome 扩展,人必须逐条点发布。
 帖子全部发往**自家站点**(可随时撤下/改/删,无封号风险),因此「逐条人工点发布」
 是产能瓶颈,而非安全必需。研究微软 **Webwright**(SWE 风格、模型自主端到端完成网页任务、
 Playwright、工作区即状态、任务=可重跑脚本)后,决定**移除零提交铁律**,让产品从

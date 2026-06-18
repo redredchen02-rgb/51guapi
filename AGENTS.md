@@ -2,7 +2,7 @@
 
 锁定 URL 爬取目标站资源 → AI 提炼吃瓜草稿 → 预览/编辑 → 导出 JSON / Markdown（不发布、不写回任何站点）。
 
-Monorepo: `packages/backend/` (Fastify 5 + TS, port 3001) + `packages/extension/` (WXT + React 19 + MV3) + `packages/shared/` (`@51guapi/shared`)
+Monorepo: `packages/backend/` (Fastify 5 + TS, port 3002) + `packages/extension/` (WXT + React 19 + MV3) + `packages/shared/` (`@51guapi/shared`)
 
 ## Auto-Memory (session-wrap)
 On session start, read `.ai-memory/*.md` for project context and learnings from prior sessions.

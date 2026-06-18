@@ -251,4 +251,4 @@ Unit 5 (独立，并行可做)
 - 想法文档: `docs/ideation/2026-06-15-open-ideation-r3.md`（想法 #2 前置、#4、#6）
 - CHANGELOG: `CHANGELOG.md`
 - CI: `.github/workflows/release.yml`
-- 内存: `.ai-memory/project_51publisher.md`
+- 内存: `.ai-memory/project_51guapi.md`

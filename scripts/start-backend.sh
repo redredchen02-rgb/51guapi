@@ -6,7 +6,7 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DIST_JS="$REPO_ROOT/packages/backend/dist/index.js"
 SRC_GLOB="$REPO_ROOT/packages/backend/src"
-HEALTHZ_URL="http://localhost:3001/api/v1/healthz"
+HEALTHZ_URL="http://localhost:3002/api/v1/healthz"
 
 # Rebuild if dist is missing or any src file is newer than the dist entry point.
 needs_build() {
@@ -26,11 +26,11 @@ if curl -sf "$HEALTHZ_URL" >/dev/null 2>&1; then
   exit 0
 fi
 
-# Locate .env: custom path > ~/.51publisher/.env > packages/backend/.env (new user default).
-if [[ -n "${PUBLISHER_ENV_PATH:-}" && -f "$PUBLISHER_ENV_PATH" ]]; then
-  ENV_FILE="$PUBLISHER_ENV_PATH"
-elif [[ -f "$HOME/.51publisher/.env" ]]; then
-  ENV_FILE="$HOME/.51publisher/.env"
+# Locate .env: custom path > ~/.51guapi/.env > packages/backend/.env (new user default).
+if [[ -n "${GUAPI_ENV_PATH:-}" && -f "$GUAPI_ENV_PATH" ]]; then
+  ENV_FILE="$GUAPI_ENV_PATH"
+elif [[ -f "$HOME/.51guapi/.env" ]]; then
+  ENV_FILE="$HOME/.51guapi/.env"
 elif [[ -f "$REPO_ROOT/packages/backend/.env" ]]; then
   ENV_FILE="$REPO_ROOT/packages/backend/.env"
 else

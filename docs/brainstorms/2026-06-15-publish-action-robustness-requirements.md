@@ -44,7 +44,7 @@ topic: publish-action-robustness
 **退役单条手动发布路径**
 - R1. 删除单条手动发布入口的完整闭包,删后无悬挂引用、`pnpm -r compile` 绿。完整删除面(planning 删前再核一次):
   - extension:`handlePublish`(`background.ts:183`)及 `createHandlers` 返回对象里的 `handlePublish,` 项(`:472`)、`PUBLISH_PAGE` 监听臂(`:613-614`)、文件头 PUBLISH_PAGE 路由注释(`:62`)、`markerKey` 与 `publishMarker:${tabId}` 读写(`:132`)、`requestPublish`(`messaging.ts:117`)与 `PUBLISH_PAGE` timeout 项(`messaging.ts:21`)。
-  - shared(需随后 `pnpm --filter @51publisher/shared build` 重生 dist,再 `-r compile`):`PublishPageResponse`(`types.ts:235`)、`RuntimeMessage` 联合里的 `PUBLISH_PAGE` 臂(`types.ts:144`)、`index.ts:53` 的 re-export。
+  - shared(需随后 `pnpm --filter @51guapi/shared build` 重生 dist,再 `-r compile`):`PublishPageResponse`(`types.ts:235`)、`RuntimeMessage` 联合里的 `PUBLISH_PAGE` 臂(`types.ts:144`)、`index.ts:53` 的 re-export。
   - ⚠️ `TodayBatchView.tsx:195` 有一个**同名但无关的 live** `handlePublish`(走批量 `approveSingleItem`)——勿被 grep 误删。
 - R2. 保护共享物件:`orchestratePublish`、`asPublishResult`、`evaluateGate`、`canSubmit` 仍被活的批量路径使用(`batch-orchestrator.ts:387`、`background.ts:294`、`:146` 等),**不得删除**;清理其针对单条路径的注释(如 `publish-orchestrator.ts:45`「U4 单条隔离」)以反映新现实。
 - R3. 衔接 grounding Phase 2(**整篇 reconcile,非只改一行**):退役决定与 grounding Phase 2 文档在 **7 处**耦合,其中 Key Decision 当前写的是**相反**的话。需一并改:

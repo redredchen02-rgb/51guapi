@@ -49,7 +49,7 @@ topic: fewshot-dedup
 
 **F. 後端 Prompt 樣板 — 改為儲存 fewShotPairs**
 
-- R11. 更新 `prompt-store.ts` 的 `Prompt` / `PromptTemplate` interface：以 `fewShotPairs: FewShotPair[]` 取代 `fewShotExamples: string`；FewShotPair 從 `@51publisher/shared` 引入。
+- R11. 更新 `prompt-store.ts` 的 `Prompt` / `PromptTemplate` interface：以 `fewShotPairs: FewShotPair[]` 取代 `fewShotExamples: string`；FewShotPair 從 `@51guapi/shared` 引入。
 - R12. 更新 `schemas.ts` 的 TypeBox schema（`lines 243, 250`）：移除 `fewShotExamples`，新增 `fewShotPairs: Type.Optional(Type.Array(...))`。
 - R13. 更新 `prompt-routes.ts`（`lines 55, 63, 102-103`）：request body 接受 `fewShotPairs`，不接受 `fewShotExamples`。
 - R14. 後端 Prompt JSON 遷移採 **lazy-on-read**：在 `prompt-store.ts` 讀取路徑上，若 JSON 含 `fewShotExamples` 字串但無 `fewShotPairs`，自動 parse 並回填 `fewShotPairs`（不做 startup scan，避免 scheduler 啟動時序問題）。

@@ -11,7 +11,7 @@ origin: docs/brainstorms/2026-06-10-intelligent-publisher-roadmap-requirements.m
 
 ## Overview
 
-Phase 4 transforms the 51publisher backend from a "single-URL periodic re-fetcher" into an
+Phase 4 transforms the 51guapi backend from a "single-URL periodic re-fetcher" into an
 automated topic radar: list-page discovery, 2-layer deduplication, quality scoring, post-publish
 revisit/health monitoring, Telegram alerting, and a macOS launchd daemon.
 
@@ -603,7 +603,7 @@ from a chmod-600 `.env` file. Aligns with R29a "后端常驻".
 **Dependencies:** None (independent of backend feature changes)
 
 **Files:**
-- Create: `scripts/launchd/com.51publisher.backend.plist` (template with placeholders)
+- Create: `scripts/launchd/com.51guapi.backend.plist` (template with placeholders)
 - Create: `scripts/launchd/start-backend.sh` (env-loading wrapper)
 - Create: `scripts/launchd/install.sh`
 - Create: `scripts/launchd/uninstall.sh`
@@ -612,19 +612,19 @@ from a chmod-600 `.env` file. Aligns with R29a "后端常驻".
   code. Manual verification against checklist below.
 
 **Approach:**
-- `com.51publisher.backend.plist`:
-  - `Label`: `com.51publisher.backend`
+- `com.51guapi.backend.plist`:
+  - `Label`: `com.51guapi.backend`
   - `ProgramArguments`: `["/bin/bash", "/path/to/start-backend.sh"]`
   - `KeepAlive`: `true` (restart on crash)
   - `StartCalendarInterval`: fires at a fixed time (e.g. `{ Hour: 0, Minute: 0 }`); use this
     instead of `StartInterval` so missed firings during sleep run on next wake, not all at once
-  - `StandardOutPath` / `StandardErrorPath`: log to `~/.51publisher/backend.log`
+  - `StandardOutPath` / `StandardErrorPath`: log to `~/.51guapi/backend.log`
   - **No `EnvironmentVariables` key with secret values** — all secrets loaded at runtime
 - `start-backend.sh`:
   ```
   #!/bin/bash
   set -euo pipefail
-  ENV_FILE="${PUBLISHER_ENV_PATH:-$HOME/.51publisher/.env}"
+  ENV_FILE="${PUBLISHER_ENV_PATH:-$HOME/.51guapi/.env}"
   if [[ ! -f "$ENV_FILE" ]]; then exit 1; fi
   chmod_result=$(stat -f "%OLp" "$ENV_FILE" 2>/dev/null || stat -c "%a" "$ENV_FILE")
   if [[ "$chmod_result" != "600" ]]; then echo "ERROR: .env must be chmod 600"; exit 1; fi
@@ -640,7 +640,7 @@ from a chmod-600 `.env` file. Aligns with R29a "后端常驻".
   Copies plist to `~/Library/LaunchAgents/`; calls `launchctl load`; idempotent (unloads first if
   already loaded).
 - `uninstall.sh`: `launchctl unload`; removes plist.
-- Document in `.env.example`: operator must `chmod 600 ~/.51publisher/.env` before running install.
+- Document in `.env.example`: operator must `chmod 600 ~/.51guapi/.env` before running install.
 
 **Patterns to follow:**
 - macOS launchd plist conventions (no inline secrets, `KeepAlive`, `StartCalendarInterval`)
@@ -653,11 +653,11 @@ Verified manually via checklist:
 - [x] `start-backend.sh` rejects `.env` that has a macOS extended ACL (`ls -le` shows `+`)
 - [x] `install.sh` is idempotent (second run does not error)
 - [x] `install.sh` embeds resolved absolute `dist/index.js` path (not a placeholder)
-- [x] After `install.sh`, `launchctl list | grep 51publisher` shows the daemon
+- [x] After `install.sh`, `launchctl list | grep 51guapi` shows the daemon
 - [x] `data/` directory exists and is writable before first boot (verify in install checklist)
 
 **Verification:**
-- `plutil -lint scripts/launchd/com.51publisher.backend.plist` exits 0
+- `plutil -lint scripts/launchd/com.51guapi.backend.plist` exits 0
 - Backend starts and stays up after a reboot test (manual)
 
 ---
@@ -740,9 +740,9 @@ Verified manually via checklist:
   2. Add list-page hostname to `ALLOWED_HOSTS`
   3. Add self-hosted front-end hostname to `REVISIT_ALLOWED_HOSTS`
   4. Create Telegram bot, add `TG_BOT_TOKEN` + `TG_CHAT_ID` to `.env`; set `TG_ENABLED=true`
-  5. `chmod 600 ~/.51publisher/.env`
+  5. `chmod 600 ~/.51guapi/.env`
   6. `bash scripts/launchd/install.sh`
-  7. Verify: `launchctl list | grep 51publisher`
+  7. Verify: `launchctl list | grep 51guapi`
 - Phase 4 gate verification: after running overnight with `ACGS51_ENABLED=true` + list URL set:
   - Morning: `SELECT COUNT(*) FROM pending_topics WHERE DATE(created_at)=DATE('now')` > 0
   - After a publish: `SELECT * FROM published_posts` shows record with `outcome='online'`

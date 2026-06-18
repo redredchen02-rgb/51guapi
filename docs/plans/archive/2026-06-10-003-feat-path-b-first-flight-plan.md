@@ -288,11 +288,11 @@ flowchart TB
 
 **Files:**
 - Modify: `docs/plans/2026-06-10-002-fix-stabilize-first-flight-security-plan.md`(U9 路径 B 完成日期)
-- Modify: `.ai-memory/project_51publisher.md`(收工复盘结论)
+- Modify: `.ai-memory/project_51guapi.md`(收工复盘结论)
 - Modify: `docs/brainstorms/2026-06-10-intelligent-publisher-roadmap-requirements.md`(Deferred 清单旁补观察结论引用,一行即可)
 
 **Approach:**
-- 执行 06-10-002 要求的收工复盘:依首飞真实数据量评估 SQLite 统一迁移与 06-09-001 延后项去留(做/不做/再延期+条件),结论写入 `.ai-memory/project_51publisher.md`。
+- 执行 06-10-002 要求的收工复盘:依首飞真实数据量评估 SQLite 统一迁移与 06-09-001 延后项去留(做/不做/再延期+条件),结论写入 `.ai-memory/project_51guapi.md`。
 - 复盘一并评估:coverImageUrl 代码级校验与抓取正文注入检测的立项阶段(安全评审输入);抓取内容(第三方物料)在 data/ 的保留/清理策略。
 - 五项观察结论回流 origin 文档 Deferred 清单(隐藏帖可访问性→隐藏态候选、save URL→R8 注册表、弹层→定时候选)。
 
@@ -336,4 +336,4 @@ flowchart TB
 - Related code: `packages/backend/src/scraper/scheduler.ts`、`scraper-routes.ts`、`fact-extractor.ts`、`pending-store.ts`、`ssrf-guard.ts`、`packages/backend/src/index.ts`、`env-check.ts`、`packages/extension/lib/batch-orchestrator.ts`、`batch.ts`、`fillers.ts`、`llm.ts`、`entrypoints/sidepanel/DraftPreview.tsx`、`PendingTopicsView.tsx`
 - Related plans: `docs/plans/2026-06-09-002-...`(对账对象)、`docs/plans/2026-06-10-002-...`(对账对象+U13/备份要求来源)
 - Related runbook: `docs/run-sheet-首飞与基线.md`
-- 机构记忆:`.ai-memory/project_51publisher.md`、自动记忆 `repo-ops-gotchas` / `content-quality-gated-baseline` / `intelligent-publisher-roadmap`
+- 机构记忆:`.ai-memory/project_51guapi.md`、自动记忆 `repo-ops-gotchas` / `content-quality-gated-baseline` / `intelligent-publisher-roadmap`
