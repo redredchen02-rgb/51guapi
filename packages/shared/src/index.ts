@@ -28,7 +28,6 @@ export type { AssembledDraft, DraftSlots } from "./post-assembler.js";
 export {
 	assembleDraft,
 	containsPlaceholder,
-	esc,
 	PLACEHOLDER,
 	sanitizeToPlainText,
 } from "./post-assembler.js";
