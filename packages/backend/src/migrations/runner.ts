@@ -90,6 +90,11 @@ CREATE INDEX IF NOT EXISTS idx_channels_hostname ON channels(hostname);`,
 	// 对全新 DB 是 no-op(003 create-then-drop),对既有 DB 清掉空表。
 	"010-drop-published-posts.sql": `\
 DROP TABLE IF EXISTS published_posts;`,
+	// 移除发布时代残留:batches 表(007 建)无任何后端写入者(发布机器已删,扩展侧
+	// batch 状态走 chrome.storage,不依赖此表)。DROP IF EXISTS 对全新 DB 是 no-op
+	// (007 create-then-drop),对既有 DB 清掉空表。
+	"011-drop-batches.sql": `\
+DROP TABLE IF EXISTS batches;`,
 };
 
 export function runMigrations(dbPath: string): void {
