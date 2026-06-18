@@ -22,7 +22,7 @@ import {
 	pendingTopicExistsBySourceUrl,
 	savePendingTopic,
 } from "../scraper/pending-store.js";
-import { recordScraperRun } from "../services/metrics.js";
+import { recordGossipVerify, recordScraperRun } from "../services/metrics.js";
 import { err } from "../utils/error-response.js";
 import { generateId } from "../utils/generate-id.js";
 import {
@@ -220,6 +220,7 @@ export async function registerGossipRoutes(
 			if (windowDays != null) {
 				const fw = isWithinWindow(publishedTime, windowDays, Date.now());
 				if (!fw.unknown && !fw.ok) {
+					recordGossipVerify("skipped_old");
 					return {
 						ok: true,
 						skipped: "too-old",
@@ -260,6 +261,7 @@ export async function registerGossipRoutes(
 			// 硬拒(明确无效:空页/错误页/广告)→ 不入池,但**用户可见**(用户主动点的,不静默吞)。
 			if (verification.decision === "reject") {
 				recordScraperRun(false);
+				recordGossipVerify("rejected");
 				return {
 					ok: true,
 					rejected: verification.reasons.join("；") || "内容无效",
@@ -276,6 +278,7 @@ export async function registerGossipRoutes(
 					...verification.reasons,
 					"疑似重复(内容指纹命中已有条目)",
 				];
+				recordGossipVerify("suspected_duplicate");
 			}
 
 			const now = new Date().toISOString();
@@ -309,6 +312,7 @@ export async function registerGossipRoutes(
 				return err(reply, 409, "URL already exists in pending topics");
 			}
 			recordScraperRun(true);
+			if (verification.decision === "flag") recordGossipVerify("flagged");
 			reply.code(201);
 			return { ok: true, topic };
 		},

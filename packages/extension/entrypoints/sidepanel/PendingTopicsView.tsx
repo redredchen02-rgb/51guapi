@@ -412,6 +412,21 @@ export function PendingTopicsView({ onBack, onDraftReady, onError }: Props) {
 				/>
 			)}
 
+			{!loading && selectedTheme && (
+				<div
+					className="text-xs"
+					style={{
+						margin: "0 0 var(--space-sm)",
+						padding: "var(--space-xs) var(--space-sm)",
+						borderRadius: "var(--radius-sm)",
+						background: "var(--color-info-bg, #e6f4ff)",
+						color: "var(--color-text-muted)",
+					}}
+				>
+					📁 题材池「{selectedTheme}」· 仅显示已核对的瓜(点「全部」返回待审列表)
+				</div>
+			)}
+
 			{!loading && topics.length === 0 && (
 				<div
 					className="text-center text-muted"
