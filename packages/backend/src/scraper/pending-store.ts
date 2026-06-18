@@ -1,4 +1,8 @@
-import type { FactsBlock, GossipFactsBlock } from "@51guapi/shared";
+import type {
+	FactsBlock,
+	GossipFactsBlock,
+	VerificationResult,
+} from "@51guapi/shared";
 import { getDb, pendingWriteQueue } from "./pending-db.js";
 import type { RawContent } from "./site-adapter.js";
 import type { EnrichedContext } from "./web-enricher.js";
@@ -33,6 +37,12 @@ export interface PendingTopic {
 	score?: number;
 	enrichment?: EnrichedContext;
 	domain?: "acg" | "gossip";
+	/** 内容指纹（跨 URL 去重；U3）。 */
+	contentFingerprint?: string;
+	/** 入池前验证结果（逐项判定/原因，供 UI 标红；U3）。 */
+	verification?: VerificationResult;
+	/** 人工二次核对通过时间戳；NULL=未核对，题材池只收非 NULL（U4）。 */
+	verifiedAt?: string;
 	createdAt: string;
 	updatedAt: string;
 }
@@ -59,6 +69,9 @@ interface PendingRow {
 	score: number | null;
 	enrichment: string | null;
 	domain: string;
+	content_fingerprint: string | null;
+	verification: string | null;
+	verified_at: string | null;
 	created_at: string;
 	updated_at: string;
 }
@@ -96,6 +109,12 @@ function rowToTopic(row: PendingRow): PendingTopic {
 		score: row.score ?? undefined,
 		enrichment: safeJsonParse<EnrichedContext>(row.enrichment, undefined),
 		domain,
+		contentFingerprint: row.content_fingerprint ?? undefined,
+		verification: safeJsonParse<VerificationResult>(
+			row.verification,
+			undefined,
+		),
+		verifiedAt: row.verified_at ?? undefined,
 		createdAt: row.created_at,
 		updatedAt: row.updated_at,
 	};
@@ -176,6 +195,19 @@ export async function pendingTopicExistsBySourceUrl(
 	);
 }
 
+/** 内容指纹是否已存在（跨 URL 去重；命中视为「疑似重复」，由调用方软标处理）。 */
+export async function pendingTopicExistsByFingerprint(
+	fingerprint: string,
+): Promise<boolean> {
+	if (!fingerprint) return false;
+	const db = getDb();
+	return (
+		db
+			.prepare("SELECT 1 FROM pending_topics WHERE content_fingerprint = ?")
+			.get(fingerprint) !== undefined
+	);
+}
+
 export async function loadPendingTopic(
 	id: string,
 ): Promise<PendingTopic | null> {
@@ -208,10 +240,12 @@ export async function savePendingTopic(
 				`
       INSERT INTO pending_topics
         (id, source_url, site_name, title, raw_content, facts, confidence, status,
-         rejected_reason, cover_image_url, score, enrichment, domain, created_at, updated_at)
+         rejected_reason, cover_image_url, score, enrichment, domain,
+         content_fingerprint, verification, verified_at, created_at, updated_at)
       VALUES
         (@id, @sourceUrl, @siteName, @title, @rawContent, @facts, @confidence, @status,
-         @rejectedReason, @coverImageUrl, @score, @enrichment, @domain, @createdAt, @updatedAt)
+         @rejectedReason, @coverImageUrl, @score, @enrichment, @domain,
+         @contentFingerprint, @verification, @verifiedAt, @createdAt, @updatedAt)
       ON CONFLICT(id) DO UPDATE SET
         source_url = excluded.source_url,
         site_name  = excluded.site_name,
@@ -225,6 +259,9 @@ export async function savePendingTopic(
         score      = excluded.score,
         enrichment = excluded.enrichment,
         domain     = excluded.domain,
+        content_fingerprint = excluded.content_fingerprint,
+        verification = excluded.verification,
+        verified_at = excluded.verified_at,
         updated_at = excluded.updated_at
     `,
 			).run({
@@ -241,6 +278,11 @@ export async function savePendingTopic(
 				score,
 				enrichment: topic.enrichment ? JSON.stringify(topic.enrichment) : null,
 				domain: topic.domain ?? "acg",
+				contentFingerprint: topic.contentFingerprint ?? null,
+				verification: topic.verification
+					? JSON.stringify(topic.verification)
+					: null,
+				verifiedAt: topic.verifiedAt ?? null,
 				createdAt: topic.createdAt,
 				updatedAt: topic.updatedAt,
 			});

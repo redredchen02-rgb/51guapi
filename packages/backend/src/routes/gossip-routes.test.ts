@@ -36,6 +36,13 @@ const mockGossipExtractFacts = vi.mocked(gossipExtractFacts);
 
 const DATA_DIR = process.env.GUAPI_DATA_DIR!;
 
+// 足够长且无错误页特征的有效正文，确保 from-url 通过入池前验证关(U3)的有效性硬拒
+// （正文 < 80 字会被判无效）。grounding 未溯源只软标 flag、仍入池，故断言 201 的用例够用。
+const LONG_BODY =
+	"這是一篇足夠長的測試正文，內容詳實，涵蓋事件的起因、經過與結果。據知情人爆料，" +
+	"相關細節逐一浮出水面，引發廣泛關注與討論。本段文字確保超過最小長度門檻，" +
+	"以通過入池前驗證關的有效性檢查，僅供單元測試使用，並無實際八卦意義。A test";
+
 function cleanData() {
 	initPendingDb();
 	getDb().exec("DELETE FROM pending_topics; DELETE FROM gossip_sites");
@@ -212,7 +219,7 @@ describe("gossip-routes", () => {
 		process.env.LLM_API_KEY = "test-key";
 		mockFetchContent.mockResolvedValueOnce({
 			title: "已存文章",
-			body: "body",
+			body: LONG_BODY,
 			url: "https://gossip.com/article/1",
 		});
 		mockGossipExtractFacts.mockResolvedValueOnce({
@@ -262,7 +269,7 @@ describe("gossip-routes", () => {
 
 		mockFetchContent.mockResolvedValueOnce({
 			title: "明星A出軌事件",
-			body: "詳細報導...",
+			body: LONG_BODY,
 			url: "https://gossip.com/article/99",
 			coverImageUrl: "https://cdn.example.com/cover.jpg",
 		});
@@ -323,7 +330,7 @@ describe("gossip-routes", () => {
 		const recent = new Date(Date.now() - 2 * 86_400_000).toISOString();
 		mockFetchContent.mockResolvedValueOnce({
 			title: "新瓜",
-			body: "最新报导内容",
+			body: LONG_BODY,
 			url: "https://gossip.com/new",
 			metadata: { publishedTime: recent },
 		});
@@ -355,7 +362,7 @@ describe("gossip-routes", () => {
 		process.env.LLM_API_KEY = "test-key";
 		mockFetchContent.mockResolvedValueOnce({
 			title: "无日期瓜",
-			body: "没有发布时间的报导",
+			body: LONG_BODY,
 			url: "https://gossip.com/nodate",
 			// 无 metadata.publishedTime
 		});
@@ -394,6 +401,123 @@ describe("gossip-routes", () => {
 			payload: { url: "https://gossip.com/x", siteName: "站", windowDays: 0 },
 		});
 		expect(res.statusCode).toBe(400);
+	});
+
+	it("from-url：内容无效(正文过短) → 200 rejected，不入池、用户可见(U3)", async () => {
+		process.env.LLM_ENDPOINT = "https://api.test";
+		process.env.LLM_API_KEY = "test-key";
+		mockFetchContent.mockResolvedValueOnce({
+			title: "短",
+			body: "太短", // < 80 → 验证关 validity hardFail
+			url: "https://gossip.com/invalid",
+		});
+		mockGossipExtractFacts.mockResolvedValueOnce({
+			facts: {
+				當事人: "A",
+				事件摘要: "x",
+				起因: null,
+				經過: null,
+				結果: null,
+				來源連結: null,
+				發生時間: null,
+				熱度標籤: null,
+			},
+			confidence: 0.5,
+			extractionMode: "strict",
+		});
+		const res = await app.inject({
+			method: "POST",
+			url: "/api/v1/gossip/topics/from-url",
+			payload: { url: "https://gossip.com/invalid", siteName: "站" },
+		});
+		expect(res.statusCode).toBe(200);
+		const body = res.json();
+		expect(body.rejected).toBeTruthy();
+		expect(body.verification.decision).toBe("reject");
+	});
+
+	it("from-url：成功入池带 verification + contentFingerprint(U3)", async () => {
+		process.env.LLM_ENDPOINT = "https://api.test";
+		process.env.LLM_API_KEY = "test-key";
+		mockFetchContent.mockResolvedValueOnce({
+			title: "文章",
+			body: LONG_BODY,
+			url: "https://gossip.com/v1",
+		});
+		mockGossipExtractFacts.mockResolvedValueOnce({
+			facts: {
+				當事人: "A",
+				事件摘要: "test",
+				起因: null,
+				經過: null,
+				結果: null,
+				來源連結: null,
+				發生時間: null,
+				熱度標籤: null,
+			},
+			confidence: 0.6,
+			extractionMode: "strict",
+		});
+		const res = await app.inject({
+			method: "POST",
+			url: "/api/v1/gossip/topics/from-url",
+			payload: { url: "https://gossip.com/v1", siteName: "站" },
+		});
+		expect(res.statusCode).toBe(201);
+		const topic = res.json().topic;
+		expect(topic.verification).toBeDefined();
+		expect(topic.verification.decision).toBeDefined();
+		expect(topic.contentFingerprint).toBeTruthy();
+	});
+
+	it("from-url：内容指纹命中(不同 URL 同 facts) → 第二条软标 suspectedDuplicate 入池(U3)", async () => {
+		process.env.LLM_ENDPOINT = "https://api.test";
+		process.env.LLM_API_KEY = "test-key";
+		const facts = {
+			當事人: "A",
+			事件摘要: "test",
+			起因: null,
+			經過: null,
+			結果: null,
+			來源連結: null,
+			發生時間: null,
+			熱度標籤: null,
+		};
+		mockFetchContent.mockResolvedValueOnce({
+			title: "文章1",
+			body: LONG_BODY,
+			url: "https://gossip.com/dup1",
+		});
+		mockGossipExtractFacts.mockResolvedValueOnce({
+			facts,
+			confidence: 0.6,
+			extractionMode: "strict",
+		});
+		const first = await app.inject({
+			method: "POST",
+			url: "/api/v1/gossip/topics/from-url",
+			payload: { url: "https://gossip.com/dup1", siteName: "站" },
+		});
+		expect(first.statusCode).toBe(201);
+
+		// 不同 URL、同 facts → 同内容指纹 → 软标 suspectedDuplicate(非 409,因 URL 不同)
+		mockFetchContent.mockResolvedValueOnce({
+			title: "文章2",
+			body: LONG_BODY,
+			url: "https://gossip.com/dup2",
+		});
+		mockGossipExtractFacts.mockResolvedValueOnce({
+			facts,
+			confidence: 0.6,
+			extractionMode: "strict",
+		});
+		const second = await app.inject({
+			method: "POST",
+			url: "/api/v1/gossip/topics/from-url",
+			payload: { url: "https://gossip.com/dup2", siteName: "站" },
+		});
+		expect(second.statusCode).toBe(201);
+		expect(second.json().topic.verification.suspectedDuplicate).toBe(true);
 	});
 
 	it("from-url：IP literal URL → 400", async () => {
@@ -438,7 +562,7 @@ describe("gossip-routes", () => {
 		};
 		const mockRaw = {
 			title: "文章",
-			body: "body",
+			body: LONG_BODY,
 			url: "https://gossip.com/article/dup",
 		};
 
@@ -542,7 +666,7 @@ describe("gossip-routes", () => {
 		process.env.LLM_API_KEY = "test-key";
 		mockFetchContent.mockResolvedValueOnce({
 			title: "文章",
-			body: "body",
+			body: LONG_BODY,
 			url: "https://gossip.com/article/err",
 		});
 		mockGossipExtractFacts.mockRejectedValueOnce(new Error("LLM timed out"));
@@ -620,7 +744,7 @@ describe("gossip-routes — recordScraperRun 接线（U2）", () => {
 	it("成功 from-url → metrics scraper success >= 1", async () => {
 		mockFetchContent.mockResolvedValueOnce({
 			title: "文章",
-			body: "body",
+			body: LONG_BODY,
 			url: "https://gossip.com/article/ok",
 		});
 		mockGossipExtractFacts.mockResolvedValueOnce(MOCK_FACTS);
@@ -653,7 +777,7 @@ describe("gossip-routes — recordScraperRun 接线（U2）", () => {
 	it("gossipExtractFacts 失败 → metrics scraper failed >= 1", async () => {
 		mockFetchContent.mockResolvedValueOnce({
 			title: "文章",
-			body: "body",
+			body: LONG_BODY,
 			url: "https://gossip.com/article/f2",
 		});
 		mockGossipExtractFacts.mockRejectedValueOnce(new Error("LLM timed out"));
@@ -671,7 +795,7 @@ describe("gossip-routes — recordScraperRun 接线（U2）", () => {
 	it("409 重复 URL → scraper 计数不变（仍为首次成功的 1）", async () => {
 		mockFetchContent.mockResolvedValue({
 			title: "文章",
-			body: "body",
+			body: LONG_BODY,
 			url: "https://gossip.com/article/dup2",
 		});
 		mockGossipExtractFacts.mockResolvedValue(MOCK_FACTS);

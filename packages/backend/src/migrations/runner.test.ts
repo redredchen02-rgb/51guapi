@@ -37,6 +37,15 @@ function appliedMigrations(path: string): Set<string> {
 	return new Set(rows.map((r) => r.name));
 }
 
+function columnNames(path: string, table: string): Set<string> {
+	const db = new Database(path, { readonly: true });
+	const rows = db.prepare(`PRAGMA table_info(${table})`).all() as {
+		name: string;
+	}[];
+	db.close();
+	return new Set(rows.map((r) => r.name));
+}
+
 describe("migration runner", () => {
 	afterEach(() => {
 		if (dbPath) {
@@ -65,6 +74,18 @@ describe("migration runner", () => {
 		const path = freshDbPath();
 		runMigrations(path);
 		expect(appliedMigrations(path).has("011-drop-batches.sql")).toBe(true);
+	});
+
+	it("014 加入 content_fingerprint / verification / verified_at 列(U3)", () => {
+		const path = freshDbPath();
+		runMigrations(path);
+		const cols = columnNames(path, "pending_topics");
+		expect(cols.has("content_fingerprint")).toBe(true);
+		expect(cols.has("verification")).toBe(true);
+		expect(cols.has("verified_at")).toBe(true);
+		expect(appliedMigrations(path).has("014-pending-verification.sql")).toBe(
+			true,
+		);
 	});
 
 	it("幂等:重复 runMigrations 不报错且不重复应用", () => {

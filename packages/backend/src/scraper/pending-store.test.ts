@@ -6,6 +6,7 @@ import {
 	listPendingTopics,
 	loadPendingTopic,
 	type PendingTopic,
+	pendingTopicExistsByFingerprint,
 	savePendingTopic,
 	updatePendingTopicStatus,
 } from "./pending-store.js";
@@ -57,6 +58,43 @@ describe("pending-store (SQLite)", () => {
 	it("load 不存在的 id → null", async () => {
 		const result = await loadPendingTopic("nonexistent-id");
 		expect(result).toBeNull();
+	});
+
+	// ---- 内容指纹 + 验证字段持久化（U3）----
+
+	it("contentFingerprint / verification / verifiedAt 往返持久化", async () => {
+		const topic = makeTopic({
+			id: "fp1",
+			sourceUrl: "https://x.com/fp1",
+			contentFingerprint: "abc12345",
+			verifiedAt: "2026-06-18T00:00:00.000Z",
+			verification: {
+				grounding: { perField: { 當事人: true }, unsourced: [], ok: true },
+				validity: { ok: true, hardFail: false, qualityRatio: 1, reasons: [] },
+				freshness: { ok: true, unknown: false, ageDays: 1 },
+				fingerprint: "abc12345",
+				decision: "pass",
+				reasons: [],
+			},
+		});
+		await savePendingTopic(topic);
+		const loaded = await loadPendingTopic("fp1");
+		expect(loaded?.contentFingerprint).toBe("abc12345");
+		expect(loaded?.verifiedAt).toBe("2026-06-18T00:00:00.000Z");
+		expect(loaded?.verification?.decision).toBe("pass");
+	});
+
+	it("pendingTopicExistsByFingerprint：命中已有指纹 / 未命中 / 空串", async () => {
+		await savePendingTopic(
+			makeTopic({
+				id: "fp2",
+				sourceUrl: "https://x.com/fp2",
+				contentFingerprint: "deadbeef",
+			}),
+		);
+		expect(await pendingTopicExistsByFingerprint("deadbeef")).toBe(true);
+		expect(await pendingTopicExistsByFingerprint("00000000")).toBe(false);
+		expect(await pendingTopicExistsByFingerprint("")).toBe(false);
 	});
 
 	// ---- computeScore 质量信号（经 save→load 读回持久化 score）----

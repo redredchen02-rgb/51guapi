@@ -65,6 +65,8 @@ export interface VerificationResult {
 	decision: VerifyDecision;
 	/** 人类可读的判定原因（用于 UI/日志）。 */
 	reasons: string[];
+	/** 疑似重复：由调用方查库（指纹命中已有条目）后置位；纯函数不设此值。 */
+	suspectedDuplicate?: boolean;
 }
 
 const MS_PER_DAY = 86_400_000;
