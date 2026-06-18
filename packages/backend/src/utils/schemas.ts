@@ -150,6 +150,8 @@ export const UpdatePendingBody = Type.Object({
 	rejectedReason: Type.Optional(Type.String()),
 	facts: Type.Optional(Type.Record(Type.String(), Type.Unknown())),
 	confidence: Type.Optional(Type.Number({ minimum: 0, maximum: 1 })),
+	// 人工二次核对（U4）：true=置 verifiedAt（进题材池），false=撤销回未核对。
+	verified: Type.Optional(Type.Boolean()),
 });
 
 // ── Gossip ──────────────────────────────────────────

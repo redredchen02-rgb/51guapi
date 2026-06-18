@@ -28,6 +28,13 @@ export {
 	GOSSIP_FACTS_SCHEMA,
 	gossipFactUrls,
 } from "./gossip-facts.js";
+export {
+	countThemes,
+	factThemes,
+	OTHER_THEME,
+	parseThemes,
+	THEME_ALLOWLIST,
+} from "./gossip-theme.js";
 export type {
 	FreshnessResult,
 	GroundingResult,

@@ -216,6 +216,8 @@ describe("GET /api/v1/pending-topics — sort_by + fold_threshold (U7)", () => {
 					title: "丰富选题",
 					body: "<p>正文</p>",
 					url: "https://example-site.com/s/rich",
+					// R2 后「无日期」按中性新鲜度计分；高分项须有近期发布时间方为真新鲜。
+					metadata: { publishedTime: now },
 				},
 				coverImageUrl: "https://cdn.example.com/c.jpg",
 				createdAt: now,
@@ -335,5 +337,142 @@ describe("pending-routes — JWT 守護", () => {
 			payload: { status: "approved" },
 		});
 		expect(res.statusCode).toBe(401);
+	});
+});
+
+// ================================================================
+// U4/U5 — verified 人工核对 + 题材过滤/计数
+// ================================================================
+
+describe("U4/U5 verified + themes", () => {
+	function gossip(overrides: Partial<PendingTopic> = {}): PendingTopic {
+		return makeTopic({
+			domain: "gossip",
+			facts: {
+				當事人: "明星A",
+				事件摘要: "出軌事件",
+				起因: null,
+				經過: null,
+				結果: null,
+				來源連結: null,
+				發生時間: null,
+				熱度標籤: "出軌",
+			},
+			rawContent: {
+				title: "标题",
+				body: "明星A出軌事件的詳細報導，內容充足，超過最小長度門檻，僅供測試使用。",
+				url: "https://x.com/g",
+			},
+			...overrides,
+		});
+	}
+
+	it("U5 list ?theme=出軌 只返回该题材的瓜", async () => {
+		await savePendingTopic(
+			gossip({
+				id: "g1",
+				sourceUrl: "https://x.com/g1",
+				facts: {
+					當事人: "A",
+					事件摘要: "x",
+					起因: null,
+					經過: null,
+					結果: null,
+					來源連結: null,
+					發生時間: null,
+					熱度標籤: "出軌",
+				},
+			}),
+		);
+		await savePendingTopic(
+			gossip({
+				id: "g2",
+				sourceUrl: "https://x.com/g2",
+				facts: {
+					當事人: "B",
+					事件摘要: "y",
+					起因: null,
+					經過: null,
+					結果: null,
+					來源連結: null,
+					發生時間: null,
+					熱度標籤: "解約",
+				},
+			}),
+		);
+		const res = await app.inject({
+			method: "GET",
+			url: "/api/v1/pending-topics?domain=gossip&theme=出軌",
+		});
+		const ids = (res.json().topics as { id: string }[]).map((t) => t.id);
+		expect(ids).toContain("g1");
+		expect(ids).not.toContain("g2");
+	});
+
+	it("U5 /themes 只统计已核对的吃瓜", async () => {
+		await savePendingTopic(
+			gossip({
+				id: "v1",
+				sourceUrl: "https://x.com/v1",
+				verifiedAt: "2026-06-18T00:00:00.000Z",
+			}),
+		);
+		await savePendingTopic(gossip({ id: "u1", sourceUrl: "https://x.com/u1" })); // 未核对
+		const res = await app.inject({
+			method: "GET",
+			url: "/api/v1/pending-topics/themes",
+		});
+		const map = Object.fromEntries(
+			(res.json().themes as { theme: string; count: number }[]).map((t) => [
+				t.theme,
+				t.count,
+			]),
+		);
+		expect(map.出軌).toBe(1); // 只算已核对的 v1
+	});
+
+	it("U4 PATCH {verified:true} 置 verifiedAt，?verified=true 命中", async () => {
+		const t = gossip({ id: "vf", sourceUrl: "https://x.com/vf" });
+		await savePendingTopic(t);
+		const patch = await app.inject({
+			method: "PATCH",
+			url: `/api/v1/pending-topics/${t.id}`,
+			payload: { verified: true },
+		});
+		expect(patch.statusCode).toBe(200);
+		expect(patch.json().topic.verifiedAt).toBeTruthy();
+		const list = await app.inject({
+			method: "GET",
+			url: "/api/v1/pending-topics?verified=true",
+		});
+		expect((list.json().topics as { id: string }[]).map((x) => x.id)).toContain(
+			"vf",
+		);
+	});
+
+	it("U4 PATCH facts 改值 → 重跑 grounding（防 UI rewrite 旁路）", async () => {
+		const t = gossip({ id: "rg", sourceUrl: "https://x.com/rg" });
+		await savePendingTopic(t);
+		// 改成原文不存在的人 → 重 grounding 后 當事人 未溯源
+		const patch = await app.inject({
+			method: "PATCH",
+			url: `/api/v1/pending-topics/${t.id}`,
+			payload: {
+				facts: {
+					當事人: "林志玲", // 原文无此人
+					事件摘要: "出軌事件",
+					起因: null,
+					經過: null,
+					結果: null,
+					來源連結: null,
+					發生時間: null,
+					熱度標籤: "出軌",
+				},
+			},
+		});
+		expect(patch.statusCode).toBe(200);
+		expect(patch.json().topic.verification.grounding.unsourced).toContain(
+			"當事人",
+		);
 	});
 });
