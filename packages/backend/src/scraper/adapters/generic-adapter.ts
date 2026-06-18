@@ -1,10 +1,21 @@
 // 通用 HTML adapter：不實作 SiteAdapter interface，僅供 gossip-routes.ts 直接呼叫。
 // 以 heuristic <a href> 過濾發現詳情頁 URL，fetchContent 提取 og meta 為主。
+//
+// 門面職責：留守 SSRF/流控棧(enforcePathPrefix/readBodyCapped/allowlistCheck/
+// safeFetch 用法 + fetchListPaged 的 nextHost!==startHost 權威跨源復檢)，
+// 純 HTML 提取與翻頁偵測委派 html-extractors.ts / list-pagination.ts。
 
 import { getChannelByHostname } from "../channel-store.js";
 import type { RawContent } from "../site-adapter.js";
 import { isHostAllowed, loadSSRFAllowlist } from "../ssrf-allowlist.js";
 import { SsrfError, safeFetch } from "../ssrf-guard.js";
+import {
+	extractBody,
+	extractH1,
+	extractOgMeta,
+	extractTitle,
+} from "./html-extractors.js";
+import { detectNextPageUrl } from "./list-pagination.js";
 
 // 每跳重过 allowlist:运行时载入 env ∪ 渠道存储,redirect 目标不在表内即拒。
 function allowlistCheck(url: URL): boolean {
@@ -97,206 +108,11 @@ const MAX_PAGED_URLS = 200;
 
 /**
  * fetchListPaged 翻頁「請求次數」的常量硬上限（纵深防御閘）。
- * maxPages 來自操作者寫入的 channel.maxDepth，代碼側不信任其上界——即使配置寫成
- * 極大值，這裡在消費點封頂，確保單次 discover 的出站 list-fetch 次數 ≤ MAX_PAGES。
- * MAX_PAGED_URLS 只封累積 URL 數，封不住「詳情 URL 稀疏時的請求次數」，故另設此閘。
+ * maxPages 來自操作者寫入的 channel.maxDepth,代碼側不信任其上界——即使配置寫成
+ * 極大值,這裡在消費點封頂,確保單次 discover 的出站 list-fetch 次數 ≤ MAX_PAGES。
+ * MAX_PAGED_URLS 只封累積 URL 數,封不住「詳情 URL 稀疏時的請求次數」,故另設此閘。
  */
 const MAX_PAGES = 50;
-
-function extractOgMeta(html: string, property: string): string {
-	const re = new RegExp(
-		`<meta[^>]+property=["']${property}["'][^>]+content=["']([^"']*)["']|<meta[^>]+content=["']([^"']*)["'][^>]+property=["']${property}["']`,
-		"i",
-	);
-	const m = html.match(re);
-	return (m?.[1] ?? m?.[2] ?? "").trim();
-}
-
-function extractMetaName(html: string, name: string): string {
-	const re = new RegExp(
-		`<meta[^>]+name=["']${name}["'][^>]+content=["']([^"']*)["']|<meta[^>]+content=["']([^"']*)["'][^>]+name=["']${name}["']`,
-		"i",
-	);
-	const m = html.match(re);
-	return (m?.[1] ?? m?.[2] ?? "").trim();
-}
-
-function extractTitle(html: string): string {
-	const og = extractOgMeta(html, "og:title");
-	if (og) return og;
-	const m = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
-	return m ? m[1].replace(/<[^>]*>/g, "").trim() : "";
-}
-
-function extractH1(html: string): string {
-	const m = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
-	return m ? m[1].replace(/<[^>]*>/g, "").trim() : "";
-}
-
-// 常見正文容器 class/id 關鍵詞。
-const CONTENT_CONTAINER_KEYWORDS =
-	"post-content|article-content|entry-content|content-detail|main-content|article-body|post-body|rich_media_content";
-
-/** 去除 script/style 後剝光標籤、歸一空白。 */
-function stripTagsToText(htmlFragment: string): string {
-	return htmlFragment
-		.replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi, " ")
-		.replace(/<[^>]*>/g, " ")
-		.replace(/\s+/g, " ")
-		.trim();
-}
-
-// 正文容器關鍵詞(用於在已切出的開標籤字串內做 includes 判定,非内嵌进定位正则)。
-const CONTENT_KEYWORD_RE = new RegExp(`(?:${CONTENT_CONTAINER_KEYWORDS})`, "i");
-const HAS_CLASS_OR_ID_RE = /\b(?:class|id)=/i;
-// 开标签长度上限:真实开标签不会上万字符。有界量词杜绝「无界嵌套量词」的二次方回溯
-// (ReDoS):恶意页面可构造无 `>`/无闭合引号/多 class= 锚点的 5MB HTML 触发资源耗尽。
-const MAX_OPEN_TAG_LEN = 2048;
-
-/**
- * 提取正文容器文本：定位 class/id 命中關鍵詞的 div/article/section 開標籤後,
- * **括號配平**找到對應閉合標籤（而非貪婪到首個同類閉合,否則嵌套容器會被腰斬）。
- *
- * 定位与属性判定分离:先用有界量词 `[^>]{0,N}>` 切出开标签,再在标签字串内用普通
- * 字符串/正则判断 class/id + 关键词,避免单条正则里两个无界 [^"']* 夹关键词的二次方回溯。
- */
-function extractContainerText(html: string): string {
-	// 先清掉註釋與 script/style:否則註釋內的 `<div>`、script 字串裡的 `</div>` 会污染
-	// 括號配平,把頁尾噪聲灌進正文(吞過頭)。在清理後的副本上定位+配平,索引自洽。
-	const cleaned = html
-		.replace(/<!--[\s\S]*?-->/g, " ")
-		.replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi, " ");
-	const openTagRe = new RegExp(
-		`<(div|article|section)\\b[^>]{0,${MAX_OPEN_TAG_LEN}}>`,
-		"gi",
-	);
-	for (let m = openTagRe.exec(cleaned); m; m = openTagRe.exec(cleaned)) {
-		const tagFull = m[0];
-		if (
-			!HAS_CLASS_OR_ID_RE.test(tagFull) ||
-			!CONTENT_KEYWORD_RE.test(tagFull)
-		) {
-			continue;
-		}
-		const tag = m[1].toLowerCase();
-		const start = m.index + m[0].length;
-		// 從容器內部起對同類標籤開/閉計數,深度歸 0 處即對應閉合標籤。捕完整標籤以辨識
-		// 自閉合 `<div/>`(不改深度,否則永等不到閉合 → 吞到頁尾)。
-		const tokenRe = new RegExp(
-			`<(/?)${tag}\\b[^>]{0,${MAX_OPEN_TAG_LEN}}>`,
-			"gi",
-		);
-		tokenRe.lastIndex = start;
-		let depth = 1;
-		let endIdx = -1;
-		for (let mm = tokenRe.exec(cleaned); mm; mm = tokenRe.exec(cleaned)) {
-			if (mm[1] === "/") depth--;
-			else if (!mm[0].endsWith("/>")) depth++;
-			if (depth === 0) {
-				endIdx = mm.index;
-				break;
-			}
-		}
-		// 配平失敗(未閉合/被 maxBytes 截斷)→ 不吞頁尾,跳過此容器另尋,最終落兜底。
-		if (endIdx === -1) continue;
-		return stripTagsToText(cleaned.slice(start, endIdx));
-	}
-	return "";
-}
-
-/** 文本密度兜底：剝掉 nav/header/footer/aside 噪聲後聚合 <p> 段落;不足則剝光 <body>。 */
-function extractByDensity(rawHtml: string): string {
-	const html = rawHtml.replace(
-		/<(nav|header|footer|aside)\b[^>]*>[\s\S]*?<\/\1>/gi,
-		" ",
-	);
-	const paras = [...html.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi)]
-		.map((m) => stripTagsToText(m[1]))
-		.filter((s) => s.length > 0);
-	const joined = paras.join(" ").trim();
-	if (joined.length >= 40) return joined;
-	const bodyM = html.match(/<body\b[^>]*>([\s\S]*?)<\/body>/i);
-	return stripTagsToText(bodyM ? bodyM[1] : html);
-}
-
-/**
- * 正文提取（質量優先序）：
- *   1. 正文容器（括號配平,抓全嵌套內容）
- *   2. og:description / meta description（營銷摘要,僅作容器為空時兜底）
- *   3. 文本密度（聚合 <p> 段落）
- * 舊實現把 og:description 放第一優先,導致絕大多數有 og 的站點正文被截成一句話,
- * LLM 只能從標題+一句摘要提煉 → 起因/經過/結果 幾乎必空。
- */
-function extractBody(html: string): string {
-	const container = extractContainerText(html);
-	if (container) return container;
-	const og = extractOgMeta(html, "og:description");
-	if (og) return og;
-	const desc = extractMetaName(html, "description");
-	if (desc) return desc;
-	return extractByDensity(html);
-}
-
-/**
- * 從清單頁 HTML 偵測「下一頁」URL。v0.2 保守支援：
- *   1. `<link rel="next" href=...>` 或 `<a ... rel="next" ...>`（HTML 標準）
- *   2. 常見分頁 pattern：`?page=N` / `?p=N` query、`/page/N` 路徑段
- * 偵測到的 URL 會絕對化並校驗「與當前頁同 host」；跨 host 一律不回傳（不跟隨）。
- * 偵測不到即回 undefined（呼叫方據此停止翻頁，不報錯）。
- */
-function detectNextPageUrl(html: string, base: URL): string | undefined {
-	// 1. rel="next"（link 或 a，rel 與 href 順序不限）
-	const relNextRe =
-		/<(?:a|link)\s[^>]*(?:rel=["'][^"']*\bnext\b[^"']*["'][^>]*href=["']([^"'#][^"']*)["']|href=["']([^"'#][^"']*)["'][^>]*rel=["'][^"']*\bnext\b[^"']*["'])/i;
-	const relMatch = html.match(relNextRe);
-	const relHref = relMatch?.[1] ?? relMatch?.[2];
-	if (relHref) {
-		const resolved = resolveSameHost(relHref.trim(), base);
-		if (resolved) return resolved;
-	}
-
-	// 2. 常見分頁 pattern：href 指向 ?page=/?p= 或 /page/N，且頁碼大於當前頁
-	const currentPage = currentPageNumber(base);
-	const pagedRe =
-		/<a\s[^>]*href=["']([^"'#][^"']*(?:[?&](?:page|p)=\d+|\/page\/\d+)[^"']*)["']/gi;
-	let best: { url: string; n: number } | undefined;
-	for (let m = pagedRe.exec(html); m !== null; m = pagedRe.exec(html)) {
-		const candidate = resolveSameHost(m[1].trim(), base);
-		if (!candidate) continue;
-		const n = currentPageNumber(new URL(candidate));
-		// 只跟隨「下一頁」：頁碼 = 當前頁 + 1（保守，避免跳到末頁或亂序）
-		if (n === currentPage + 1 && (!best || n < best.n)) {
-			best = { url: candidate, n };
-		}
-	}
-	return best?.url;
-}
-
-/** 解析 href 為絕對 URL 並要求同 host；否則回 undefined。 */
-function resolveSameHost(href: string, base: URL): string | undefined {
-	let absolute: URL;
-	try {
-		absolute = new URL(href, base);
-	} catch {
-		return undefined;
-	}
-	// 协议白名单化（纵深防御）：只允许 http(s)，不依赖远端 safeFetch 这唯一一道。
-	// 非 http(s) 的 next（file:/javascript:/data:）在此即不跟随。
-	if (absolute.protocol !== "http:" && absolute.protocol !== "https:") {
-		return undefined;
-	}
-	if (absolute.hostname !== base.hostname) return undefined;
-	return absolute.toString();
-}
-
-/** 從 URL 推斷當前頁碼（?page=/?p= 或 /page/N），預設 1。 */
-function currentPageNumber(u: URL): number {
-	const q = u.searchParams.get("page") ?? u.searchParams.get("p");
-	if (q && /^\d+$/.test(q)) return Number(q);
-	const m = u.pathname.match(/\/page\/(\d+)/);
-	if (m) return Number(m[1]);
-	return 1;
-}
 
 /**
  * 抓取單一清單頁：返回本頁詳情 URL（≤20，同 host，去重）+ 偵測到的下一頁 URL。

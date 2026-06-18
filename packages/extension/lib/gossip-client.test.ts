@@ -93,10 +93,9 @@ describe("gossip-client — createGossipSite", () => {
 		expect(capturedInits[0]?.method).toBe("POST");
 	});
 
-	it("Error 401 → clearToken()，返回 null", async () => {
+	it("Error 401 → clearToken() 且抛 Unauthorized", async () => {
 		const { fn } = mockFetch({}, 401);
-		const result = await createGossipSite("n", "u", fn);
-		expect(result).toBeNull();
+		await expect(createGossipSite("n", "u", fn)).rejects.toThrow("Unauthorized");
 		expect(await getToken()).toBeNull();
 	});
 
@@ -142,9 +141,9 @@ describe("gossip-client — discoverGossipSite", () => {
 		expect(capturedUrls[0]).toContain("/api/v1/gossip/sites/s1/discover");
 	});
 
-	it("Error 401 → clearToken()，返回空数组", async () => {
+	it("Error 401 → clearToken() 且抛 Unauthorized", async () => {
 		const { fn } = mockFetch({}, 401);
-		expect(await discoverGossipSite("s1", fn)).toEqual([]);
+		await expect(discoverGossipSite("s1", fn)).rejects.toThrow("Unauthorized");
 		expect(await getToken()).toBeNull();
 	});
 

@@ -186,7 +186,7 @@ describe("generic-adapter.fetchList", () => {
 });
 
 describe("generic-adapter.fetchContent", () => {
-	it("從 og:* meta 正確提取標題、正文、封面圖", async () => {
+	it("從 og:* meta 正確提取標題、正文、封面圖（端到端）", async () => {
 		mockSafeFetch.mockResolvedValueOnce(makeResponse(ARTICLE_HTML));
 		const result = await fetchContent("https://example.com/gossip/12345");
 		expect(result.title).toBe("明星A出軌B事件始末");
@@ -195,114 +195,9 @@ describe("generic-adapter.fetchContent", () => {
 		expect(result.metadata?.publishedTime).toBe("2024-08-15");
 	});
 
-	it("正文容器嵌套 div：不在首個 </div> 截斷，抓到尾段", async () => {
-		const html = `<html><head>
-			<meta property="og:description" content="短摘要一句" />
-		</head><body>
-			<div class="post-content">
-				<p>正文第一段內容</p>
-				<div class="ad-box">廣告</div>
-				<p>正文最後一段尾巴</p>
-			</div>
-		</body></html>`;
-		mockSafeFetch.mockResolvedValueOnce(makeResponse(html));
-		const result = await fetchContent("https://example.com/gossip/nested");
-		// 括號配平：尾段不被首個 </div>(廣告塊)截斷
-		expect(result.body).toContain("正文第一段內容");
-		expect(result.body).toContain("正文最後一段尾巴");
-	});
-
-	it("正文容器存在時優先於 og:description（不再被一句摘要腰斬）", async () => {
-		const html = `<html><head>
-			<meta property="og:description" content="只有一句營銷摘要" />
-		</head><body>
-			<article class="article-content"><p>完整正文第一段，比摘要長得多</p><p>第二段補充細節</p></article>
-		</body></html>`;
-		mockSafeFetch.mockResolvedValueOnce(makeResponse(html));
-		const result = await fetchContent("https://example.com/gossip/container");
-		expect(result.body).toContain("完整正文第一段");
-		expect(result.body).toContain("第二段補充細節");
-		expect(result.body).not.toBe("只有一句營銷摘要");
-	});
-
-	it("Security：病態 HTML（~4.8MB、无 > / 无闭合引号 / 多 class= 锚点）不二次方回溯", async () => {
-		// 旧 openRe 在此输入上 O(N²) 回溯卡死;有界量词修复后应线性、亚秒完成。
-		const evil = `<div ${'class="aaaaaaaa'.repeat(300_000)}`;
-		mockSafeFetch.mockResolvedValueOnce(
-			makeResponse(`<html><body>${evil}</body></html>`),
-		);
-		const t0 = Date.now();
-		const result = await fetchContent("https://example.com/gossip/evil");
-		expect(Date.now() - t0).toBeLessThan(1000);
-		expect(typeof result.body).toBe("string");
-	});
-
-	it("容器内 HTML 注释里的 <div> 不破坏括号配平（不吞页尾）", async () => {
-		const html = `<html><body>
-			<div class="post-content">正文真內容<!-- <div>注释 --></div>
-			<footer>頁尾版權所有2024噪聲不該進正文</footer>
-		</body></html>`;
-		mockSafeFetch.mockResolvedValueOnce(makeResponse(html));
-		const result = await fetchContent("https://example.com/gossip/comment");
-		expect(result.body).toContain("正文真內容");
-		expect(result.body).not.toContain("頁尾版權所有");
-	});
-
-	it("自闭合 <div/> 不让深度计数失衡（不吞页尾）", async () => {
-		const html = `<html><body>
-			<div class="post-content">正文真內容<div/>更多正文</div>
-			<footer>頁尾噪聲不該進正文</footer>
-		</body></html>`;
-		mockSafeFetch.mockResolvedValueOnce(makeResponse(html));
-		const result = await fetchContent("https://example.com/gossip/selfclose");
-		expect(result.body).toContain("正文真內容");
-		expect(result.body).toContain("更多正文");
-		expect(result.body).not.toContain("頁尾噪聲");
-	});
-
-	it("容器未闭合（被截断）→ 不吞页尾，落 og/density 兜底", async () => {
-		const html = `<html><head>
-			<meta property="og:description" content="摘要兜底" />
-		</head><body>
-			<div class="post-content">正文開頭被截斷
-			<footer>頁尾不該被當正文吞掉</footer>`;
-		mockSafeFetch.mockResolvedValueOnce(makeResponse(html));
-		const result = await fetchContent("https://example.com/gossip/truncated");
-		// 配平失败 → 回退 og:description,不把 footer 吞进 body
-		expect(result.body).toBe("摘要兜底");
-	});
-
-	it("無 og、無已知容器 → 文本密度兜底聚合 <p> 段落", async () => {
-		const html = `<html><head><title>標題</title></head><body>
-			<nav>導航</nav>
-			<p>這是正文第一段，內容足夠長以通過密度門檻判定。</p>
-			<p>這是正文第二段，繼續補充事件細節與經過。</p>
-		</body></html>`;
-		mockSafeFetch.mockResolvedValueOnce(makeResponse(html));
-		const result = await fetchContent("https://example.com/gossip/density");
-		expect(result.body).toContain("正文第一段");
-		expect(result.body).toContain("正文第二段");
-	});
-
-	it("標題優先 og:title，不取站名 h1（避免欄目/站名污染）", async () => {
-		const html = `<html><head>
-			<meta property="og:title" content="明星A出軌事件深度報導" />
-			<title>明星A出軌事件深度報導 - 某娛樂網</title>
-		</head><body>
-			<h1>娛樂頻道</h1>
-			<div class="post-content"><p>正文</p></div>
-		</body></html>`;
-		mockSafeFetch.mockResolvedValueOnce(makeResponse(html));
-		const result = await fetchContent("https://example.com/gossip/title");
-		expect(result.title).toBe("明星A出軌事件深度報導");
-	});
-
-	it("無 og:title 時退回 <title>，再退回 h1", async () => {
-		const html = `<html><head><title>真文章標題</title></head><body><h1>站名</h1></body></html>`;
-		mockSafeFetch.mockResolvedValueOnce(makeResponse(html));
-		const result = await fetchContent("https://example.com/gossip/title2");
-		expect(result.title).toBe("真文章標題");
-	});
+	// 註：純 HTML 提取(標題優先序、正文容器配平、密度兜底、ReDoS 防護等)的單元斷言
+	// 已下沉 html-extractors.test.ts(直接驅動提取函數)。此處僅保留經 fetchContent
+	// 端到端的集成用例(門面 + SSRF/流控棧 + 新提取模組協同)。
 
 	it("HTTP 4xx 時拋出含狀態碼的 Error", async () => {
 		mockSafeFetch.mockResolvedValueOnce(makeResponse("", 404));

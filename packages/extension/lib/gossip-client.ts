@@ -1,3 +1,4 @@
+import { clearToken } from "./auth-client";
 import { apiFetch } from "./api-fetch";
 
 export interface GossipSite {
@@ -22,6 +23,7 @@ export async function fetchGossipSites(
 		timeoutMs: 10_000,
 	});
 	if (res.status === 401) {
+		await clearToken();
 		throw new Error("Unauthorized");
 	}
 	if (!res.ok) {
@@ -46,7 +48,8 @@ export async function createGossipSite(
 			timeoutMs: 10_000,
 		});
 		if (res.status === 401) {
-			return null;
+			await clearToken();
+			throw new Error("Unauthorized");
 		}
 		if (!res.ok) {
 			const data = (await res.json()) as { error?: string };
@@ -69,6 +72,7 @@ export async function deleteGossipSite(
 		timeoutMs: 10_000,
 	});
 	if (res.status === 401) {
+		await clearToken();
 		throw new Error("Unauthorized");
 	}
 	if (!res.ok) {
@@ -88,7 +92,8 @@ export async function discoverGossipSite(
 			timeoutMs: 30_000,
 		});
 		if (res.status === 401) {
-			return [];
+			await clearToken();
+			throw new Error("Unauthorized");
 		}
 		if (!res.ok) {
 			const data = (await res.json()) as { error?: string };
@@ -117,6 +122,7 @@ export async function fetchGossipTopicFromUrl(
 		timeoutMs: 60_000,
 	});
 	if (res.status === 401) {
+		await clearToken();
 		throw new Error("Unauthorized");
 	}
 	if (res.status === 409) throw new Error("DUPLICATE_URL");

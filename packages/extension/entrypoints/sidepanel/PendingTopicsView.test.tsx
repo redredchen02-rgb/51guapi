@@ -35,6 +35,7 @@ vi.mock("../../lib/export", async (importOriginal) => {
 });
 
 import { downloadFile } from "../../lib/export";
+import { requestGenerate } from "../../lib/messaging";
 
 import {
 	fetchAdapters,
@@ -307,5 +308,84 @@ describe("R3 — scraper trigger button", () => {
 		expect(
 			(screen.getByText("⚡ 立即抓取") as HTMLButtonElement).disabled,
 		).toBe(true);
+	});
+});
+
+// ================================================================
+// R5 — 今日一键备稿 (QuickDraft)
+// ================================================================
+
+describe("R5 — 今日一键备稿", () => {
+	it("待审池为空时显示提示，不弹确认面板", async () => {
+		vi.mocked(fetchAdapters).mockResolvedValue(["test-adapter"]);
+		vi.mocked(fetchPendingTopics).mockResolvedValue([]);
+		render(
+			<PendingTopicsView
+				onBack={vi.fn()}
+				onDraftReady={vi.fn()}
+				onError={vi.fn()}
+			/>,
+		);
+		await waitFor(() => expect(fetchAdapters).toHaveBeenCalled());
+
+		fireEvent.click(screen.getByText("今日一键备稿"));
+		await waitFor(() =>
+			expect(screen.getByText(/待审池暂无选题/)).toBeDefined(),
+		);
+		expect(screen.queryByText(/将为最高分选题/)).toBeNull();
+	});
+
+	it("有选题时显示确认面板，取消后面板消失", async () => {
+		vi.mocked(fetchAdapters).mockResolvedValue(["test-adapter"]);
+		vi.mocked(fetchPendingTopics)
+			.mockResolvedValueOnce([]) // initial refresh
+			.mockResolvedValueOnce([makeTopic("t1"), makeTopic("t2"), makeTopic("t3")]); // quickDraft fetch
+		render(
+			<PendingTopicsView
+				onBack={vi.fn()}
+				onDraftReady={vi.fn()}
+				onError={vi.fn()}
+			/>,
+		);
+		await waitFor(() => expect(fetchAdapters).toHaveBeenCalled());
+
+		fireEvent.click(screen.getByText("今日一键备稿"));
+		await waitFor(() =>
+			expect(screen.getByText(/将为最高分选题/)).toBeDefined(),
+		);
+		// 显示第一条题目
+		expect(screen.getByText("选题 t1")).toBeDefined();
+
+		fireEvent.click(screen.getByText("取消"));
+		await waitFor(() =>
+			expect(screen.queryByText(/将为最高分选题/)).toBeNull(),
+		);
+	});
+
+	it("确认生成 → 调 requestGenerate 并触发 onDraftReady", async () => {
+		const onDraftReady = vi.fn();
+		vi.mocked(fetchAdapters).mockResolvedValue(["test-adapter"]);
+		vi.mocked(fetchPendingTopics)
+			.mockResolvedValueOnce([]) // initial refresh
+			.mockResolvedValueOnce([makeTopic("t1")]); // quickDraft fetch
+		render(
+			<PendingTopicsView
+				onBack={vi.fn()}
+				onDraftReady={onDraftReady}
+				onError={vi.fn()}
+			/>,
+		);
+		await waitFor(() => expect(fetchAdapters).toHaveBeenCalled());
+
+		fireEvent.click(screen.getByText("今日一键备稿"));
+		await waitFor(() =>
+			expect(screen.getByText(/将为最高分选题/)).toBeDefined(),
+		);
+
+		fireEvent.click(screen.getByText("确认生成"));
+		await waitFor(() =>
+			expect(vi.mocked(requestGenerate)).toHaveBeenCalledTimes(1),
+		);
+		await waitFor(() => expect(onDraftReady).toHaveBeenCalledTimes(1));
 	});
 });

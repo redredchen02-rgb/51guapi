@@ -99,7 +99,10 @@ export function PendingTopicsView({ onBack, onDraftReady, onError }: Props) {
 			lines.length > 0
 				? `\n\n【吃瓜事实】（只能使用以下事实，严禁编造）：\n${lines.join("\n")}`
 				: "";
-		return `${topic.title || topic.sourceUrl}${factsBlock}`;
+		const enrichBlock = topic.enrichmentText
+			? `\n\n【参考资料】（辅助背景，不得超出事实块的信息）：\n${topic.enrichmentText}`
+			: "";
+		return `${topic.title || topic.sourceUrl}${factsBlock}${enrichBlock}`;
 	}
 
 	async function handleApproveSelected() {
@@ -115,7 +118,12 @@ export function PendingTopicsView({ onBack, onDraftReady, onError }: Props) {
 			const res = await requestGenerate(prompt);
 			if (res.ok) {
 				await updatePendingStatus(t.id, "approved");
-				setSelected(new Set());
+				// 每次只批准並生成一條草稿；從選中集合移除已處理的，其餘保留
+				setSelected((prev) => {
+					const next = new Set(prev);
+					next.delete(t.id);
+					return next;
+				});
 				onDraftReady(res.draft);
 			} else {
 				const isKeyError = res.kind === "no-key";
@@ -153,7 +161,7 @@ export function PendingTopicsView({ onBack, onDraftReady, onError }: Props) {
 			const selectedTopics = topics.filter((t) => selected.has(t.id));
 			await Promise.all(
 				selectedTopics.map((t) =>
-					updatePendingStatus(t.id, "rejected", "manual reject"),
+					updatePendingStatus(t.id, "rejected", "other"),
 				),
 			);
 			setSelected(new Set());
@@ -185,9 +193,14 @@ export function PendingTopicsView({ onBack, onDraftReady, onError }: Props) {
 				setQuickDraftStatus("待审池暂无选题，请先抓取");
 				return;
 			}
-			const top = sorted.slice(0, 3);
+			// 每次只生成一篇草稿(取最高分选题)
+			const top = sorted[0];
+			if (!top) {
+				setQuickDraftStatus("待审池暂无选题，请先抓取");
+				return;
+			}
 			setQuickDraftStatus("");
-			setQuickDraftConfirm({ topics: top });
+			setQuickDraftConfirm({ topics: [top] });
 		} catch {
 			setQuickDraftStatus("获取选题失败，请重试");
 		}
@@ -320,7 +333,7 @@ export function PendingTopicsView({ onBack, onDraftReady, onError }: Props) {
 						className="font-semibold"
 						style={{ marginBottom: "var(--space-lg)" }}
 					>
-						将生成 {quickDraftConfirm.topics.length} 篇草稿：
+						将为最高分选题生成草稿：
 					</div>
 					<ul
 						style={{
@@ -394,7 +407,7 @@ export function PendingTopicsView({ onBack, onDraftReady, onError }: Props) {
 						<span className="text-sm text-muted">
 							{topics.length} 条待审核 · 已选 {selected.size} 条
 						</span>
-						{topics.some((t) => (t.qualityScore ?? t.confidence) < 0.3) && (
+						{topics.some((t) => (t.score ?? t.confidence) < 0.3) && (
 							<button
 								type="button"
 								className="btn btn-plain btn-sm"
@@ -409,10 +422,10 @@ export function PendingTopicsView({ onBack, onDraftReady, onError }: Props) {
 					<ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
 						{topics
 							.filter(
-								(t) => !hideLowScore || (t.qualityScore ?? t.confidence) >= 0.3,
+								(t) => !hideLowScore || (t.score ?? t.confidence) >= 0.3,
 							)
 							.map((t) => {
-								const score = t.qualityScore ?? t.confidence;
+								const score = t.score ?? t.confidence;
 								const isHigh = score >= 0.7;
 								const isMed = score >= 0.4 && score < 0.7;
 								return (
@@ -674,7 +687,7 @@ export function PendingTopicsView({ onBack, onDraftReady, onError }: Props) {
 							disabled={selected.size === 0 || busy}
 							className="btn btn-primary"
 						>
-							{busy ? "生成中…" : `批准并生成草稿 (${selected.size})`}
+							{busy ? "生成中…" : "批准并生成草稿"}
 						</button>
 						<button
 							type="button"

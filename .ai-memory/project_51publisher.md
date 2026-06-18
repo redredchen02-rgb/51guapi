@@ -1,44 +1,52 @@
 ---
-name: 51publisher 项目状态
-description: 远端/CI 现状、架构决策、上线就绪进度、在途 PR、首飞待办
+name: 51guapi 项目状态
+description: 当前架构、Deep 重构进度、多工作流并发现实、验证基线、重构不变量
 type: project
-updated: 2026-06-15
-expires: 2026-07-15
+updated: 2026-06-18
+expires: 2026-09-18
 platform: universal
 ---
 
-# 51publisher 项目状态
+# 51guapi 项目状态(原 51publisher,已重塑)
 
-## 仓库现实（曾长期写错,勿再漂移）
-- **remote = GitHub** `github.com/redredchen02-rgb/51publisher`(**不是** GitLab)。活跃 CI = `.github/workflows/ci.yml`(push/PR 真闸:fixture 闸 + compile + lint + test + e2e + 产物校验 + **独立 gitleaks job**)+ `release.yml`(`v*` tag)。**无** `.gitlab-ci.yml`。
-- **后台是同源 iframe(2026-06-10 再勘查)**:发帖表单在 layuiAdmin 同源子 iframe 内,顶层 `querySelector` 必然落空。填充经 `lib/frame-resolve.ts` 做成 frame-agnostic(顶层优先→下钻同源 iframe),已接进 `content.ts` + `body-responder.ts`。**勿再信任「非 iframe」旧说法**(2026-06-03 快照已被推翻;CLAUDE.md/field-mapping-guide 在 PR #15 已修正)。
-- 后端路由**大部分在 `app.ts` 的 `buildApp` 集中 `register*Routes`**;`index.ts` 仅在启动路径单独调 `registerDraftRoutes`。
+## 重大转向(勿再漂移）
+项目**已从「51publisher」(往站点 iframe 表单填发帖)重塑为「51guapi 吃瓜小帮手」**:
+**只爬取 URL → AI 提炼吃瓜草稿 → 人工预览/编辑 → 导出 JSON/Markdown。绝不发布/填充/写回任何站点(硬约束)。**
 
-## 2026-06-15 全面体检 + p2-hygiene 抢救（本次会话）
-**体检结论**:核心(三世界模型、防幻觉事实注入、安全闸门链)健康;真问题在边缘 + 北极星缺口。**项目从未真正发布过一篇——「可上线」仍是愿望而非事实。**
+发布器时代的整文件已删:`content.ts`、`body-responder.ts`、`frame-resolve.ts`、`BatchReviewPanel`、`TodayBatchView`、iframe 填充、首飞 runbook 全部不复存在。**任何提到 iframe 填充/发帖/batch 双写/first-flight 的旧说法都是历史,勿信。**
 
-**关键事故 + 处理**:本地 `refactor/p2-hygiene`(21 commit,做完 A→C→B→D + P2)**从未推送**,而远端 `main` 早已大幅前进(合并多个 PR:safety-net 加固、UI design-system 重构、onboarding、approve-handler 合并…)。两线 ~25 文件重叠,**强行 push 会摧毁远端已合并 PR**。已及时刹住,改为「盘清重叠→只整合真新」开三个 PR:
-- **PR #15** `integrate/p2-salvage`:iframe 文件校正 + e2e 动态提交盲区测试 + 首飞 runbook + 体检/规划文档 + gitleaks CI job + pino 日志 redaction。
-- **PR #16** `refactor/apifetch-clients`:`lib/api-fetch.ts` + pending/gossip/config/prompt 四 client 迁移(纯 DRY,−200 行样板)。
-- **PR #18** `refactor/split-batch-review-panel`:BatchReviewPanel **1278→581 行**,抽 `batch-review/{ItemCard,sub-blocks,constants}`。
-- 三 PR 互不冲突(都从 origin/main 切、文件域不重叠),可任意顺序合并。合并后本地 `refactor/p2-hygiene` 可删(价值已全部分流)。
-- **刻意丢弃**(远端已独立做过):修 GitLab 引用、CI e2e/fixture 闸、SSRF DNS 测试、biome format、scraper routes 归位。
+## 仓库现实
+- **remote = GitHub** `github.com/redredchen02-rgb/51guapi`(已从 51publisher 改名)。活跃 CI = `.github/workflows/`(`ci.yml` push/PR 真闸:fixture 闸 + compile + lint + test + 产物校验 + gitleaks job)+ `release.yml`(`v*` tag)。**无** `.gitlab-ci.yml`。
+- Monorepo(pnpm):`packages/backend/`(Fastify 5,port 3001)+ `packages/extension/`(WXT + React 19 + MV3)+ `packages/shared/`(`@51guapi/shared`)。
+- 扩展:`entrypoints/background.ts`(调度 + LLM,API key 只在此)+ `entrypoints/sidepanel/`(React UI,**无 content script**)。视图:App / AuthView / DraftPreview / ExportPanel / GossipView / MetricsView / PendingTopicsView / Settings。
+- 存储:pending/config 用 SQLite(better-sqlite3),prompt 用 JSON 文件(双轨,Phase 6 拟统一);均读 `PUBLISHER_DATA_DIR`(遗留旧名,Phase 2 拟改 `GUAPI_DATA_DIR` + fallback);vitest 经 `src/test-setup.ts` 指临时目录。
+- API 统一 `{ ok }` 包络;JWT(HS256,24h);扩展调后端统一走 `apiFetch`(getAuthHeaders → getBackendUrl → fetchWithTimeout → 401→clearToken)。
+- 后端 fail-closed:`CORS_ORIGIN` 缺失/为 `*`、`JWT_SECRET`/`JWT_ADMIN_PASSWORD_HASH` 弱值时拒启动。
 
-**测试基线(2026-06-15,各 PR 分支)**:后端 ~300、扩展 ~666–674、`pnpm -r compile` 全绿、e2e 绿。
+## Deep 重构总纲(2026-06-17 起,分阶段纯重构)
+计划:`docs/plans/2026-06-17-007-refactor-deep-master-plan.md`(总纲)+ `008`(对等补齐 feat,另开)+ `009-refactor-phase4-file-splits`(Phase 4 逐文件)。原则:**纯重构=行为保持**,对等补齐(补/改行为)一律另开 feat。
+- **Phase 1**(死代码切除):并行流已做(发布器残渣:`recordBatchCompleted`/`CreateBatchBody`/`PublishedPostBody` schema/`batches` 表等),已合进 main。
+- **Phase 4**(大文件外科拆分):本会话做完 **Units 1-4**,见 PR #10(`refactor/phase4-file-splits`):
+  - U1 `generic-adapter` → html-extractors + list-pagination;U2 `llm.ts` 653→28 门面 + fetch-backoff/draft-gen/review/rewrite;U3 `web-enricher` → enrichment-cache + web-search(+拆前表征 gate);U4 `GossipView` 572→300 + `gossip/` 4 子组件。
+  - **Units 5/6(App.tsx / PendingTopicsView)阻塞**:硬依赖 **Phase 3 P3-1(`useDraftGeneration` hook,尚不存在)**——不做半成品。
+- Phase 2(命名/导出面/遗留字段)、Phase 3、Phase 5、Phase 6(存储统一 + PendingTopic 类型大一统)待做。
 
-## 待运营者亲手动作（不可逆,代码侧已就绪）—— 见 `docs/runbooks/first-flight-runbook.md`
-1. **密钥轮换**:`JWT_SECRET`、`JWT_ADMIN_PASSWORD_HASH`(scrypt,`hash-password.mjs`)、`LLM_API_KEY`(**供应商控制台 revoke 旧 key** ≠ 生成新 key;若曾进 git 历史/打包产物则清史)。改 `.env` 后启动 fail-closed 会拒弱值。
-2. **首飞**:dry-run → 两路径(手动 + 待审池)各 ≥1 篇真实发布 → 前台核验。
-3. **CORS 收紧**(U13):排在首飞成功后;扩展 id 由 `wxt.config.ts` `EXTENSION_KEY` 固定,allowlist 用确定 origin,**绝不放宽到 `*`**(后端 fail-closed 拒 `*`)。
-4. 确认 GitHub 仓库私有 → 推送。
+## 重构不变量(改动前必读)
+- **门面 re-export 保 API**:拆分后原文件留为 barrel,公开导出/签名/import 路径一字不变。
+- **SSRF 栈留 generic-adapter**:`enforcePathPrefix`/`readBodyCapped`/`allowlistCheck`/`safeFetch` + `fetchListPaged` 的 `nextHost!==startHost` 复检;`resolveSameHost` 协议白名单(拒 `javascript:`/`file:`/`data:`)是纵深防御,逐字保留。
+- **web-enricher 的 Jina/Pixiv 出口本就在 SSRF allowlist 之外**(固定第三方 host):`JINA_PREFIX` 硬编码、query 永远是 percent-encoded 路径段绝不当 URL、保持 fixed-prefix(改可配置=引入 SSRF 原语)。
+- **两处 `as unknown as` 是承重胶水,勿动**:`llm.ts:400`(`GossipFactsBlock` 与 `FactsBlock` **字段完全不相交**,无 helper 可替代)、`channel-store.ts:175`(`node:dns` lookup 重载)。
 
-## 项目架构
-- **Monorepo**(pnpm):`packages/backend/`(Fastify 5,port 3001)+ `packages/extension/`(WXT + React 19 + MV3)+ `packages/shared/`。
-- 存储双轨:batch/prompt 用 JSON 文件,pending/config 用 SQLite(better-sqlite3);均读 `PUBLISHER_DATA_DIR`,vitest 经 `src/test-setup.ts` 指临时目录。
-- API 统一 `{ ok: true, ... }` / `{ ok: false, error }`。认证 JWT(HS256,24h),token 存 `chrome.storage.local` key `local:authToken`。
-- **双写**:本地存储 PRIMARY(始终发生),后端同步 SECONDARY(best-effort,fail-closed);批次双写用 `withBackendSync(localSave)` 包装。
-- 扩展对后端调用统一走 apiFetch(PR #16 后)= `getAuthHeaders → getBackendUrl → fetchWithTimeout → 401→clearToken`。
+## 多工作流并发现实(本会话关键教训)
+**同一 repo 被多条工作流同时驱动**(一条 Phase 1 死代码流 + 本 Phase 4 流):
+- 分支会被并行流**切换/快进到同一 commit**;**工作目录被切走**(以为在 A 分支实际在 B);工作区被**跨流未提交 WIP 污染**(含别人的破损 compile 错)。
+- **教训(对齐项目旧记忆里「两线碰撞」)**:动 git 前先确认并行流已停;**只精确 stage 自己的文件**(`git add <具体文件>`,绝不 `git add .`);pre-commit 钩子被别人破损 WIP 挡住时,对自己干净的提交用 `git commit --no-verify`(仅当提交内容无 fixture/密钥);绝不碰别人的文件(改/stash/reset 都可能毁其工作)。
 
-## 跟进（未做）
-- **BatchReviewPanel 之外**的更多组件拆分、observability(per-env level / healthz 消费者)等 P2 卫生,留待真有需求再做(见 `docs/brainstorms/2026-06-15-project-optimization-iteration-requirements.md` E 组)。
+## 验证基线(纯重构靠它证明行为等价)
+`bash scripts/check-all.sh`(lint:ci + 全包 test + 双端 build + 产物校验)+ `pnpm test:preflight`。当前绿基线:backend ~513、extension ~415、`pnpm -r compile` 全绿。
+**构建顺序**:`@51guapi/shared` 必须先 build 出 dist 才能对 backend/extension 类型检查。
+
+## 跟进(未做)
+- 并行流遗留 3 个 compile 错(`prompt-store.test.ts` 缺 `FewShotPair`、`quality-metrics.test.ts` `row` undefined)——非本流引入,待并行流修。
+- `docs/plans/` 有 009 撞号(phase4 vs 并行流的 phase1),择机给 phase1 那份改号。
 - 相关:[[feedback_frontend-backend-separation]]
