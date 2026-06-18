@@ -8,6 +8,7 @@ const KEYS = [
 	"GOSSIP_NARRATIVE_THRESHOLD",
 	"GOSSIP_INVALID_MARKERS",
 	"GOSSIP_WINDOW_DAYS_DEFAULT",
+	"GOSSIP_FINGERPRINT_FIELDS",
 ];
 
 function clearEnv() {
@@ -54,6 +55,25 @@ describe("loadVerifyConfig", () => {
 		expect(loadVerifyConfig().minBodyLen).toBeUndefined();
 		process.env.GOSSIP_MIN_BODY_LEN = "10";
 		expect(loadVerifyConfig().minBodyLen).toBe(10);
+	});
+
+	it("fingerprintFields 逗号分隔 → 白名单内字段数组", () => {
+		process.env.GOSSIP_FINGERPRINT_FIELDS = "當事人, 事件摘要 , 經過";
+		expect(loadVerifyConfig().fingerprintFields).toEqual([
+			"當事人",
+			"事件摘要",
+			"經過",
+		]);
+	});
+
+	it("fingerprintFields 滤掉白名单外的非法键", () => {
+		process.env.GOSSIP_FINGERPRINT_FIELDS = "當事人,來源連結,熱度標籤,起因";
+		expect(loadVerifyConfig().fingerprintFields).toEqual(["當事人", "起因"]);
+	});
+
+	it("fingerprintFields 全非法 → 不进 config(回退默认)", () => {
+		process.env.GOSSIP_FINGERPRINT_FIELDS = "foo, 來源連結";
+		expect(loadVerifyConfig().fingerprintFields).toBeUndefined();
 	});
 });
 

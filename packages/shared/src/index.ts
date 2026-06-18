@@ -46,6 +46,8 @@ export type {
 } from "./gossip-verify.js";
 export {
 	computeContentFingerprint,
+	DEFAULT_FINGERPRINT_FIELDS,
+	FINGERPRINT_FIELD_ALLOWLIST,
 	isWithinWindow,
 	verifyCrawledTopic,
 } from "./gossip-verify.js";
