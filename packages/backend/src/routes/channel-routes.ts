@@ -9,6 +9,11 @@ import {
 } from "../scraper/channel-store.js";
 import { verifyAdminPassword } from "../services/password.js";
 import { err } from "../utils/error-response.js";
+import {
+	CreateChannelResponse,
+	DeleteOkResponse,
+	ListChannelsResponse,
+} from "../utils/schemas.js";
 
 // U6 渠道管理路由 — 操作者持续新增爬取渠道,域名动态进 SSRF allowlist。
 //
@@ -55,87 +60,100 @@ function toDto(c: Channel) {
 
 export function registerChannelRoutes(app: FastifyInstance): void {
 	// GET /api/v1/channels — 列出渠道
-	app.get("/api/v1/channels", async () => {
-		return { ok: true, channels: listChannels().map(toDto) };
-	});
+	app.get(
+		"/api/v1/channels",
+		{ schema: { response: { 200: ListChannelsResponse } } },
+		async () => {
+			return { ok: true, channels: listChannels().map(toDto) };
+		},
+	);
 
 	// POST /api/v1/channels — 新增渠道(带人手确认手势 + 入库解析校验)
-	app.post<{ Body: CreateBody }>("/api/v1/channels", async (request, reply) => {
-		// 2) 人手确认手势:header + body 双重,缺一即拒。爬取管线/LLM 不会带。
-		const headerConfirm = request.headers[CONFIRM_HEADER];
-		const confirmed =
-			(headerConfirm === "1" || headerConfirm === "true") &&
-			request.body?.confirm === true;
-		if (!confirmed) {
-			return err(
-				reply,
-				403,
-				"新增渠道需操作者确认手势(缺 x-operator-confirm 头或 confirm 标志)",
-				"confirmation_required",
-			);
-		}
+	app.post<{ Body: CreateBody }>(
+		"/api/v1/channels",
+		{
+			schema: {
+				response: { 200: CreateChannelResponse, 201: CreateChannelResponse },
+			},
+		},
+		async (request, reply) => {
+			// 2) 人手确认手势:header + body 双重,缺一即拒。爬取管线/LLM 不会带。
+			const headerConfirm = request.headers[CONFIRM_HEADER];
+			const confirmed =
+				(headerConfirm === "1" || headerConfirm === "true") &&
+				request.body?.confirm === true;
+			if (!confirmed) {
+				return err(
+					reply,
+					403,
+					"新增渠道需操作者确认手势(缺 x-operator-confirm 头或 confirm 标志)",
+					"confirmation_required",
+				);
+			}
 
-		// 3) 口令 step-up:除 JWT 外须通过管理员口令重验。被窃 token 单独写不了
-		//    allowlist。必须早退——在任何 DNS 解析/写库之前,无权请求不得触发出站解析。
-		if (!verifyAdminPassword(request.body?.adminPassword)) {
-			return err(
-				reply,
-				403,
-				"新增渠道需管理员口令重验(step-up):缺少或错误的 adminPassword",
-				"step_up_required",
-			);
-		}
+			// 3) 口令 step-up:除 JWT 外须通过管理员口令重验。被窃 token 单独写不了
+			//    allowlist。必须早退——在任何 DNS 解析/写库之前,无权请求不得触发出站解析。
+			if (!verifyAdminPassword(request.body?.adminPassword)) {
+				return err(
+					reply,
+					403,
+					"新增渠道需管理员口令重验(step-up):缺少或错误的 adminPassword",
+					"step_up_required",
+				);
+			}
 
-		const { channel, displayName, pathPrefix, maxDepth, maxBytes, reason } =
-			request.body ?? {};
-		if (!channel || typeof channel !== "string") {
-			return err(reply, 400, "缺少渠道域名");
-		}
-		if (displayName && displayName.length > 200) {
-			return err(reply, 400, "displayName 过长(最多 200 字)");
-		}
+			const { channel, displayName, pathPrefix, maxDepth, maxBytes, reason } =
+				request.body ?? {};
+			if (!channel || typeof channel !== "string") {
+				return err(reply, 400, "缺少渠道域名");
+			}
+			if (displayName && displayName.length > 200) {
+				return err(reply, 400, "displayName 过长(最多 200 字)");
+			}
 
-		// 4) 归一:https 钉死 / 拒通配 / IDN→punycode + 拒同形。
-		const norm = normalizeChannelHost(channel);
-		if (norm.error || !norm.hostname) {
-			return err(reply, 400, norm.error ?? "非法渠道域名");
-		}
+			// 4) 归一:https 钉死 / 拒通配 / IDN→punycode + 拒同形。
+			const norm = normalizeChannelHost(channel);
+			if (norm.error || !norm.hostname) {
+				return err(reply, 400, norm.error ?? "非法渠道域名");
+			}
 
-		// 1) 入库即解析校验:DNS 解析 + 私网/元数据 IP 拒。
-		try {
-			await assertHostResolvesPublic(norm.hostname);
-		} catch (e) {
-			return err(reply, 400, e instanceof Error ? e.message : String(e));
-		}
+			// 1) 入库即解析校验:DNS 解析 + 私网/元数据 IP 拒。
+			try {
+				await assertHostResolvesPublic(norm.hostname);
+			} catch (e) {
+				return err(reply, 400, e instanceof Error ? e.message : String(e));
+			}
 
-		// 审计:created_by 取自 JWT(若中间件挂载),否则 'operator'。
-		const createdBy =
-			(request as { user?: { sub?: string } }).user?.sub ?? "operator";
+			// 审计:created_by 取自 JWT(若中间件挂载),否则 'operator'。
+			const createdBy =
+				(request as { user?: { sub?: string } }).user?.sub ?? "operator";
 
-		const result = insertChannel({
-			hostname: norm.hostname,
-			displayName: displayName ?? norm.hostname,
-			pathPrefix,
-			maxDepth,
-			maxBytes,
-			createdBy,
-			reason: reason ?? "",
-		});
-		if (result.error || !result.channel) {
-			return err(reply, 409, result.error ?? "写入失败");
-		}
-		// 去重:已存在则回 200,否则 201。
-		reply.code(result.deduped ? 200 : 201);
-		return {
-			ok: true,
-			channel: toDto(result.channel),
-			deduped: !!result.deduped,
-		};
-	});
+			const result = insertChannel({
+				hostname: norm.hostname,
+				displayName: displayName ?? norm.hostname,
+				pathPrefix,
+				maxDepth,
+				maxBytes,
+				createdBy,
+				reason: reason ?? "",
+			});
+			if (result.error || !result.channel) {
+				return err(reply, 409, result.error ?? "写入失败");
+			}
+			// 去重:已存在则回 200,否则 201。
+			reply.code(result.deduped ? 200 : 201);
+			return {
+				ok: true,
+				channel: toDto(result.channel),
+				deduped: !!result.deduped,
+			};
+		},
+	);
 
 	// DELETE /api/v1/channels/:id — 删除渠道(即从 allowlist 移除)
 	app.delete<{ Params: ChannelParams }>(
 		"/api/v1/channels/:id",
+		{ schema: { response: { 200: DeleteOkResponse } } },
 		async (request, reply) => {
 			const ok = deleteChannel(request.params.id);
 			if (!ok) return err(reply, 404, "渠道不存在");
