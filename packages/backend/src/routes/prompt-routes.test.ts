@@ -3,6 +3,7 @@ import Fastify, { type FastifyInstance } from "fastify";
 import jwt from "jsonwebtoken";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { PUBLIC_ROUTES, requireAuth } from "../middleware/auth-middleware.js";
+import { getDb, initPendingDb } from "../scraper/pending-db.js";
 import { registerPromptRoutes } from "./prompt-routes.js";
 
 const SECRET = randomBytes(48).toString("hex");
@@ -36,10 +37,17 @@ function auth() {
 	return { authorization: `Bearer ${token()}` };
 }
 
+// 数据已迁入 SQLite(migration 012);经清表实现跨测试隔离。
+function cleanPrompts() {
+	initPendingDb();
+	getDb().exec("DELETE FROM prompt_templates");
+}
+
 describe("prompt-routes", () => {
 	let app: FastifyInstance;
 
 	beforeEach(async () => {
+		cleanPrompts();
 		app = await buildApp();
 	});
 

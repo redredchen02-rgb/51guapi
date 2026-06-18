@@ -4,7 +4,7 @@ import { join } from "node:path";
 import Fastify, { type FastifyInstance } from "fastify";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PUBLIC_ROUTES, requireAuth } from "../middleware/auth-middleware.js";
-import { initPendingDb, resetPendingDb } from "../scraper/pending-db.js";
+import { getDb, initPendingDb, resetPendingDb } from "../scraper/pending-db.js";
 import { counters, getMetrics } from "../services/metrics.js";
 import { registerGossipRoutes } from "./gossip-routes.js";
 
@@ -37,6 +37,8 @@ const mockGossipExtractFacts = vi.mocked(gossipExtractFacts);
 const DATA_DIR = process.env.PUBLISHER_DATA_DIR!;
 
 function cleanData() {
+	initPendingDb();
+	getDb().exec("DELETE FROM pending_topics; DELETE FROM gossip_sites");
 	const sitesDir = join(DATA_DIR, "gossip-sites");
 	if (existsSync(sitesDir)) rmSync(sitesDir, { recursive: true, force: true });
 }
