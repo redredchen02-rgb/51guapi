@@ -6,8 +6,11 @@ import type {
 import {
 	assembleDraft,
 	type DraftSlots,
+	gossipFactUrls,
+	hasUnsourcedLink,
 	normalizeCategory,
 	toDraft,
+	verifyLinks,
 } from "@51guapi/shared";
 import { fetchWithBackoff, type LlmDeps } from "./fetch-backoff.js";
 
@@ -321,6 +324,19 @@ export async function generateDraft(
 		: [];
 	const category = normalizeCategory(str(parsed.category));
 	const draft = toDraft(assembled, category, tags, id, now);
+
+	// F3 防幻觉 grounding 守卫:草稿正文里的任何 <a href> 必须溯源到 facts 的来源链接
+	// (來源連結),否则疑似模型自造 → 拒绝。说明:后端吃瓜组装本身不向 body 注入链接、
+	// 且 prose 槽位经 esc 转义,故此守卫当前结构性恒过,作纵深防御 —— codify
+	// post-assembler 已声明的不变量;任何未来回归(注入来源链/放行 prose HTML)都会在此
+	// 被 grounding 拦下,而非把幻觉链接落进草稿。
+	if (hasUnsourcedLink(verifyLinks(draft.body, gossipFactUrls(facts)))) {
+		return {
+			ok: false,
+			kind: "grounding",
+			error: "草稿正文含未溯源链接(疑似模型自造),已拒绝。",
+		};
+	}
 
 	// 质量评估
 	const { evaluateQuality } = await import("@51guapi/shared");
