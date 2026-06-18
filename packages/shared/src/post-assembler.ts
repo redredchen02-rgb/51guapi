@@ -1,5 +1,5 @@
 // 正文组装器(程序化结构化生成,防幻觉核心)。
-// 模型只产「叙事槽位」(纯文本口吻);事实骨架(作品名/集数/制作/连结)由程式从 FactsBlock
+// 模型只产「叙事槽位」(纯文本口吻);事实骨架(當事人/時間/來源連結等)由程式从 GossipFactsBlock
 // **原样注入**,模型物理上打不出这些值;缺的程式插「【待补】」。
 //
 // 不变量(由测试守护):
@@ -10,7 +10,7 @@
 // 纯函数、无副作用、不碰 chrome/DOM(正则实现,SW/jsdom/node 皆可跑)。参照 lib/facts.ts 风格。
 // Migrated from packages/extension/lib/post-assembler.ts (identical to packages/backend/src/shared/post-assembler.ts)
 
-import type { FactsBlock } from "./facts.js";
+import type { GossipFactsBlock } from "./gossip-facts.js";
 
 export const PLACEHOLDER = "【待补】";
 
@@ -26,11 +26,11 @@ export function containsPlaceholder(text: string | undefined | null): boolean {
 
 /** 模型只产出的叙事槽位:纯文本口吻,**不含** body/HTML/URL/具体事实值。 */
 export interface DraftSlots {
-	/** 标题套话后缀,如「成人動畫介紹」;作品名由程式前置。 */
+	/** 标题套话后缀,如「出軌疑雲」;當事人由程式前置。 */
 	titleSuffix?: string;
 	/** 副标题(一句俏皮吸睛话)。 */
 	subtitle?: string;
-	/** 引子散文(51娘 口吻开场)。 */
+	/** 引子散文(吃瓜口吻开场)。 */
 	intro: string;
 	/** 看点散文。 */
 	highlights: string;
@@ -50,7 +50,7 @@ export interface AssembledDraft {
 	description: string;
 }
 
-/** facts.漢化/無修 等字段里抽第一个 URL(与 lib/facts.factUrls 同规则,保证比对一致)。 */
+/** 从 來源連結 字段值里抽第一个 URL，与 gossipFactUrls 同规则。 */
 function firstUrl(s: string): string | null {
 	const m = s.match(/https?:\/\/[^\s|]+/i);
 	return m ? m[0] : null;
@@ -93,52 +93,45 @@ function renderLink(label: string, field: string | undefined): string | null {
 }
 
 /**
- * 组装草稿:模型槽位 + facts → title/subtitle/body/description。
- * 只渲染**已提供**的事实(缺的整行省略,不污染正文);唯一硬标记 = 缺作品名时 title=【待补】。
- * 缺失字段的可见性交由审核区(U6)呈现,而非塞进正文。
- * body 结构:
- *   抬头块(已提供的 作品名/集数/制作,facts verbatim)
- *   引子散文(模型,消毒+转义)
- *   看点散文(模型,消毒+转义)
- *   连结块(已提供的 漢化/無修,facts URL verbatim)
- *   结尾(模型,可选)
+ * 组装吃瓜草稿：模型槽位 + gossip facts → title/subtitle/body/description。
+ * 同一防幻觉不变量：body 里的 URL 来自 facts.來源連結（verbatim），
+ * 模型散文经 sanitizeToPlainText + esc 处理，grounding 闸可正常通过。
  */
-export function assembleDraft(
+export function assembleGossipDraft(
 	slots: DraftSlots,
-	facts: FactsBlock,
+	facts: GossipFactsBlock,
 ): AssembledDraft {
-	const name = facts.作品名?.trim();
+	const name = facts.當事人?.trim();
 	const title = name
 		? `${name}${(slots.titleSuffix ?? "").trim()}`
 		: PLACEHOLDER;
 	const subtitle = sanitizeToPlainText(slots.subtitle);
 	const description =
-		facts.简介?.trim() ||
+		facts.事件摘要?.trim() ||
 		sanitizeToPlainText(slots.subtitle || slots.intro).slice(0, 120);
 
 	const parts: string[] = [];
 
-	// 抬头块(只含已提供字段,verbatim)
+	// 抬头块（只含已提供字段，verbatim）
 	const headerBits: string[] = [];
-	if (name) headerBits.push(`作品名:${esc(name)}`);
-	if (facts.集数?.trim()) headerBits.push(`集数:${esc(facts.集数.trim())}`);
-	if (facts.制作?.trim()) headerBits.push(`制作:${esc(facts.制作.trim())}`);
+	if (name) headerBits.push(`當事人:${esc(name)}`);
+	if (facts.發生時間?.trim())
+		headerBits.push(`發生時間:${esc(facts.發生時間.trim())}`);
+	if (facts.熱度標籤?.trim())
+		headerBits.push(`話題標籤:${esc(facts.熱度標籤.trim())}`);
 	if (headerBits.length) parts.push(`<p>${headerBits.join("<br>")}</p>`);
 
-	// 散文(模型,消毒+转义)
+	// 散文（模型，消毒+转义）
 	const intro = sanitizeToPlainText(slots.intro);
 	if (intro) parts.push(`<p>${esc(intro)}</p>`);
 	const highlights = sanitizeToPlainText(slots.highlights);
 	if (highlights) parts.push(`<p>${esc(highlights)}</p>`);
 
-	// 连结块(只含已提供连结,facts URL verbatim;模型碰不到)
-	const linkBits = [
-		renderLink("漢化連結", facts.漢化),
-		renderLink("無修連結", facts.無修),
-	].filter((x): x is string => x !== null);
-	if (linkBits.length) parts.push(`<p>${linkBits.join("<br>")}</p>`);
+	// 来源链接（facts URL verbatim；模型碰不到）
+	const sourceLink = renderLink("來源連結", facts.來源連結 ?? undefined);
+	if (sourceLink) parts.push(`<p>${sourceLink}</p>`);
 
-	// 结尾(可选)
+	// 结尾（可选）
 	const outro = sanitizeToPlainText(slots.outro);
 	if (outro) parts.push(`<p>${esc(outro)}</p>`);
 

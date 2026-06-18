@@ -1,5 +1,10 @@
 import type { GossipFactsBlock } from "@51guapi/shared";
-import { countThemes, OTHER_THEME, parseThemes } from "@51guapi/shared";
+import {
+	countThemes,
+	normalizeCategory,
+	OTHER_THEME,
+	parseThemes,
+} from "@51guapi/shared";
 import { describe, expect, it } from "vitest";
 
 function facts(熱度標籤: string | null): GossipFactsBlock {
@@ -40,6 +45,11 @@ describe("parseThemes", () => {
 		const t = parseThemes("出軌,某种怪标签").sort();
 		expect(t).toEqual(["其他", "出軌"].sort());
 	});
+	it("简体熱度標籤 → 命中繁体题材表（简繁兼容）", () => {
+		expect(parseThemes("出轨")).toEqual(["出軌"]);
+		expect(parseThemes("复出,绯闻").sort()).toEqual(["復出", "緋聞"].sort());
+		expect(parseThemes("公开恋情")).toEqual(["公開戀情"]);
+	});
 });
 
 describe("countThemes", () => {
@@ -54,5 +64,23 @@ describe("countThemes", () => {
 		expect(counts[0].count).toBeGreaterThanOrEqual(
 			counts[counts.length - 1].count,
 		);
+	});
+});
+
+describe("normalizeCategory（单值主题材）", () => {
+	it("命中题材 → 该题材（含简体）", () => {
+		expect(normalizeCategory("出軌")).toBe("出軌");
+		expect(normalizeCategory("出轨")).toBe("出軌");
+	});
+	it("包含匹配 → 归一题材", () => {
+		expect(normalizeCategory("塌房了")).toBe("塌房");
+	});
+	it("多标签 → 取首个主题材", () => {
+		expect(normalizeCategory("出軌,撕逼")).toBe("出軌");
+	});
+	it("未识别/空/undefined → 其他", () => {
+		expect(normalizeCategory("演唱會延期")).toBe(OTHER_THEME);
+		expect(normalizeCategory("")).toBe(OTHER_THEME);
+		expect(normalizeCategory(undefined)).toBe(OTHER_THEME);
 	});
 });

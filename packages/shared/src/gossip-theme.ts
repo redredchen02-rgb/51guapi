@@ -30,10 +30,32 @@ export const THEME_ALLOWLIST: string[] = [
 	"合作",
 ];
 
+// 繁简异体字归一表（只覆盖题材 allow-list 用字）：把简体折叠到繁体，
+// 使简体/繁体的熱度標籤都能命中繁体题材表。新增题材词若含简繁差异字，在此补对照。
+const HANZI_FOLD: Record<string, string> = {
+	轨: "軌",
+	约: "約",
+	开: "開",
+	恋: "戀",
+	结: "結",
+	离: "離",
+	复: "復",
+	认: "認",
+	绯: "緋",
+	闻: "聞",
+};
+
+/** 按 HANZI_FOLD 把简体异体字折叠到繁体，用于简繁无关的题材匹配。 */
+function fold(s: string): string {
+	let out = "";
+	for (const ch of s) out += HANZI_FOLD[ch] ?? ch;
+	return out;
+}
+
 /**
  * 把一条瓜的 熱度標籤 解析为归一化的题材集（去重）。
  * - null/空 → [OTHER_THEME]
- * - 每个标签按 allow-list 包含匹配归一；不匹配 → OTHER_THEME
+ * - 每个标签经简繁归一后按 allow-list 包含匹配；不匹配 → OTHER_THEME
  */
 export function parseThemes(hot: string | null | undefined): string[] {
 	if (!hot || !hot.trim()) return [OTHER_THEME];
@@ -44,12 +66,23 @@ export function parseThemes(hot: string | null | undefined): string[] {
 	if (raw.length === 0) return [OTHER_THEME];
 	const themes = new Set<string>();
 	for (const tag of raw) {
-		const match = THEME_ALLOWLIST.find(
-			(t) => tag === t || tag.includes(t) || t.includes(tag),
-		);
+		const ft = fold(tag);
+		const match = THEME_ALLOWLIST.find((t) => {
+			const ftt = fold(t);
+			return ft === ftt || ft.includes(ftt) || ftt.includes(ft);
+		});
 		themes.add(match ?? OTHER_THEME);
 	}
 	return [...themes];
+}
+
+/**
+ * 把单个自由文字归一为吃瓜主题材（draft.category 单值分类用）。
+ * 复用 parseThemes：命中 allow-list → 该题材；未识别/空 → OTHER_THEME。
+ * 取首个题材作单值（多题材另由 tags / 题材选择器体现）。
+ */
+export function normalizeCategory(raw: string | undefined): string {
+	return parseThemes(raw)[0] ?? OTHER_THEME;
 }
 
 /** 便捷重载：直接从 facts 取题材。 */

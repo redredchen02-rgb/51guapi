@@ -44,7 +44,7 @@ export function DraftPreview({
 					onChange={(e) => set({ subtitle: e.target.value })}
 				/>
 			</Field>
-			<Field label="分类(type 值,如 2=漫畫文章 / 4=動漫文章)">
+			<Field label="分类(瓜的类型,如 出軌/塌房/緋聞)">
 				<input
 					className="field-input"
 					value={draft.category}

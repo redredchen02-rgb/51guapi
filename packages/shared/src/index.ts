@@ -31,6 +31,7 @@ export {
 export {
 	countThemes,
 	factThemes,
+	normalizeCategory,
 	OTHER_THEME,
 	parseThemes,
 	THEME_ALLOWLIST,
@@ -60,7 +61,7 @@ export {
 } from "./link-source.js";
 export type { AssembledDraft, DraftSlots } from "./post-assembler.js";
 export {
-	assembleDraft,
+	assembleGossipDraft,
 	containsPlaceholder,
 	PLACEHOLDER,
 	sanitizeToPlainText,
@@ -78,5 +79,3 @@ export type {
 	ReviewResult,
 	Settings,
 } from "./types.js";
-export type { CategoryOption } from "./vocab.js";
-export { CATEGORY_VOCAB, normalizeCategory } from "./vocab.js";
