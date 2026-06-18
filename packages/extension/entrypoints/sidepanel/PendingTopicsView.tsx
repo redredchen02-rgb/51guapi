@@ -421,9 +421,7 @@ export function PendingTopicsView({ onBack, onDraftReady, onError }: Props) {
 
 					<ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
 						{topics
-							.filter(
-								(t) => !hideLowScore || (t.score ?? t.confidence) >= 0.3,
-							)
+							.filter((t) => !hideLowScore || (t.score ?? t.confidence) >= 0.3)
 							.map((t) => {
 								const score = t.score ?? t.confidence;
 								const isHigh = score >= 0.7;
