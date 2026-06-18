@@ -119,6 +119,17 @@ CREATE TABLE IF NOT EXISTS gossip_sites (
   updated_at  TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_gossip_sites_updated ON gossip_sites(updated_at DESC);`,
+	// 自用模式种子(plan 2026-06-18-003):一次性重置 channels 表为单条 51cg1.com。
+	// 有意清除运行时积累的垃圾域名(操作者确认现有为垃圾);_migrations 保证只跑一次,
+	// 之后用户在 UI 新增的渠道不会被重置。51cg1.com 为 ASCII,直插 hostname 与
+	// normalizeChannelHost 归一值等价;读取时完整 SSRF 守卫(safeFetch/resolveAndPin)
+	// 仍全程生效。不在 ssrf-allowlist.ts 引入任何硬编码默认,空即全拒语义不变。
+	"014-seed-channels.sql": `\
+DELETE FROM channels;
+INSERT INTO channels
+  (id, hostname, display_name, path_prefix, max_depth, max_bytes, created_by, reason, created_at)
+VALUES
+  ('seed-51cg1', '51cg1.com', '51cg1', '/', 1, 5242880, 'seed', '默认种子渠道', datetime('now'));`,
 };
 
 export function runMigrations(dbPath: string): void {
