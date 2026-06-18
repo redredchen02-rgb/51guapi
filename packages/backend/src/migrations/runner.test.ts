@@ -146,8 +146,10 @@ describe("migration runner", () => {
 		db.close();
 		// 014 已记入 _migrations → 重跑不应再执行 DELETE,用户渠道保留。
 		runMigrations(path);
-		expect(channelRows(path).map((r) => r.hostname).sort()).toEqual(
-			["51cg1.com", "added-by-user.com"].sort(),
-		);
+		expect(
+			channelRows(path)
+				.map((r) => r.hostname)
+				.sort(),
+		).toEqual(["51cg1.com", "added-by-user.com"].sort());
 	});
 });

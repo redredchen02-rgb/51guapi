@@ -89,7 +89,9 @@ describe("channel-client — createChannel", () => {
 
 	it("Error 401 → clearToken + 抛 Unauthorized", async () => {
 		const { fn } = mockFetch({}, 401);
-		await expect(createChannel("x.com", {}, fn)).rejects.toThrow("Unauthorized");
+		await expect(createChannel("x.com", {}, fn)).rejects.toThrow(
+			"Unauthorized",
+		);
 	});
 });
 
