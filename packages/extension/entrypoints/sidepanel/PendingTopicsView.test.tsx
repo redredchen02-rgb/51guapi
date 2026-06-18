@@ -339,7 +339,11 @@ describe("R5 — 今日一键备稿", () => {
 		vi.mocked(fetchAdapters).mockResolvedValue(["test-adapter"]);
 		vi.mocked(fetchPendingTopics)
 			.mockResolvedValueOnce([]) // initial refresh
-			.mockResolvedValueOnce([makeTopic("t1"), makeTopic("t2"), makeTopic("t3")]); // quickDraft fetch
+			.mockResolvedValueOnce([
+				makeTopic("t1"),
+				makeTopic("t2"),
+				makeTopic("t3"),
+			]); // quickDraft fetch
 		render(
 			<PendingTopicsView
 				onBack={vi.fn()}

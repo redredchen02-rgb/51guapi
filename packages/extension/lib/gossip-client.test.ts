@@ -95,7 +95,9 @@ describe("gossip-client — createGossipSite", () => {
 
 	it("Error 401 → clearToken() 且抛 Unauthorized", async () => {
 		const { fn } = mockFetch({}, 401);
-		await expect(createGossipSite("n", "u", fn)).rejects.toThrow("Unauthorized");
+		await expect(createGossipSite("n", "u", fn)).rejects.toThrow(
+			"Unauthorized",
+		);
 		expect(await getToken()).toBeNull();
 	});
 
