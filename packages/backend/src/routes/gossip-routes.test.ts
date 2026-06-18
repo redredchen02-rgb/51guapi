@@ -436,6 +436,42 @@ describe("gossip-routes", () => {
 		expect(body.verification.decision).toBe("reject");
 	});
 
+	it("from-url：env GOSSIP_MIN_BODY_LEN 调小 → 同样短正文不再被拒(env 调参生效)", async () => {
+		process.env.LLM_ENDPOINT = "https://api.test";
+		process.env.LLM_API_KEY = "test-key";
+		process.env.GOSSIP_MIN_BODY_LEN = "2";
+		try {
+			mockFetchContent.mockResolvedValueOnce({
+				title: "短",
+				body: "太短",
+				url: "https://gossip.com/cfg",
+			});
+			mockGossipExtractFacts.mockResolvedValueOnce({
+				facts: {
+					當事人: "A",
+					事件摘要: "x",
+					起因: null,
+					經過: null,
+					結果: null,
+					來源連結: null,
+					發生時間: null,
+					熱度標籤: null,
+				},
+				confidence: 0.5,
+				extractionMode: "strict",
+			});
+			const res = await app.inject({
+				method: "POST",
+				url: "/api/v1/gossip/topics/from-url",
+				payload: { url: "https://gossip.com/cfg", siteName: "站" },
+			});
+			expect(res.statusCode).toBe(201); // 不再硬拒,入池(软标)
+			expect(res.json().topic.verification.decision).not.toBe("reject");
+		} finally {
+			delete process.env.GOSSIP_MIN_BODY_LEN;
+		}
+	});
+
 	it("from-url：成功入池带 verification + contentFingerprint(U3)", async () => {
 		process.env.LLM_ENDPOINT = "https://api.test";
 		process.env.LLM_API_KEY = "test-key";

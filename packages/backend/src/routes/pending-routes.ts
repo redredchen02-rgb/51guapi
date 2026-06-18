@@ -2,6 +2,7 @@ import type { GossipFactsBlock, RejectionReason } from "@51guapi/shared";
 import { countThemes, parseThemes, verifyCrawledTopic } from "@51guapi/shared";
 import { Type } from "@sinclair/typebox";
 import type { FastifyInstance } from "fastify";
+import { loadVerifyConfig } from "../scraper/gossip-verify-config.js";
 import {
 	deletePendingTopic,
 	listPendingTopics,
@@ -287,6 +288,7 @@ export async function registerPendingRoutes(
 						rawText,
 						publishedTime: rc.metadata?.publishedTime,
 						now: Date.now(),
+						config: loadVerifyConfig(),
 					});
 					topic.contentFingerprint = topic.verification.fingerprint;
 				}

@@ -16,6 +16,10 @@ import {
 	listGossipSites,
 	saveGossipSite,
 } from "../scraper/gossip-site-store.js";
+import {
+	loadVerifyConfig,
+	resolveWindowDays,
+} from "../scraper/gossip-verify-config.js";
 import type { PendingTopic } from "../scraper/pending-store.js";
 import {
 	pendingTopicExistsByFingerprint,
@@ -183,7 +187,9 @@ export async function registerGossipRoutes(
 			},
 		},
 		async (request, reply) => {
-			const { url, siteName, windowDays } = request.body ?? {};
+			const { url, siteName } = request.body ?? {};
+			// 请求显式 windowDays 优先;否则回退 env GOSSIP_WINDOW_DAYS_DEFAULT(都没有=不过滤)。
+			const windowDays = resolveWindowDays(request.body?.windowDays);
 			if (!url || !siteName) {
 				return err(reply, 400, "Missing required fields: url, siteName");
 			}
@@ -256,6 +262,7 @@ export async function registerGossipRoutes(
 				publishedTime,
 				windowDays,
 				now: Date.now(),
+				config: loadVerifyConfig(),
 			});
 
 			// 硬拒(明确无效:空页/错误页/广告)→ 不入池,但**用户可见**(用户主动点的,不静默吞)。
