@@ -44,6 +44,7 @@ export function FactsEditorModal({
 					}}
 				>
 					置信度 {Math.round(topic.confidence * 100)}%
+					{topic.extractionMode ? ` · ${topic.extractionMode}` : ""}
 				</div>
 			)}
 			{topic.coverImageUrl && (

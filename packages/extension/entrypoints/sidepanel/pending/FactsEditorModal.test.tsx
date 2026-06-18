@@ -100,6 +100,13 @@ describe("FactsEditorModal (事实往返编辑 — 净增覆盖)", () => {
 		expect(screen.getByText("置信度 75%")).toBeTruthy();
 	});
 
+	it("有 extractionMode → 与置信度一起显示", () => {
+		setup({
+			topic: makeTopic({ confidence: 0.6, extractionMode: "fallback" }),
+		});
+		expect(screen.getByText("置信度 60% · fallback")).toBeTruthy();
+	});
+
 	it("有 coverImageUrl → 渲染封面 img", () => {
 		setup({
 			topic: makeTopic({ coverImageUrl: "http://img.example.com/cover.jpg" }),

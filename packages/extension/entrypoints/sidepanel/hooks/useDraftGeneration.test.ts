@@ -42,6 +42,29 @@ describe("useDraftGeneration", () => {
 		expect(out).toEqual({ status: "ok", draft });
 	});
 
+	it("生成 options 透传给 requestGenerate", async () => {
+		vi.mocked(requestGenerate).mockResolvedValue({
+			ok: true,
+			draft,
+		} satisfies GenerateDraftResponse);
+		const { result } = renderHook(() => useDraftGeneration());
+		const options = {
+			facts: {
+				當事人: "测试人物",
+				事件摘要: "测试摘要",
+				起因: null,
+				經過: null,
+				結果: null,
+				來源連結: "https://example.com/a",
+				發生時間: null,
+				熱度標籤: null,
+			},
+			enrichment: "补充背景",
+		};
+		await result.current.generate("prompt", options);
+		expect(requestGenerate).toHaveBeenCalledWith("prompt", options);
+	});
+
 	it("no-key 失败 → status no-key,携带 error", async () => {
 		vi.mocked(requestGenerate).mockResolvedValue({
 			ok: false,

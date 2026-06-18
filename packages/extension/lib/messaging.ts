@@ -2,7 +2,7 @@ import type { GenerateDraftResponse } from "@51guapi/shared";
 import { applyPromptTemplate, type FactsBlock } from "@51guapi/shared";
 import { browser } from "#imports";
 import type { Batch } from "./batch";
-import type { RuntimeMessage } from "./messages";
+import type { GenerateDraftOptions, RuntimeMessage } from "./messages";
 
 // MV3 Service Worker 随时可能被回收。sendMessage 若 SW 死亡可能永久 pending。
 // sendMsg 包一层 race，超时则 reject → withBusy catch 显示"请重试"而非卡死。
@@ -40,8 +40,13 @@ function sendMsg<T>(msg: RuntimeMessage): Promise<T> {
 /** side panel → background:生成草稿。 */
 export async function requestGenerate(
 	prompt: string,
+	options?: GenerateDraftOptions,
 ): Promise<GenerateDraftResponse> {
-	return sendMsg<GenerateDraftResponse>({ type: "GENERATE_DRAFT", prompt });
+	return sendMsg<GenerateDraftResponse>({
+		type: "GENERATE_DRAFT",
+		prompt,
+		options,
+	});
 }
 
 // ---- 批量生成(side panel → background)----

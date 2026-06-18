@@ -262,6 +262,32 @@ describe("GET /api/v1/pending-topics — sort_by + fold_threshold (U7)", () => {
 		const topics = res.json().topics as Record<string, unknown>[];
 		expect(topics.every((t) => !("folded" in t))).toBe(true);
 	});
+
+	it("rawContent.metadata.extractionMode → API 顶层 extractionMode", async () => {
+		await savePendingTopic(
+			makeTopic({
+				id: "mode",
+				sourceUrl: "https://example-site.com/s/mode",
+				rawContent: {
+					title: "模式选题",
+					body: "<p>正文</p>",
+					url: "https://example-site.com/s/mode",
+					metadata: { extractionMode: "fallback" },
+				},
+			}),
+		);
+		const res = await app.inject({
+			method: "GET",
+			url: "/api/v1/pending-topics",
+		});
+		expect(res.statusCode).toBe(200);
+		const [topic] = res.json().topics as Array<{
+			id: string;
+			extractionMode?: string;
+		}>;
+		expect(topic?.id).toBe("mode");
+		expect(topic?.extractionMode).toBe("fallback");
+	});
 });
 
 // ---- JWT 401 守護 ----

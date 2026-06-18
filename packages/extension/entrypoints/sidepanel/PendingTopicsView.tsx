@@ -1,4 +1,4 @@
-import type { ContentDraft } from "@51guapi/shared";
+import type { ContentDraft, GossipFactsBlock } from "@51guapi/shared";
 import { GOSSIP_FACT_KEYS } from "@51guapi/shared";
 import { useCallback, useEffect, useState } from "react";
 import { downloadFile, exportTopicsAsCSV } from "../../lib/export";
@@ -21,7 +21,10 @@ interface QuickDraftConfirm {
 
 interface Props {
 	onBack: () => void;
-	onDraftReady: (draft: ContentDraft) => void;
+	onDraftReady: (payload: {
+		draft: ContentDraft;
+		facts: GossipFactsBlock;
+	}) => void;
 	onError: (msg: string) => void;
 }
 
@@ -108,6 +111,15 @@ export function PendingTopicsView({ onBack, onDraftReady, onError }: Props) {
 		return `${topic.title || topic.sourceUrl}${factsBlock}${enrichBlock}`;
 	}
 
+	function toGossipFacts(facts: Record<string, string>): GossipFactsBlock {
+		const out = {} as GossipFactsBlock;
+		for (const key of GOSSIP_FACT_KEYS) {
+			const value = facts[key];
+			out[key] = value == null || value === "" ? null : value;
+		}
+		return out;
+	}
+
 	async function handleApproveSelected() {
 		if (selected.size === 0) return;
 		const t = topics.find((t) => selected.has(t.id));
@@ -117,8 +129,12 @@ export function PendingTopicsView({ onBack, onDraftReady, onError }: Props) {
 		try {
 			const edited = localFacts[t.id];
 			if (edited) await patchPendingTopic(t.id, { facts: edited });
+			const approvedFacts = toGossipFacts(edited ?? t.facts);
 			const prompt = buildGossipPrompt(t, edited);
-			const result = await generate(prompt);
+			const result = await generate(prompt, {
+				facts: approvedFacts,
+				enrichment: t.enrichmentText,
+			});
 			// exception 等同原 requestGenerate 抛错:rethrow 落入下方 catch,
 			// 保住与 catch 完全一致的错误文案。
 			if (result.status === "exception") throw result.error;
@@ -130,7 +146,7 @@ export function PendingTopicsView({ onBack, onDraftReady, onError }: Props) {
 					next.delete(t.id);
 					return next;
 				});
-				onDraftReady(result.draft);
+				onDraftReady({ draft: result.draft, facts: approvedFacts });
 			} else {
 				const isKeyError = result.status === "no-key";
 				setApproveError(
@@ -223,14 +239,18 @@ export function PendingTopicsView({ onBack, onDraftReady, onError }: Props) {
 		try {
 			const edited = localFacts[t.id];
 			if (edited) await patchPendingTopic(t.id, { facts: edited });
+			const approvedFacts = toGossipFacts(edited ?? t.facts);
 			const prompt = buildGossipPrompt(t, edited);
-			const result = await generate(prompt);
+			const result = await generate(prompt, {
+				facts: approvedFacts,
+				enrichment: t.enrichmentText,
+			});
 			// exception 等同原 requestGenerate 抛错:rethrow 落入下方 catch(走 onError)。
 			if (result.status === "exception") throw result.error;
 			if (result.status === "ok") {
 				await updatePendingStatus(t.id, "approved");
 				setSelected(new Set());
-				onDraftReady(result.draft);
+				onDraftReady({ draft: result.draft, facts: approvedFacts });
 			} else {
 				const isKeyError = result.status === "no-key";
 				setApproveError(

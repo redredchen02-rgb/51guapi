@@ -291,6 +291,7 @@ describe("gossip-routes", () => {
 		const topic = res.json().topic;
 		expect(topic.domain).toBe("gossip");
 		expect(topic.title).toBe("明星A出軌事件");
+		expect(topic.rawContent.metadata.extractionMode).toBe("strict");
 	});
 
 	it("from-url：IP literal URL → 400", async () => {

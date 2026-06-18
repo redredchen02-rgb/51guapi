@@ -55,6 +55,7 @@ describe("Extension LLM client proxy", () => {
 			settings,
 			apiKey: "",
 			facts: {},
+			enrichment: "补充背景",
 			fetchFn: f,
 		});
 
@@ -70,6 +71,7 @@ describe("Extension LLM client proxy", () => {
 					prompt: "hi",
 					settings,
 					facts: {},
+					enrichment: "补充背景",
 				}),
 			}),
 		);

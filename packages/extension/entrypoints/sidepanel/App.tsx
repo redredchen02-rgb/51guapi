@@ -1,4 +1,4 @@
-import type { ContentDraft } from "@51guapi/shared";
+import type { ContentDraft, GossipFactsBlock } from "@51guapi/shared";
 import { useEffect, useRef, useState } from "react";
 import { isAuthenticated } from "../../lib/auth-client";
 import { buildPrompt } from "../../lib/messaging";
@@ -37,6 +37,7 @@ export function App() {
 	const [mode, setMode] = useState<Mode>("empty");
 	const [topic, setTopic] = useState("");
 	const [draft, setDraft] = useState<ContentDraft | null>(null);
+	const [draftFacts, setDraftFacts] = useState<GossipFactsBlock | null>(null);
 	const { error, handleError, clearError } = useErrorHandler();
 	const { logs, logError, retrieveLogs, clearLogs, exportLogs } =
 		useErrorLogger();
@@ -60,6 +61,7 @@ export function App() {
 			promptTemplateRef.current = s.promptTemplate;
 			if (saved) {
 				setDraft(saved);
+				setDraftFacts(null);
 				setMode("draft");
 			}
 			const authed = await isAuthenticated();
@@ -113,6 +115,7 @@ export function App() {
 			if (token !== genTokenRef.current) return;
 			if (result.status === "ok") {
 				updateDraft(result.draft);
+				setDraftFacts(null);
 				setMode("draft");
 				loadingState.completeLoading();
 				void recordOperation({ type: "generate", topic, success: true });
@@ -146,6 +149,7 @@ export function App() {
 	function handleNext() {
 		void clearCurrentDraft();
 		setDraft(null);
+		setDraftFacts(null);
 		setTopic("");
 		clearError();
 		setMode("empty");
@@ -195,8 +199,9 @@ export function App() {
 		return (
 			<PendingTopicsView
 				onBack={() => setView("main")}
-				onDraftReady={(d) => {
-					updateDraft(d);
+				onDraftReady={({ draft, facts }) => {
+					updateDraft(draft);
+					setDraftFacts(facts);
 					setMode("draft");
 					setView("main");
 				}}
@@ -279,7 +284,7 @@ export function App() {
 			/>
 
 			{draft && mode !== "generating" && (
-				<DraftPreview draft={draft} onChange={updateDraft} />
+				<DraftPreview draft={draft} onChange={updateDraft} facts={draftFacts} />
 			)}
 
 			{toast && (

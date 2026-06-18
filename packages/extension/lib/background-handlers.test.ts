@@ -96,3 +96,48 @@ describe("handleRunBatch — batchesCompleted wiring", () => {
 		expect(c.batchesCompleted).toBe(1);
 	});
 });
+
+describe("handleGenerate — forwards structured context", () => {
+	beforeEach(() => {
+		fakeBrowser.reset();
+	});
+
+	it("透传 facts 与 enrichment 到 generateDraftFn", async () => {
+		const deps = makeDeps();
+		const handlers = createHandlers(deps);
+		const facts = {
+			當事人: "测试人物",
+			事件摘要: "测试摘要",
+			起因: null,
+			經過: null,
+			結果: null,
+			來源連結: "https://example.com/a",
+			發生時間: null,
+			熱度標籤: null,
+		};
+		await handlers.handleGenerate("prompt", {
+			facts,
+			enrichment: "补充背景",
+		});
+		expect(deps.generateDraftFn).toHaveBeenCalledWith(
+			expect.stringContaining("prompt"),
+			expect.objectContaining({
+				facts,
+				enrichment: "补充背景",
+			}),
+		);
+	});
+
+	it("无 options 时保持手动生成兼容", async () => {
+		const deps = makeDeps();
+		const handlers = createHandlers(deps);
+		await handlers.handleGenerate("manual prompt");
+		expect(deps.generateDraftFn).toHaveBeenCalledWith(
+			expect.stringContaining("manual prompt"),
+			expect.objectContaining({
+				facts: undefined,
+				enrichment: undefined,
+			}),
+		);
+	});
+});

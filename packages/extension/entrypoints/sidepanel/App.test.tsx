@@ -21,6 +21,8 @@ const requestGenerate = vi.fn();
 const saveCurrentDraftMock = vi.hoisted(() =>
 	vi.fn().mockResolvedValue(undefined),
 );
+const exportDraftAsJSONMock = vi.hoisted(() => vi.fn(() => '{"json":true}'));
+const downloadFileMock = vi.hoisted(() => vi.fn());
 
 vi.mock("../../lib/auth-client", () => ({
 	isAuthenticated: vi.fn(async () => true),
@@ -46,6 +48,43 @@ vi.mock("../../lib/storage", () => ({
 	clearCurrentDraft: async () => {},
 }));
 
+vi.mock("../../lib/export", () => ({
+	exportDraftAsJSON: exportDraftAsJSONMock,
+	exportDraftAsMarkdown: vi.fn(() => "# md"),
+	copyToClipboard: vi.fn(async () => {}),
+	downloadFile: downloadFileMock,
+	safeFilename: vi.fn((_d: ContentDraft, ext: string) => `file.${ext}`),
+}));
+
+vi.mock("./PendingTopicsView", () => ({
+	PendingTopicsView: ({
+		onDraftReady,
+	}: {
+		onDraftReady: (payload: { draft: ContentDraft; facts: unknown }) => void;
+	}) => (
+		<button
+			type="button"
+			onClick={() =>
+				onDraftReady({
+					draft,
+					facts: {
+						當事人: "测试人物",
+						事件摘要: "测试摘要",
+						起因: null,
+						經過: null,
+						結果: null,
+						來源連結: "https://example.com/source",
+						發生時間: null,
+						熱度標籤: null,
+					},
+				})
+			}
+		>
+			mock approve pending
+		</button>
+	),
+}));
+
 import { App } from "./App";
 
 async function waitForAppReady() {
@@ -56,6 +95,8 @@ describe("App", () => {
 	beforeEach(() => {
 		requestGenerate.mockReset();
 		saveCurrentDraftMock.mockReset();
+		exportDraftAsJSONMock.mockClear();
+		downloadFileMock.mockClear();
 	});
 	afterEach(() => cleanup());
 
@@ -77,7 +118,7 @@ describe("App", () => {
 		fireEvent.click(screen.getByText("生成草稿"));
 		const titleInput = await screen.findByDisplayValue("AI 标题");
 		expect(titleInput).toBeTruthy();
-		expect(requestGenerate).toHaveBeenCalledWith("某新番");
+		expect(requestGenerate).toHaveBeenCalledWith("某新番", undefined);
 	});
 
 	it("生成失败(no-key)→ 显示去设置的提示", async () => {
@@ -93,5 +134,23 @@ describe("App", () => {
 		});
 		fireEvent.click(screen.getByText("生成草稿"));
 		expect(await screen.findByText(/点右上角设置/)).toBeTruthy();
+	});
+
+	it("待审池生成草稿 → App 保留 facts 并传给导出", async () => {
+		render(<App />);
+		await waitForAppReady();
+		fireEvent.click(screen.getByText("待审池"));
+		fireEvent.click(await screen.findByText("mock approve pending"));
+		expect(await screen.findByDisplayValue("AI 标题")).toBeTruthy();
+
+		fireEvent.click(screen.getByText("导出 JSON"));
+
+		expect(exportDraftAsJSONMock).toHaveBeenCalledWith(
+			expect.objectContaining({ id: "d1" }),
+			expect.objectContaining({
+				當事人: "测试人物",
+				來源連結: "https://example.com/source",
+			}),
+		);
 	});
 });
