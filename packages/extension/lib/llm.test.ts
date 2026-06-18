@@ -157,9 +157,6 @@ const draft: ContentDraft = {
 	body: "<p>测试正文</p>",
 	tags: ["标签A"],
 	description: "",
-	postStatus: "0",
-	publishedAt: "",
-	mediaId: "99",
 	status: "draft",
 	createdAt: "2026-06-11T00:00:00.000Z",
 };
@@ -260,14 +257,11 @@ describe("mergeRewriteResult", () => {
 		expect(r.tags).toEqual(["新标签"]);
 	});
 
-	it("id / coverImageUrl / mediaId 始终保留 original", () => {
-		const r = mergeRewriteResult(
-			draft,
-			{ ...rewrite, id: "hacked", mediaId: "0" },
-			["title_quality"],
-		);
+	it("id / coverImageUrl 始终保留 original", () => {
+		const r = mergeRewriteResult(draft, { ...rewrite, id: "hacked" }, [
+			"title_quality",
+		]);
 		expect(r.id).toBe(draft.id);
-		expect(r.mediaId).toBe(draft.mediaId);
 		expect(r.coverImageUrl).toBe(draft.coverImageUrl);
 	});
 

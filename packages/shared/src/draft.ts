@@ -17,9 +17,6 @@ export function toDraft(
 		body: assembled.body,
 		tags,
 		description: assembled.description,
-		postStatus: "0",
-		publishedAt: "",
-		mediaId: "",
 		status: "draft",
 		createdAt: now,
 	};

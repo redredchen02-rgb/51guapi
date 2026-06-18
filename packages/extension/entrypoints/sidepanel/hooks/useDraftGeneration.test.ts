@@ -21,9 +21,6 @@ const draft: ContentDraft = {
 	body: "B",
 	tags: [],
 	description: "",
-	postStatus: "1",
-	publishedAt: "",
-	mediaId: "",
 	status: "draft",
 	createdAt: "2026-06-03T00:00:00.000Z",
 };

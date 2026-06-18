@@ -9,12 +9,12 @@ export interface FewShotPair {
 	output: string;
 }
 
-/** 草稿在本插件内的生命周期状态(注意与后台表单的"显示/隐藏"状态 postStatus 区分)。 */
+/** 草稿在本插件内的生命周期状态。 */
 export type DraftStatus = "draft" | "filled" | "published";
 
 /**
  * 一条内容草稿。AI 生成 title/subtitle/category/body/tags/description;
- * postStatus/publishedAt/mediaId 由人工在 side panel 填写或取默认值(非 AI 生成)。
+ * coverImageUrl 由人工在 side panel 填写或取默认值(非 AI 生成)。
  */
 export interface ContentDraft {
 	id: string;
@@ -22,19 +22,13 @@ export interface ContentDraft {
 	subtitle: string;
 	/** 后台分类(对应 select[name=type] 的 value,如 "2"/"4")。 */
 	category: string;
-	/** 封面图 URL;自动抓取时由适配器提供,填入后台 input[name=cover_url] 隐藏字段。 */
+	/** 封面图 URL;自动抓取时由适配器提供。 */
 	coverImageUrl: string;
 	/** 正文 HTML(写入 Quill 前需消毒)。 */
 	body: string;
 	tags: string[];
 	/** 描述/摘要(AI 生成)。 */
 	description: string;
-	/** 后台显示状态:'0'=隐藏,'1'=显示。 */
-	postStatus: "0" | "1";
-	/** 发布时间 yyyy-MM-dd。 */
-	publishedAt: string;
-	/** 关联作品 id。 */
-	mediaId: string;
 	status: DraftStatus;
 	/** ISO 时间戳。 */
 	createdAt: string;

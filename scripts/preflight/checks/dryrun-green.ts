@@ -28,9 +28,6 @@ function makeDraft(id: string, title: string): ContentDraft {
 		body: "<p>预演正文</p>",
 		tags: [],
 		description: "描述",
-		postStatus: "0",
-		publishedAt: "2026-06-15",
-		mediaId: "1",
 		status: "draft",
 		createdAt: "2026-06-15T00:00:00.000Z",
 	};

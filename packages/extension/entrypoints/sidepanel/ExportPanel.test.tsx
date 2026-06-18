@@ -43,9 +43,6 @@ function makeDraft(): ContentDraft {
 		body: "<p>正文</p>",
 		tags: [],
 		description: "",
-		postStatus: "1",
-		publishedAt: "",
-		mediaId: "",
 		status: "draft",
 		createdAt: "2026-06-15T00:00:00Z",
 	} as ContentDraft;

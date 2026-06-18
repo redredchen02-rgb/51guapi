@@ -30,9 +30,6 @@ const D: ContentDraft = {
 	body: "<p>x</p>",
 	tags: [],
 	description: "",
-	postStatus: "0",
-	publishedAt: "",
-	mediaId: "1",
 	status: "draft",
 	createdAt: "2026-06-04T00:00:00.000Z",
 };
