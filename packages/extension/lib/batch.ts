@@ -13,6 +13,8 @@ export type BatchItemStatus =
 	| "awaiting-approval"
 	| "error";
 
+// RUN_BATCH 管线保留 ACG FactsBlock 类型（不迁移到 GossipFactsBlock），
+// 因为吃瓜管线使用 GENERATE_DRAFT 单条路径，不经过批量处理器。
 export interface BatchItem {
 	id: string;
 	topic: string;
