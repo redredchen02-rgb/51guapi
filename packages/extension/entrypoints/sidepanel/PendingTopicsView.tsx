@@ -685,7 +685,7 @@ export function PendingTopicsView({ onBack, onDraftReady, onError }: Props) {
 							disabled={selected.size === 0 || busy}
 							className="btn btn-primary"
 						>
-							{busy ? "生成中…" : "批准并生成草稿"}
+							{busy ? "生成中…" : `批准并生成草稿 (${selected.size})`}
 						</button>
 						<button
 							type="button"
