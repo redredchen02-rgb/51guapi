@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import type { GossipFactsBlock, Settings } from "@51guapi/shared";
-import { assembleDraft, toDraft } from "@51guapi/shared";
+import { assembleGossipDraft, toDraft } from "@51guapi/shared";
 import { describe, expect, it, vi } from "vitest";
 import {
 	buildRequest,
@@ -176,12 +176,14 @@ describe("generateDraft (结构化组装)", () => {
 		});
 		expect(res.ok).toBe(true);
 		if (res.ok) {
-			expect(res.draft.title).toBe("【待补】"); // gossip facts 无作品名 → 标题占位
-			expect(res.draft.body).not.toContain("作品名"); // gossip facts 无漫画字段
+			// gossip assembler 用 facts.當事人 构建标题
+			expect(res.draft.title).toBe("明星A与明星B介紹");
+			expect(res.draft.body).not.toContain("作品名"); // 无 ACG 字段 → 不渲染
+			expect(res.draft.body).toContain("當事人");
 			expect(res.draft.body).toContain("<p>引子</p>");
 			expect(res.draft.tags).toEqual(["奇幻", "冒險"]);
-			// 分类经 normalizeCategory:模型给后台 value '2' → 归一化为后台真实 label(fillNativeSelect 按文本命中)。
-			expect(res.draft.category).toBe("漫畫文章");
+			// 分类取 facts「熱度標籤」主题材(简体"出轨"经简繁归一命中"出軌");模型自吐 category '2' 被忽略。
+			expect(res.draft.category).toBe("出軌");
 			expect(res.draft.status).toBe("draft");
 			expect(res.draft.createdAt).toBe("2026-06-03T00:00:00.000Z");
 		}
@@ -255,7 +257,7 @@ describe("generateDraft (结构化组装)", () => {
 		expect(res.ok).toBe(true);
 		if (res.ok) {
 			expect(res.draft.title).toBe("【待补】");
-			expect(res.draft.body).not.toContain("作品名"); // 无 FactsBlock manga 字段 → 不渲染抬头行
+			expect(res.draft.body).not.toContain("當事人:"); // 所有 gossip facts 字段为 null → 不渲染抬头行
 			expect(res.draft.tags).toEqual([]);
 		}
 	});
@@ -484,9 +486,18 @@ describe("slotsFromParsed", () => {
 
 describe("toDraft", () => {
 	it("组合 assembled + category/tags + 非 AI 默认值", () => {
-		const assembled = assembleDraft(
+		const assembled = assembleGossipDraft(
 			{ intro: "B", highlights: "" },
-			{ 作品名: "T" },
+			{
+				當事人: "T",
+				事件摘要: null,
+				起因: null,
+				經過: null,
+				結果: null,
+				來源連結: null,
+				發生時間: null,
+				熱度標籤: null,
+			},
 		);
 		const d = toDraft(assembled, "3", ["a"], "id1", "2026-06-03T00:00:00.000Z");
 		expect(d.title).toBe("T");

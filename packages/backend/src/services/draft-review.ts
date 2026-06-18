@@ -26,13 +26,13 @@ export function extractUsage(
 	return { prompt, completion };
 }
 
-const DEFAULT_CRITERIA = `你是专业内容评审员。请对以下帖子草稿进行四维评审。
+const DEFAULT_CRITERIA = `你是专业吃瓜内容评审员。请对以下娱乐八卦草稿进行四维评审。
 
 四个维度：
-1. body_richness（正文丰富度）：正文字数≥150字、内容实质丰富、不空洞单薄。
-2. community_tone（吃瓜口吻）：用词贴近吃瓜娱乐报道，含知情人/爆料/疑似等词汇，不过于官方生硬。
-3. title_quality（标题质量）：标题有信息量、吸引人，让读者想点进去看。
-4. category_accuracy（分类准确性）：分类和标签准确匹配内容，标签有实际含义。
+1. body_richness（正文丰富度）：正文字数≥150字、包含事件来龙去脉（起因/经过/结果），内容实质丰富、不空洞。
+2. community_tone（吃瓜口吻）：用词活泼接地气，符合吃瓜博主风格，含知情人/爆料/疑似等词汇，不过于官方生硬。
+3. title_quality（标题质量）：标题含当事人名或事件类型关键词，让读者一眼知道是哪条瓜，有信息量且吸引人。
+4. category_accuracy（分类准确性）：分类是吃瓜题材（如出軌、塌房、緋聞、官宣等），标签反映具体事件类型，有实际含义。
 
 仅输出 JSON，格式：{"dimensions":[{"name":"body_richness","pass":true,"reason":"一句话"},{"name":"community_tone","pass":true,"reason":"一句话"},{"name":"title_quality","pass":true,"reason":"一句话"},{"name":"category_accuracy","pass":true,"reason":"一句话"}]}`;
 

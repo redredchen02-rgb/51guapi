@@ -1,14 +1,12 @@
-import type {
-	FactsBlock,
-	GenerateDraftResponse,
-	Settings,
-} from "@51guapi/shared";
+import type { GenerateDraftResponse, Settings } from "@51guapi/shared";
 import {
-	assembleDraft,
+	assembleGossipDraft,
 	type DraftSlots,
+	factThemes,
 	gossipFactUrls,
 	hasUnsourcedLink,
 	normalizeCategory,
+	OTHER_THEME,
 	toDraft,
 	verifyLinks,
 } from "@51guapi/shared";
@@ -318,11 +316,17 @@ export async function generateDraft(
 
 	// 提升为具名常量,以便随响应返回 —— 扩展端据此重新组装(re-assemble)。
 	const slots = slotsFromParsed(parsed);
-	const assembled = assembleDraft(slots, facts as unknown as FactsBlock);
+	const assembled = assembleGossipDraft(slots, facts);
 	const tags = Array.isArray(parsed.tags)
 		? parsed.tags.map(str).filter(Boolean)
 		: [];
-	const category = normalizeCategory(str(parsed.category));
+	// 吃瓜分类 = facts「熱度標籤」解析出的主题材(出軌/塌房/緋聞…);
+	// 题材模糊(其他)时才回退到模型自吐的 category 做题材归一。
+	const factTheme = factThemes(facts)[0];
+	const category =
+		factTheme && factTheme !== OTHER_THEME
+			? factTheme
+			: normalizeCategory(str(parsed.category));
 	const draft = toDraft(assembled, category, tags, id, now);
 
 	// F3 防幻觉 grounding 守卫:草稿正文里的任何 <a href> 必须溯源到 facts 的来源链接

@@ -103,7 +103,7 @@ const URL_FIELDS: FactKey[] = ["漢化", "無修", "简介"];
 
 /**
  * 每个事实字段在组装后 ContentDraft 里的落点(grounding verbatim 校验用)。
- * 与 post-assembler.assembleDraft 的注入位置保持一致:作品名→title、简介→description、
+ * (ACG 历史映射;吃瓜路径走 assembleGossipDraft + gossipFactUrls)作品名→title、简介→description、
  * 集数/制作/漢化/無修(+扩展 状态/章节数)→body、题材/标签→tags。
  * grounding-gate 与 assembler 共用此映射,杜绝口径漂移。
  */

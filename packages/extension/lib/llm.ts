@@ -128,7 +128,7 @@ export async function generateDraft(
 		}
 
 		// 整体透传后端响应:ok 臂含 draft 与 slots(模型叙事槽位,供扩展端重新组装)。
-		// slots 旧响应可能缺省;它是模型不可信文本,只能经 assembleDraft 消费,不得直接渲染。
+		// slots 旧响应可能缺省;它是模型不可信文本,只能经 assembleGossipDraft 消费,不得直接渲染。
 		const data = (await res.json()) as GenerateDraftResponse;
 		return data;
 	} catch (err) {
