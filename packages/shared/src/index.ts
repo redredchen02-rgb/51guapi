@@ -40,6 +40,7 @@ export type {
 	GroundingResult,
 	ValidityResult,
 	VerificationResult,
+	VerifyConfig,
 	VerifyDecision,
 	VerifyInput,
 } from "./gossip-verify.js";

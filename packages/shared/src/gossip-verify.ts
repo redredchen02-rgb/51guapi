@@ -25,6 +25,22 @@ export interface VerifyInput {
 	windowDays?: number | null;
 	/** 当前时间（ms epoch）。由调用方注入，便于测试与可复现（shared 内禁用 Date.now）。 */
 	now: number;
+	/** 可选阈值覆盖（默认=内置常量）。后端从 env 读取后注入，保持本包纯净、浏览器安全。 */
+	config?: VerifyConfig;
+}
+
+/** 验证关可调阈值。全部可选;省略即用内置默认。由调用方(后端读 env)注入。 */
+export interface VerifyConfig {
+	/** 正文有效长度下限(默认 80);低于此 → validity 硬拒。调高=更严(更易拒)。 */
+	minBodyLen?: number;
+	/** 核心事实填充比例软标阈值(默认 0.5);低于此 → flag(非硬拒)。 */
+	qualityRatioThreshold?: number;
+	/** 當事人(人名)grounding 重叠阈值(默认 0.8,须近乎逐字)。 */
+	nameThreshold?: number;
+	/** 叙事字段(事件摘要/起因/經過/結果)grounding 重叠阈值(默认 0.3,容忍改写)。 */
+	narrativeThreshold?: number;
+	/** 明确无效页特征集(默认内置);**覆盖**而非追加。 */
+	invalidMarkers?: string[];
 }
 
 export interface GroundingResult {
@@ -87,19 +103,19 @@ const INVALID_MARKERS = [
 	"forbidden",
 ];
 
-/** 受 grounding 校验的字段及其阈值（bigram 重叠率）。
+/** 受 grounding 校验的字段。split=多值(逗号分隔人名,每 token 须强溯源)。
+ * 阈值按类型取自 config（split→nameThreshold，否则 narrativeThreshold）。
  * 當事人=「谁」须强溯源(≈逐字出现)；叙事字段是 LLM 改写，宽松容忍 paraphrase。
  * 机械/推断字段(來源連結/發生時間/熱度標籤)不在 grounding 范围。 */
 const GROUNDED_FIELDS: {
 	key: keyof GossipFactsBlock;
-	threshold: number;
 	split: boolean;
 }[] = [
-	{ key: "當事人", threshold: 0.8, split: true },
-	{ key: "事件摘要", threshold: 0.3, split: false },
-	{ key: "起因", threshold: 0.3, split: false },
-	{ key: "經過", threshold: 0.3, split: false },
-	{ key: "結果", threshold: 0.3, split: false },
+	{ key: "當事人", split: true },
+	{ key: "事件摘要", split: false },
+	{ key: "起因", split: false },
+	{ key: "經過", split: false },
+	{ key: "結果", split: false },
 ];
 
 /** 核心叙事键（与 quality-gate 同口径；用于抽取完整度软信号）。 */
@@ -110,6 +126,28 @@ const CORE_NARRATIVE_KEYS: (keyof GossipFactsBlock)[] = [
 	"經過",
 	"結果",
 ];
+
+const DEFAULT_QUALITY_RATIO = 0.5;
+const DEFAULT_NAME_THRESHOLD = 0.8;
+const DEFAULT_NARRATIVE_THRESHOLD = 0.3;
+
+/** 把可选 config 解析成全填充的具体阈值（默认=内置常量）。 */
+interface ResolvedConfig {
+	minBodyLen: number;
+	qualityRatioThreshold: number;
+	nameThreshold: number;
+	narrativeThreshold: number;
+	invalidMarkers: string[];
+}
+function resolveConfig(c?: VerifyConfig): ResolvedConfig {
+	return {
+		minBodyLen: c?.minBodyLen ?? MIN_BODY_LEN,
+		qualityRatioThreshold: c?.qualityRatioThreshold ?? DEFAULT_QUALITY_RATIO,
+		nameThreshold: c?.nameThreshold ?? DEFAULT_NAME_THRESHOLD,
+		narrativeThreshold: c?.narrativeThreshold ?? DEFAULT_NARRATIVE_THRESHOLD,
+		invalidMarkers: c?.invalidMarkers ?? INVALID_MARKERS,
+	};
+}
 
 /** 归一化：小写 + 去空白 + 去常见标点，让 grounding/指纹对排版/标点不敏感。 */
 function norm(s: string): string {
@@ -179,10 +217,13 @@ export function isWithinWindow(
 function checkGrounding(
 	facts: GossipFactsBlock,
 	hayNorm: string,
+	cfg: ResolvedConfig,
 ): GroundingResult {
 	const perField: Record<string, boolean> = {};
 	const unsourced: string[] = [];
-	for (const { key, threshold, split } of GROUNDED_FIELDS) {
+	for (const { key, split } of GROUNDED_FIELDS) {
+		// 阈值按字段类型取 config：人名(split)走 nameThreshold，叙事走 narrativeThreshold。
+		const threshold = split ? cfg.nameThreshold : cfg.narrativeThreshold;
 		const raw = facts[key];
 		if (raw == null || raw.trim().length === 0) continue; // 空字段不计入 grounding（由完整度软信号管）
 		let grounded: boolean;
@@ -205,20 +246,21 @@ function checkGrounding(
 function checkValidity(
 	facts: GossipFactsBlock,
 	rawText: string,
+	cfg: ResolvedConfig,
 ): ValidityResult {
 	const reasons: string[] = [];
 	const text = rawText ?? "";
 	const trimmed = text.trim();
 	let hardFail = false;
 
-	if (trimmed.length < MIN_BODY_LEN) {
+	if (trimmed.length < cfg.minBodyLen) {
 		hardFail = true;
 		reasons.push(
-			`正文过短(${trimmed.length}<${MIN_BODY_LEN})，疑空页/抓取失败`,
+			`正文过短(${trimmed.length}<${cfg.minBodyLen})，疑空页/抓取失败`,
 		);
 	}
 	const lower = trimmed.toLowerCase();
-	const hit = INVALID_MARKERS.find((m) => lower.includes(m.toLowerCase()));
+	const hit = cfg.invalidMarkers.find((m) => lower.includes(m.toLowerCase()));
 	if (hit) {
 		hardFail = true;
 		reasons.push(`命中无效页特征「${hit}」`);
@@ -229,7 +271,7 @@ function checkValidity(
 		return v != null && v.trim().length > 0;
 	}).length;
 	const qualityRatio = filled / CORE_NARRATIVE_KEYS.length;
-	if (qualityRatio < 0.5) {
+	if (qualityRatio < cfg.qualityRatioThreshold) {
 		reasons.push(
 			`核心事实填充率仅 ${(qualityRatio * 100).toFixed(0)}%(软信号)`,
 		);
@@ -245,10 +287,11 @@ function checkValidity(
  */
 export function verifyCrawledTopic(input: VerifyInput): VerificationResult {
 	const { facts, rawText, publishedTime, windowDays, now } = input;
+	const cfg = resolveConfig(input.config);
 	const hayNorm = norm(rawText ?? "");
 
-	const grounding = checkGrounding(facts, hayNorm);
-	const validity = checkValidity(facts, rawText ?? "");
+	const grounding = checkGrounding(facts, hayNorm, cfg);
+	const validity = checkValidity(facts, rawText ?? "", cfg);
 	const fw = isWithinWindow(publishedTime, windowDays, now);
 	const freshness: FreshnessResult = {
 		ok: fw.ok,
@@ -272,7 +315,7 @@ export function verifyCrawledTopic(input: VerifyInput): VerificationResult {
 		const flagReasons: string[] = [];
 		if (!grounding.ok)
 			flagReasons.push(`未溯源字段：${grounding.unsourced.join("、")}`);
-		if (validity.qualityRatio < 0.5)
+		if (validity.qualityRatio < cfg.qualityRatioThreshold)
 			flagReasons.push(
 				`核心事实填充率 ${(validity.qualityRatio * 100).toFixed(0)}%`,
 			);

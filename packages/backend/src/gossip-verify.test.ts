@@ -257,3 +257,60 @@ describe("isWithinWindow", () => {
 		expect(isWithinWindow("2000-01-01", null, NOW).ok).toBe(true);
 	});
 });
+
+describe("verifyCrawledTopic — config 阈值覆盖", () => {
+	const base = {
+		facts: makeFacts(),
+		rawText: RAW,
+		publishedTime: "2026-06-15",
+		windowDays: 7,
+		now: NOW,
+	};
+
+	it("minBodyLen 调小 → 短正文不再硬拒", () => {
+		const short = { ...base, rawText: "短短短" };
+		expect(verifyCrawledTopic(short).decision).toBe("reject"); // 默认 80
+		expect(
+			verifyCrawledTopic({ ...short, config: { minBodyLen: 2 } }).validity
+				.hardFail,
+		).toBe(false);
+	});
+
+	it("minBodyLen 调大 → 正常正文被硬拒", () => {
+		const r = verifyCrawledTopic({ ...base, config: { minBodyLen: 100000 } });
+		expect(r.validity.hardFail).toBe(true);
+		expect(r.decision).toBe("reject");
+	});
+
+	it("qualityRatioThreshold 调小 → 低填充率不再软标(可达 pass)", () => {
+		// 只填 當事人+事件摘要(均溯源)→ 填充率 0.4
+		const sparse = {
+			...base,
+			facts: makeFacts({ 起因: null, 經過: null, 結果: null }),
+		};
+		expect(verifyCrawledTopic(sparse).decision).toBe("flag"); // 默认 0.5 → 0.4 触发软标
+		expect(
+			verifyCrawledTopic({ ...sparse, config: { qualityRatioThreshold: 0.3 } })
+				.decision,
+		).toBe("pass");
+	});
+
+	it("narrativeThreshold 调高 → 叙事字段判未溯源", () => {
+		expect(verifyCrawledTopic(base).grounding.perField.事件摘要).toBe(true);
+		expect(
+			verifyCrawledTopic({ ...base, config: { narrativeThreshold: 0.99 } })
+				.grounding.perField.事件摘要,
+		).toBe(false);
+	});
+
+	it("invalidMarkers 覆盖 → 命中自定义无效特征即硬拒", () => {
+		const withMarker = { ...base, rawText: `${RAW} 敏感词屏蔽` };
+		expect(verifyCrawledTopic(withMarker).validity.hardFail).toBe(false);
+		expect(
+			verifyCrawledTopic({
+				...withMarker,
+				config: { invalidMarkers: ["敏感词屏蔽"] },
+			}).decision,
+		).toBe("reject");
+	});
+});
