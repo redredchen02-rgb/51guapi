@@ -1,4 +1,5 @@
 import type { ContentDraft, GossipFactsBlock } from "@51guapi/shared";
+import { DraftReviewPanel } from "./DraftReviewPanel.js";
 import { ExportPanel } from "./ExportPanel.js";
 
 function Field({
@@ -106,6 +107,7 @@ export function DraftPreview({
 					)}
 				</div>
 			</details>
+			<DraftReviewPanel draft={draft} onApply={onChange} />
 			<ExportPanel draft={draft} facts={facts} />
 		</div>
 	);
