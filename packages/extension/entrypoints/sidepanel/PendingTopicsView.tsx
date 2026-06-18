@@ -2,7 +2,6 @@ import type { ContentDraft } from "@51guapi/shared";
 import { GOSSIP_FACT_KEYS } from "@51guapi/shared";
 import React, { useCallback, useEffect, useState } from "react";
 import { downloadFile, exportTopicsAsCSV } from "../../lib/export";
-import { requestGenerate } from "../../lib/messaging";
 import {
 	fetchAdapters,
 	fetchPendingTopics,
@@ -11,6 +10,7 @@ import {
 	triggerScrape,
 	updatePendingStatus,
 } from "../../lib/pending-client";
+import { useDraftGeneration } from "./hooks/useDraftGeneration";
 import { Loading } from "./Loading";
 
 interface QuickDraftConfirm {
@@ -39,6 +39,7 @@ export function PendingTopicsView({ onBack, onDraftReady, onError }: Props) {
 	const [quickDraftConfirm, setQuickDraftConfirm] =
 		useState<QuickDraftConfirm | null>(null);
 	const [quickDraftStatus, setQuickDraftStatus] = useState("");
+	const { generate } = useDraftGeneration();
 
 	const refresh = useCallback(async () => {
 		setLoading(true);
@@ -115,8 +116,11 @@ export function PendingTopicsView({ onBack, onDraftReady, onError }: Props) {
 			const edited = localFacts[t.id];
 			if (edited) await patchPendingTopic(t.id, { facts: edited });
 			const prompt = buildGossipPrompt(t, edited);
-			const res = await requestGenerate(prompt);
-			if (res.ok) {
+			const result = await generate(prompt);
+			// exception 等同原 requestGenerate 抛错:rethrow 落入下方 catch,
+			// 保住与 catch 完全一致的错误文案。
+			if (result.status === "exception") throw result.error;
+			if (result.status === "ok") {
 				await updatePendingStatus(t.id, "approved");
 				// 每次只批准並生成一條草稿；從選中集合移除已處理的，其餘保留
 				setSelected((prev) => {
@@ -124,13 +128,13 @@ export function PendingTopicsView({ onBack, onDraftReady, onError }: Props) {
 					next.delete(t.id);
 					return next;
 				});
-				onDraftReady(res.draft);
+				onDraftReady(result.draft);
 			} else {
-				const isKeyError = res.kind === "no-key";
+				const isKeyError = result.status === "no-key";
 				setApproveError(
 					isKeyError
 						? "请先在设置中填写 API Key"
-						: `生成草稿失败：${res.error}`,
+						: `生成草稿失败：${result.error}`,
 				);
 			}
 		} catch (err) {
@@ -218,17 +222,19 @@ export function PendingTopicsView({ onBack, onDraftReady, onError }: Props) {
 			const edited = localFacts[t.id];
 			if (edited) await patchPendingTopic(t.id, { facts: edited });
 			const prompt = buildGossipPrompt(t, edited);
-			const res = await requestGenerate(prompt);
-			if (res.ok) {
+			const result = await generate(prompt);
+			// exception 等同原 requestGenerate 抛错:rethrow 落入下方 catch(走 onError)。
+			if (result.status === "exception") throw result.error;
+			if (result.status === "ok") {
 				await updatePendingStatus(t.id, "approved");
 				setSelected(new Set());
-				onDraftReady(res.draft);
+				onDraftReady(result.draft);
 			} else {
-				const isKeyError = res.kind === "no-key";
+				const isKeyError = result.status === "no-key";
 				setApproveError(
 					isKeyError
 						? "请先在设置中填写 API Key"
-						: `生成草稿失败：${res.error}`,
+						: `生成草稿失败：${result.error}`,
 				);
 			}
 		} catch (err) {

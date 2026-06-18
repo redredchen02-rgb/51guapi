@@ -1,7 +1,7 @@
 import type { ContentDraft } from "@51guapi/shared";
 import { useEffect, useRef, useState } from "react";
 import { isAuthenticated } from "../../lib/auth-client";
-import { buildPrompt, requestGenerate } from "../../lib/messaging";
+import { buildPrompt } from "../../lib/messaging";
 import {
 	clearCurrentDraft,
 	getCurrentDraft,
@@ -15,6 +15,7 @@ import { Toast } from "./components/Toast";
 import { DraftPreview } from "./DraftPreview";
 import { GossipView } from "./GossipView";
 import { useAutoSave } from "./hooks/useAutoSave";
+import { useDraftGeneration } from "./hooks/useDraftGeneration";
 import { useErrorHandler } from "./hooks/useErrorHandler";
 import { useErrorLogger } from "./hooks/useErrorLogger";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
@@ -46,6 +47,7 @@ export function App() {
 	const [authenticated, setAuthenticated] = useState(false);
 	const [authChecking, setAuthChecking] = useState(true);
 	const loadingState = useLoadingState();
+	const { generate } = useDraftGeneration();
 	const { saveDraft } = useAutoSave();
 	const promptTemplateRef = useRef("");
 	const genTokenRef = useRef(0);
@@ -83,18 +85,40 @@ export function App() {
 		}, 500);
 		try {
 			const token = ++genTokenRef.current;
-			const res = await requestGenerate(
+			const result = await generate(
 				buildPrompt(promptTemplateRef.current, topic),
 			);
+			// exception 等同原 catch:不经 token 守卫(原代码 requestGenerate 抛错
+			// 时直接进 catch,跳过 token 比对),故先于 token 比对处理。
+			if (result.status === "exception") {
+				const err = result.error;
+				const errMsg = err instanceof Error ? err.message : "生成失败";
+				handleError(errMsg);
+				setMode(draft ? "draft" : "empty");
+				loadingState.completeLoading();
+				void logError(err instanceof Error ? err : new Error(errMsg), {
+					topic,
+					action: "generate",
+				});
+				void recordOperation({
+					type: "generate",
+					topic,
+					success: false,
+					details: { error: errMsg },
+				});
+				return;
+			}
 			if (token !== genTokenRef.current) return;
-			if (res.ok) {
-				updateDraft(res.draft);
+			if (result.status === "ok") {
+				updateDraft(result.draft);
 				setMode("draft");
 				loadingState.completeLoading();
 				void recordOperation({ type: "generate", topic, success: true });
 			} else {
 				const errMsg =
-					res.kind === "no-key" ? `${res.error}(点右上角设置)` : res.error;
+					result.status === "no-key"
+						? `${result.error}(点右上角设置)`
+						: result.error;
 				handleError(errMsg);
 				setMode(draft ? "draft" : "empty");
 				loadingState.completeLoading();
@@ -106,21 +130,6 @@ export function App() {
 					details: { error: errMsg },
 				});
 			}
-		} catch (err) {
-			const errMsg = err instanceof Error ? err.message : "生成失败";
-			handleError(errMsg);
-			setMode(draft ? "draft" : "empty");
-			loadingState.completeLoading();
-			void logError(err instanceof Error ? err : new Error(errMsg), {
-				topic,
-				action: "generate",
-			});
-			void recordOperation({
-				type: "generate",
-				topic,
-				success: false,
-				details: { error: errMsg },
-			});
 		} finally {
 			clearInterval(progressInterval);
 		}
