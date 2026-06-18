@@ -26,6 +26,7 @@ pnpm compile                      # 全包 tsc 类型检查(拓扑顺序,shared 
 pnpm test                         # 全包单测(vitest)
 pnpm lint                         # biome check --write;CI 用 pnpm lint:ci
 bash scripts/check-all.sh         # 测试 + 双端构建 + 产物校验
+scripts/ship.sh "feat: ..."       # 一条命令落地分支:提交→门禁→推送→开PR→等CI→停下确认→合并main(--merge-only 补合;-y 全自动;-h 看用法)
 ```
 
 扩展专属(在 `packages/extension/` 下或加 `--filter 51guapi-extension`):
