@@ -294,6 +294,108 @@ describe("gossip-routes", () => {
 		expect(topic.rawContent.metadata.extractionMode).toBe("strict");
 	});
 
+	it("from-url：windowDays + 发布时间在窗外 → 200 skipped:too-old，不入池、不调提炼", async () => {
+		process.env.LLM_ENDPOINT = "https://api.test";
+		process.env.LLM_API_KEY = "test-key";
+		mockGossipExtractFacts.mockClear();
+		mockFetchContent.mockResolvedValueOnce({
+			title: "旧瓜",
+			body: "很久以前的报导内容",
+			url: "https://gossip.com/old",
+			metadata: { publishedTime: "2020-01-01T00:00:00.000Z" },
+		});
+		const res = await app.inject({
+			method: "POST",
+			url: "/api/v1/gossip/topics/from-url",
+			payload: { url: "https://gossip.com/old", siteName: "站", windowDays: 7 },
+		});
+		expect(res.statusCode).toBe(200);
+		const body = res.json();
+		expect(body.ok).toBe(true);
+		expect(body.skipped).toBe("too-old");
+		// 旧瓜连 LLM 提炼都省掉（防成本放大）
+		expect(mockGossipExtractFacts).not.toHaveBeenCalled();
+	});
+
+	it("from-url：windowDays + 发布时间在窗内 → 201 入池", async () => {
+		process.env.LLM_ENDPOINT = "https://api.test";
+		process.env.LLM_API_KEY = "test-key";
+		const recent = new Date(Date.now() - 2 * 86_400_000).toISOString();
+		mockFetchContent.mockResolvedValueOnce({
+			title: "新瓜",
+			body: "最新报导内容",
+			url: "https://gossip.com/new",
+			metadata: { publishedTime: recent },
+		});
+		mockGossipExtractFacts.mockResolvedValueOnce({
+			facts: {
+				當事人: "明星B",
+				事件摘要: "近期事件",
+				起因: null,
+				經過: null,
+				結果: null,
+				來源連結: null,
+				發生時間: null,
+				熱度標籤: null,
+			},
+			confidence: 0.7,
+			extractionMode: "strict",
+		});
+		const res = await app.inject({
+			method: "POST",
+			url: "/api/v1/gossip/topics/from-url",
+			payload: { url: "https://gossip.com/new", siteName: "站", windowDays: 7 },
+		});
+		expect(res.statusCode).toBe(201);
+		expect(res.json().topic.domain).toBe("gossip");
+	});
+
+	it("from-url：windowDays 但发布时间缺失 → 不跳过，照常入池（留待验证关软标）", async () => {
+		process.env.LLM_ENDPOINT = "https://api.test";
+		process.env.LLM_API_KEY = "test-key";
+		mockFetchContent.mockResolvedValueOnce({
+			title: "无日期瓜",
+			body: "没有发布时间的报导",
+			url: "https://gossip.com/nodate",
+			// 无 metadata.publishedTime
+		});
+		mockGossipExtractFacts.mockResolvedValueOnce({
+			facts: {
+				當事人: "明星C",
+				事件摘要: "事件",
+				起因: null,
+				經過: null,
+				結果: null,
+				來源連結: null,
+				發生時間: null,
+				熱度標籤: null,
+			},
+			confidence: 0.6,
+			extractionMode: "strict",
+		});
+		const res = await app.inject({
+			method: "POST",
+			url: "/api/v1/gossip/topics/from-url",
+			payload: {
+				url: "https://gossip.com/nodate",
+				siteName: "站",
+				windowDays: 7,
+			},
+		});
+		expect(res.statusCode).toBe(201);
+	});
+
+	it("from-url：windowDays 超范围(0) → 400 schema 拒", async () => {
+		process.env.LLM_ENDPOINT = "https://api.test";
+		process.env.LLM_API_KEY = "test-key";
+		const res = await app.inject({
+			method: "POST",
+			url: "/api/v1/gossip/topics/from-url",
+			payload: { url: "https://gossip.com/x", siteName: "站", windowDays: 0 },
+		});
+		expect(res.statusCode).toBe(400);
+	});
+
 	it("from-url：IP literal URL → 400", async () => {
 		process.env.LLM_ENDPOINT = "https://api.test";
 		process.env.LLM_API_KEY = "test-key";

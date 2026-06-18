@@ -139,18 +139,22 @@ function clamp01(n: number): number {
 	return Math.max(0, Math.min(1, n));
 }
 
+/** 时间未知时的中性新鲜度天数:decay=exp(-7/7)≈0.37,中等档。 */
+const NEUTRAL_FRESHNESS_DAYS = 7;
+
 /**
- * 新鲜度参照「天数」:优先事件/发布时间,createdAt(入库时间)仅兜底。
- * 否则刚爬的 3 年前旧瓜会因 createdAt≈now 恒判新鲜。基准依序取:
- *   rawContent.metadata.publishedTime → facts.發生時間 → createdAt。
- * 任一不可解析(如「2024年5月」)即跳到下一个;全失败退回 createdAt。负值(未来时间)归 0。
+ * 新鲜度参照「天数」:只认事件/发布时间。基准依序取:
+ *   rawContent.metadata.publishedTime → facts.發生時間。
+ * 任一不可解析(如「2024年5月」)即跳到下一个。负值(未来时间)归 0。
+ * **皆缺失/不可解析 → 中性兜底(NEUTRAL_FRESHNESS_DAYS),绝不回退 createdAt(入库时间)。**
+ * 理由(R2):createdAt≈now 会让「无日期的旧瓜」恒判满分新鲜、排到有日期的近期瓜之上,
+ * 反噬时间窗目标。时间未知应判中性(交人工二次核对),而非冒充最新。
  */
 function freshnessDays(topic: PendingTopic): number {
 	const facts = topic.facts as Record<string, unknown> | undefined;
 	const candidates = [
 		topic.rawContent?.metadata?.publishedTime,
 		typeof facts?.發生時間 === "string" ? facts.發生時間 : undefined,
-		topic.createdAt,
 	];
 	for (const c of candidates) {
 		if (!c) continue;
@@ -159,7 +163,7 @@ function freshnessDays(topic: PendingTopic): number {
 			return Math.max(0, (Date.now() - ts) / (1000 * 60 * 60 * 24));
 		}
 	}
-	return 0;
+	return NEUTRAL_FRESHNESS_DAYS;
 }
 
 export async function pendingTopicExistsBySourceUrl(

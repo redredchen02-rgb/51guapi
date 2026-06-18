@@ -209,17 +209,31 @@ describe("pending-store (SQLite)", () => {
 		expect(await scoreOf(t)).toBeLessThan(0.1);
 	});
 
-	it("freshness：publishedTime/發生時間 皆不可解析 → 退回 createdAt（新爬判新鲜）", async () => {
-		const t = makeTopic({
+	it("freshness：publishedTime/發生時間 皆不可解析 → 中性兜底（不冒充最新, R2）", async () => {
+		// R2：时间未知绝不回退 createdAt 当满分最新（否则无日期旧瓜排到近期瓜之上，反噬时间窗）。
+		const unknown = makeTopic({
 			id: "fallback",
 			sourceUrl: "https://x.com/fallback",
-			facts: { ...FULL_GOSSIP, 發生時間: "2024年5月" }, // Date.parse 失败
+			facts: { ...FULL_GOSSIP, 發生時間: "2024年5月" }, // Date.parse 失败 → 时间未知
 			confidence: 0.9,
 			coverImageUrl: "https://cdn/x.jpg",
 			rawContent: { title: "t", body: "正文", url: "https://x/1" }, // 无 metadata
 		});
-		// createdAt=now → 兜底判新鲜,score 高
-		expect(await scoreOf(t)).toBeGreaterThan(0.5);
+		const datedRecent = makeTopic({
+			id: "datedrecent",
+			sourceUrl: "https://x.com/datedrecent",
+			facts: { ...FULL_GOSSIP },
+			confidence: 0.9,
+			coverImageUrl: "https://cdn/x.jpg",
+			rawContent: {
+				title: "t",
+				body: "正文",
+				url: "https://x/2",
+				metadata: META,
+			},
+		});
+		// 时间未知 → 中性新鲜度，必须排在「有日期的近期瓜」之下。
+		expect(await scoreOf(unknown)).toBeLessThan(await scoreOf(datedRecent));
 	});
 
 	it("save 同 id 两次 → upsert，以最新值为准", async () => {
