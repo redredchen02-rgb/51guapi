@@ -41,7 +41,16 @@ export function normalizeUrl(u: string): string {
 		const url = new URL(raw);
 		const host = url.host.toLowerCase().replace(/^www\./, "");
 		const path = url.pathname.replace(/\/+$/, "");
-		return `${host}${path}${url.search}`;
+		// A11/R10:规范化 query —— 参数排序消除顺序差异(?a=1&b=2 与 ?b=2&a=1 视为同源);
+		// fragment 一律忽略(URL.pathname/search 本就不含 hash)。否则 grounding 闸会把
+		// query 乱序/带 fragment 的同源链接误判「未注源」。
+		const params = [...url.searchParams.entries()].sort(([a], [b]) =>
+			a < b ? -1 : a > b ? 1 : 0,
+		);
+		const search = params.length
+			? `?${params.map(([k, v]) => `${k}=${v}`).join("&")}`
+			: "";
+		return `${host}${path}${search}`;
 	} catch {
 		return raw.toLowerCase().replace(/\/+$/, "");
 	}

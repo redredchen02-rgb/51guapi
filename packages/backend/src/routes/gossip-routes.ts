@@ -227,8 +227,10 @@ export async function registerGossipRoutes(
 				const fw = isWithinWindow(publishedTime, windowDays, Date.now());
 				if (!fw.unknown && !fw.ok) {
 					recordGossipVerify("skipped_old");
+					// A11/R11:显式 outcome 判别字段(客户端据此区分四结局,不靠字段存在性嗅探)。
 					return {
 						ok: true,
+						outcome: "skipped" as const,
 						skipped: "too-old",
 						publishedTime,
 						windowDays,
@@ -271,6 +273,7 @@ export async function registerGossipRoutes(
 				recordGossipVerify("rejected");
 				return {
 					ok: true,
+					outcome: "rejected" as const,
 					rejected: verification.reasons.join("；") || "内容无效",
 					verification,
 				};
@@ -316,12 +319,18 @@ export async function registerGossipRoutes(
 			const { inserted } = await savePendingTopic(topic);
 			if (!inserted) {
 				// 409 重复 URL 早退：fetch/提取虽已发生但语义上不是新爬取事件，不计数。
-				return err(reply, 409, "URL already exists in pending topics");
+				// A11/R11:带显式 outcome 判别(与其余三结局同一判别轴,客户端统一据 outcome 分支)。
+				reply.code(409);
+				return {
+					ok: false as const,
+					outcome: "duplicate" as const,
+					error: "URL already exists in pending topics",
+				};
 			}
 			recordScraperRun(true);
 			if (verification.decision === "flag") recordGossipVerify("flagged");
 			reply.code(201);
-			return { ok: true, topic };
+			return { ok: true, outcome: "created" as const, topic };
 		},
 	);
 }

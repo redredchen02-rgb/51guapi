@@ -295,6 +295,7 @@ describe("gossip-routes", () => {
 			payload: { url: "https://gossip.com/article/99", siteName: "測試站" },
 		});
 		expect(res.statusCode).toBe(201);
+		expect(res.json().outcome).toBe("created"); // A11/R11 显式判别字段
 		const topic = res.json().topic;
 		expect(topic.domain).toBe("gossip");
 		expect(topic.title).toBe("明星A出軌事件");
@@ -319,6 +320,7 @@ describe("gossip-routes", () => {
 		expect(res.statusCode).toBe(200);
 		const body = res.json();
 		expect(body.ok).toBe(true);
+		expect(body.outcome).toBe("skipped"); // A11/R11 显式判别字段
 		expect(body.skipped).toBe("too-old");
 		// 旧瓜连 LLM 提炼都省掉（防成本放大）
 		expect(mockGossipExtractFacts).not.toHaveBeenCalled();

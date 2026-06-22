@@ -6,7 +6,9 @@ import type { GenerateDraftOptions, RuntimeMessage } from "./messages";
 // MV3 Service Worker 随时可能被回收。sendMessage 若 SW 死亡可能永久 pending。
 // sendMsg 包一层 race，超时则 reject → withBusy catch 显示"请重试"而非卡死。
 const SW_TIMEOUT: Partial<Record<RuntimeMessage["type"], number>> = {
-	GENERATE_DRAFT: 30_000,
+	// A11/R10:SW 看门狗须 ≥ 请求超时(llm.ts generate 默认 60s),否则 SW 先于请求超时报
+	// "请重试",而后端 LLM 请求仍在跑 → 用户重试 = 重复调用 LLM 重复扣费。65s 留 5s 缓冲。
+	GENERATE_DRAFT: 65_000,
 };
 
 function sendMsg<T>(msg: RuntimeMessage): Promise<T> {
