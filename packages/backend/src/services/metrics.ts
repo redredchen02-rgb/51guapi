@@ -58,15 +58,15 @@ export function recordGossipVerify(outcome: GossipVerifyOutcome): void {
 
 export function getMetrics(): string {
 	const lines = [
-		"# HELP publisher_drafts_total Total drafts generated",
-		"# TYPE publisher_drafts_total counter",
-		`publisher_drafts_total{status="success"} ${counters.draftsGenerated}`,
-		`publisher_drafts_total{status="failed"} ${counters.draftsFailed}`,
+		"# HELP guapi_drafts_total Total drafts generated",
+		"# TYPE guapi_drafts_total counter",
+		`guapi_drafts_total{status="success"} ${counters.draftsGenerated}`,
+		`guapi_drafts_total{status="failed"} ${counters.draftsFailed}`,
 		"",
-		"# HELP publisher_scraper_runs_total Total gossip content fetch+extraction events by gossip-routes",
-		"# TYPE publisher_scraper_runs_total counter",
-		`publisher_scraper_runs_total{status="success"} ${counters.scraperRuns.success}`,
-		`publisher_scraper_runs_total{status="failed"} ${counters.scraperRuns.failed}`,
+		"# HELP guapi_scraper_runs_total Total gossip content fetch+extraction events by gossip-routes",
+		"# TYPE guapi_scraper_runs_total counter",
+		`guapi_scraper_runs_total{status="success"} ${counters.scraperRuns.success}`,
+		`guapi_scraper_runs_total{status="failed"} ${counters.scraperRuns.failed}`,
 		"",
 		"# HELP guapi_gossip_verify_total Gossip pre-pending verification outcomes",
 		"# TYPE guapi_gossip_verify_total counter",

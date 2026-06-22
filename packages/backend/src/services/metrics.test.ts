@@ -20,19 +20,19 @@ describe("metrics", () => {
 
 	it("全零时输出 Prometheus 格式，所有计数器为 0", () => {
 		const out = getMetrics();
-		expect(out).toContain('publisher_drafts_total{status="success"} 0');
-		expect(out).toContain('publisher_drafts_total{status="failed"} 0');
-		expect(out).toContain('publisher_scraper_runs_total{status="success"} 0');
-		expect(out).not.toContain("publisher_publish_attempts_total");
+		expect(out).toContain('guapi_drafts_total{status="success"} 0');
+		expect(out).toContain('guapi_drafts_total{status="failed"} 0');
+		expect(out).toContain('guapi_scraper_runs_total{status="success"} 0');
+		expect(out).not.toContain("guapi_publish_attempts_total");
 	});
 
 	it("每个指标都带 HELP/TYPE 注释行", () => {
 		const out = getMetrics();
-		expect(out).toContain("# HELP publisher_drafts_total");
-		expect(out).toContain("# TYPE publisher_drafts_total counter");
-		expect(out).toContain("# TYPE publisher_scraper_runs_total counter");
+		expect(out).toContain("# HELP guapi_drafts_total");
+		expect(out).toContain("# TYPE guapi_drafts_total counter");
+		expect(out).toContain("# TYPE guapi_scraper_runs_total counter");
 		expect(out).not.toContain(
-			"# TYPE publisher_publish_attempts_total counter",
+			"# TYPE guapi_publish_attempts_total counter",
 		);
 	});
 
@@ -43,10 +43,10 @@ describe("metrics", () => {
 		counters.scraperRuns.failed = 1;
 
 		const out = getMetrics();
-		expect(out).toContain('publisher_drafts_total{status="success"} 5');
-		expect(out).toContain('publisher_drafts_total{status="failed"} 2');
-		expect(out).toContain('publisher_scraper_runs_total{status="success"} 7');
-		expect(out).toContain('publisher_scraper_runs_total{status="failed"} 1');
+		expect(out).toContain('guapi_drafts_total{status="success"} 5');
+		expect(out).toContain('guapi_drafts_total{status="failed"} 2');
+		expect(out).toContain('guapi_scraper_runs_total{status="success"} 7');
+		expect(out).toContain('guapi_scraper_runs_total{status="failed"} 1');
 	});
 
 	it("输出以换行结尾（Prometheus 抓取要求）", () => {

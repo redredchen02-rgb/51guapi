@@ -122,7 +122,7 @@ describe("buildApp", () => {
 		});
 		expect(res.statusCode).toBe(200);
 		expect(res.headers["content-type"]).toContain("text/plain");
-		expect(res.body).toContain("publisher_drafts_total");
+		expect(res.body).toContain("guapi_drafts_total");
 	});
 
 	it("受保护路由无 token → 401", async () => {
