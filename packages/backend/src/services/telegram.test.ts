@@ -142,6 +142,74 @@ describe("sendAlert", () => {
 			expect.stringContaining("redacted"),
 		);
 	});
+
+	// --- SSRF 姿态固化 + token 泄漏面(U3)---
+
+	it("pins fetch redirect mode to 'error' (no redirect-chain SSRF)", async () => {
+		setEnv({
+			TG_ENABLED: "true",
+			TG_BOT_TOKEN: VALID_TOKEN,
+			TG_CHAT_ID: VALID_CHAT_ID,
+		});
+		await sendAlert("redirect lock");
+
+		expect(fetchSpy).toHaveBeenCalledOnce();
+		const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+		expect(init.redirect).toBe("error");
+	});
+
+	it("when assertUrlSafe rejects: resolves without throwing AND never calls fetch", async () => {
+		setEnv({
+			TG_ENABLED: "true",
+			TG_BOT_TOKEN: VALID_TOKEN,
+			TG_CHAT_ID: VALID_CHAT_ID,
+		});
+		vi.mocked(assertUrlSafe).mockRejectedValue(
+			new Error("Host resolves to non-public address 127.0.0.1"),
+		);
+		const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+		await expect(sendAlert("blocked target")).resolves.toBeUndefined();
+		// assertUrlSafe 短路:守卫拒绝即不发起任何出网请求
+		expect(fetchSpy).not.toHaveBeenCalled();
+		expect(warnSpy).toHaveBeenCalled();
+	});
+
+	it("token never leaks to console.warn when reject message echoes the full URL", async () => {
+		setEnv({
+			TG_ENABLED: "true",
+			TG_BOT_TOKEN: VALID_TOKEN,
+			TG_CHAT_ID: VALID_CHAT_ID,
+		});
+		// 模拟守卫回显含 token 的完整 URL(如 SsrfError「Invalid URL: <url>」)
+		const url = `https://api.telegram.org/bot${VALID_TOKEN}/sendMessage`;
+		vi.mocked(assertUrlSafe).mockRejectedValue(
+			new Error(`Invalid URL: ${url}`),
+		);
+		const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+		await expect(sendAlert("leaky reason")).resolves.toBeUndefined();
+		expect(fetchSpy).not.toHaveBeenCalled();
+		const warned = warnSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+		expect(warned).not.toContain(VALID_TOKEN);
+	});
+
+	it("token never leaks when fetch rejects after passing assertUrlSafe", async () => {
+		setEnv({
+			TG_ENABLED: "true",
+			TG_BOT_TOKEN: VALID_TOKEN,
+			TG_CHAT_ID: VALID_CHAT_ID,
+		});
+		// assertUrlSafe 通过,fetch 阶段失败且错误信息夹带 token
+		const url = `https://api.telegram.org/bot${VALID_TOKEN}/sendMessage`;
+		fetchSpy.mockRejectedValue(new Error(`request to ${url} failed`));
+		const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+		await expect(sendAlert("fetch boom")).resolves.toBeUndefined();
+		expect(fetchSpy).toHaveBeenCalledOnce();
+		const warned = warnSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+		expect(warned).not.toContain(VALID_TOKEN);
+	});
 });
 
 describe("checkEnv: TG guard", () => {
