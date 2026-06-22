@@ -22,10 +22,6 @@ vi.mock("../scraper/pending-store.js", () => ({
 	savePendingTopic: vi.fn(async () => undefined),
 }));
 
-vi.mock("../scraper/web-enricher.js", () => ({
-	enrichContext: vi.fn(async () => ({ queryResults: [] })),
-}));
-
 // ---- helpers ----
 
 const MOCK_RAW: RawContent = {

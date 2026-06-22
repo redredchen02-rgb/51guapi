@@ -32,7 +32,6 @@ export const GenerateDraftBody = Type.Object({
 	prompt: Type.String({ minLength: 1 }),
 	settings: SettingsSchema,
 	facts: Type.Optional(Type.Record(Type.String(), Type.Unknown())),
-	enrichment: Type.Optional(Type.String()),
 });
 
 // 模型叙事槽位(供扩展端重新组装;字段须与 shared/post-assembler.ts 的 DraftSlots 一致)。
@@ -189,7 +188,6 @@ export const HealthzResponse = Type.Object({
 export const AutoGenerateBody = Type.Object({
 	minConfidence: Type.Optional(Type.Number({ minimum: 0, maximum: 1 })),
 	maxItems: Type.Optional(Type.Number({ minimum: 1, maximum: 50 })),
-	enableEnrichment: Type.Optional(Type.Boolean()),
 	legacy: Type.Optional(Type.Literal("acg")),
 });
 

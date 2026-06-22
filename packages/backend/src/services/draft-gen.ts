@@ -203,10 +203,7 @@ export async function generateDraft(
 		熱度標籤: null,
 	};
 
-	// 注入 Web 搜索富化内容到 prompt 末尾
-	const finalPrompt = deps.enrichment
-		? `${prompt}\n\n${deps.enrichment}`
-		: prompt;
+	const finalPrompt = prompt;
 
 	if (!apiKey || !settings.endpoint) {
 		return { ok: false, kind: "no-key", error: "后端未配置 API key 或端点。" };

@@ -13,7 +13,6 @@ export interface LlmDeps {
 	settings: Settings;
 	apiKey?: string; // Legacy callers may still pass it; execution ignores it.
 	facts?: FactsBlock | GossipFactsBlock;
-	enrichment?: string;
 	fetchFn?: typeof fetch;
 	now?: () => string;
 	genId?: () => string;
@@ -85,7 +84,7 @@ export async function generateDraft(
 	prompt: string,
 	deps: LlmDeps,
 ): Promise<GenerateDraftResponse> {
-	const { settings, facts, enrichment } = deps;
+	const { settings, facts } = deps;
 	const fetchFn = deps.fetchFn ?? fetch;
 	const timeoutMs = deps.timeoutMs ?? 60_000;
 
@@ -107,7 +106,6 @@ export async function generateDraft(
 				prompt,
 				settings,
 				facts,
-				enrichment,
 			}),
 			signal: controller.signal,
 		});

@@ -10,4 +10,3 @@ export { scraperConfig } from "./scraper-config.js";
 export type { ScraperSiteConfig, SiteAdapter } from "./site-adapter.js";
 export { isHostAllowed, loadSSRFAllowlist } from "./ssrf-allowlist.js";
 export { safeFetch } from "./ssrf-guard.js";
-export { type EnrichedContext, enrichContext } from "./web-enricher.js";

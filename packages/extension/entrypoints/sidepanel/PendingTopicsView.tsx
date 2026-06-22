@@ -145,10 +145,7 @@ export function PendingTopicsView({ onBack, onDraftReady, onError }: Props) {
 			lines.length > 0
 				? `\n\n【吃瓜事实】（只能使用以下事实，严禁编造）：\n${lines.join("\n")}`
 				: "";
-		const enrichBlock = topic.enrichmentText
-			? `\n\n【参考资料】（辅助背景，不得超出事实块的信息）：\n${topic.enrichmentText}`
-			: "";
-		return `${topic.title || topic.sourceUrl}${factsBlock}${enrichBlock}`;
+		return `${topic.title || topic.sourceUrl}${factsBlock}`;
 	}
 
 	function toGossipFacts(facts: Record<string, string>): GossipFactsBlock {
@@ -173,7 +170,6 @@ export function PendingTopicsView({ onBack, onDraftReady, onError }: Props) {
 			const prompt = buildGossipPrompt(t, edited);
 			const result = await generate(prompt, {
 				facts: approvedFacts,
-				enrichment: t.enrichmentText,
 			});
 			// exception 等同原 requestGenerate 抛错:rethrow 落入下方 catch,
 			// 保住与 catch 完全一致的错误文案。
@@ -271,7 +267,6 @@ export function PendingTopicsView({ onBack, onDraftReady, onError }: Props) {
 			const prompt = buildGossipPrompt(t, edited);
 			const result = await generate(prompt, {
 				facts: approvedFacts,
-				enrichment: t.enrichmentText,
 			});
 			// exception 等同原 requestGenerate 抛错:rethrow 落入下方 catch(走 onError)。
 			if (result.status === "exception") throw result.error;

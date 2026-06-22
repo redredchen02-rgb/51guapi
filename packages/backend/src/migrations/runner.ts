@@ -143,6 +143,12 @@ ALTER TABLE pending_topics ADD COLUMN content_fingerprint TEXT DEFAULT NULL;
 ALTER TABLE pending_topics ADD COLUMN verification TEXT DEFAULT NULL;
 ALTER TABLE pending_topics ADD COLUMN verified_at TEXT DEFAULT NULL;
 CREATE INDEX IF NOT EXISTS idx_pending_fingerprint ON pending_topics(content_fingerprint);`,
+	// A8:移除 Web 富化子栈 —— drop 死列 enrichment(006 加,移除全部读写者后已无消费者)。
+	// better-sqlite3 内置 SQLite ≥3.35 支持 DROP COLUMN,单语句。对全新 clone 是 006-add→
+	// 016-drop 净为无此列;对既有库直接清掉该列及其数据(已无消费者,无 down-migration,
+	// 回滚靠 A8 前置的 data 时间戳备份)。
+	"016-drop-enrichment.sql": `\
+ALTER TABLE pending_topics DROP COLUMN enrichment;`,
 };
 
 export function runMigrations(dbPath: string): void {

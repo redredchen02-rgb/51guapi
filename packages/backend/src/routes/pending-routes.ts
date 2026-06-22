@@ -11,7 +11,6 @@ import {
 	type PendingTopic,
 	savePendingTopic,
 } from "../scraper/pending-store.js";
-import { formatEnrichmentForPrompt } from "../scraper/web-enricher.js";
 import { err } from "../utils/error-response.js";
 import { generateId } from "../utils/generate-id.js";
 import {
@@ -20,18 +19,14 @@ import {
 	UpdatePendingBody as UpdatePendingBodySchema,
 } from "../utils/schemas.js";
 
-/** 把后端 PendingTopic 转成 API 响应格式，附加预格式化的 enrichmentText 字段。 */
+/** 把后端 PendingTopic 转成 API 响应格式，附加提炼模式字段。 */
 function toApiTopic(t: PendingTopic): PendingTopic & {
-	enrichmentText?: string;
 	extractionMode?: "strict" | "fallback";
 } {
-	const enrichmentText = t.enrichment
-		? formatEnrichmentForPrompt(t.enrichment) || undefined
-		: undefined;
 	const rawMode = t.rawContent?.metadata?.extractionMode;
 	const extractionMode =
 		rawMode === "strict" || rawMode === "fallback" ? rawMode : undefined;
-	return { ...t, enrichmentText, extractionMode };
+	return { ...t, extractionMode };
 }
 
 const VALID_REJECTION_REASONS = new Set<RejectionReason>([

@@ -188,7 +188,6 @@ interface GenerateDraftBody {
 	prompt: string;
 	settings: Settings;
 	facts?: GossipFactsBlock;
-	enrichment?: string;
 }
 
 function resolveRequestSettings(
@@ -232,7 +231,7 @@ export function registerDraftRoutes(app: FastifyInstance): void {
 			},
 		},
 		async (request, reply) => {
-			const { prompt, settings, facts, enrichment } = request.body;
+			const { prompt, settings, facts } = request.body;
 			const config = getLlmConfig(settings);
 			const validation = validateLlmConfig(config);
 			if (!validation.valid)
@@ -243,7 +242,6 @@ export function registerDraftRoutes(app: FastifyInstance): void {
 					settings: resolvedSettings,
 					apiKey: config.apiKey,
 					facts,
-					enrichment,
 				});
 				if (!result.ok) {
 					recordDraft(false);

@@ -5,7 +5,6 @@ import type {
 } from "@51guapi/shared";
 import { getDb, pendingWriteQueue } from "./pending-db.js";
 import type { RawContent } from "./site-adapter.js";
-import type { EnrichedContext } from "./web-enricher.js";
 
 export type PendingStatus = "pending" | "approved" | "rejected";
 
@@ -35,7 +34,6 @@ export interface PendingTopic {
 	rejectedReason?: string;
 	coverImageUrl?: string;
 	score?: number;
-	enrichment?: EnrichedContext;
 	domain?: "acg" | "gossip";
 	/** 内容指纹（跨 URL 去重；U3）。 */
 	contentFingerprint?: string;
@@ -67,7 +65,6 @@ interface PendingRow {
 	rejected_reason: string | null;
 	cover_image_url: string | null;
 	score: number | null;
-	enrichment: string | null;
 	domain: string;
 	content_fingerprint: string | null;
 	verification: string | null;
@@ -107,7 +104,6 @@ function rowToTopic(row: PendingRow): PendingTopic {
 		rejectedReason: row.rejected_reason ?? undefined,
 		coverImageUrl: row.cover_image_url ?? undefined,
 		score: row.score ?? undefined,
-		enrichment: safeJsonParse<EnrichedContext>(row.enrichment, undefined),
 		domain,
 		contentFingerprint: row.content_fingerprint ?? undefined,
 		verification: safeJsonParse<VerificationResult>(
@@ -240,11 +236,11 @@ export async function savePendingTopic(
 				`
       INSERT INTO pending_topics
         (id, source_url, site_name, title, raw_content, facts, confidence, status,
-         rejected_reason, cover_image_url, score, enrichment, domain,
+         rejected_reason, cover_image_url, score, domain,
          content_fingerprint, verification, verified_at, created_at, updated_at)
       VALUES
         (@id, @sourceUrl, @siteName, @title, @rawContent, @facts, @confidence, @status,
-         @rejectedReason, @coverImageUrl, @score, @enrichment, @domain,
+         @rejectedReason, @coverImageUrl, @score, @domain,
          @contentFingerprint, @verification, @verifiedAt, @createdAt, @updatedAt)
       ON CONFLICT(id) DO UPDATE SET
         source_url = excluded.source_url,
@@ -257,7 +253,6 @@ export async function savePendingTopic(
         rejected_reason = excluded.rejected_reason,
         cover_image_url = excluded.cover_image_url,
         score      = excluded.score,
-        enrichment = excluded.enrichment,
         domain     = excluded.domain,
         content_fingerprint = excluded.content_fingerprint,
         verification = excluded.verification,
@@ -276,7 +271,6 @@ export async function savePendingTopic(
 				rejectedReason: topic.rejectedReason ?? null,
 				coverImageUrl: topic.coverImageUrl ?? null,
 				score,
-				enrichment: topic.enrichment ? JSON.stringify(topic.enrichment) : null,
 				domain: topic.domain ?? "acg",
 				contentFingerprint: topic.contentFingerprint ?? null,
 				verification: topic.verification

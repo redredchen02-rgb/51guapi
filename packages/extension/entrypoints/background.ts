@@ -20,7 +20,6 @@ export interface BackgroundHandlerDeps {
 		opts: {
 			settings: import("@51guapi/shared").Settings;
 			facts?: FactsBlock | GossipFactsBlock;
-			enrichment?: string;
 		},
 	) => Promise<GenerateDraftResponse>;
 }
@@ -39,7 +38,6 @@ export function createHandlers(deps: BackgroundHandlerDeps) {
 			return await deps.generateDraftFn(constrainedPrompt, {
 				settings,
 				facts: options.facts,
-				enrichment: options.enrichment,
 			});
 		} catch (err) {
 			logger.error("bg", "生成草稿失败", {

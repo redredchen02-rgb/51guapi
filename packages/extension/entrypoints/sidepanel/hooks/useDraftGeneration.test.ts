@@ -59,7 +59,6 @@ describe("useDraftGeneration", () => {
 				發生時間: null,
 				熱度標籤: null,
 			},
-			enrichment: "补充背景",
 		};
 		await result.current.generate("prompt", options);
 		expect(requestGenerate).toHaveBeenCalledWith("prompt", options);
