@@ -746,13 +746,13 @@ async function buildAppWithMetrics(): Promise<FastifyInstance> {
 
 function scraperSuccessCount(metricsText: string): number {
 	const m = metricsText.match(
-		/publisher_scraper_runs_total\{status="success"\}\s+(\d+)/,
+		/guapi_scraper_runs_total\{status="success"\}\s+(\d+)/,
 	);
 	return m ? Number(m[1]) : -1;
 }
 function scraperFailedCount(metricsText: string): number {
 	const m = metricsText.match(
-		/publisher_scraper_runs_total\{status="failed"\}\s+(\d+)/,
+		/guapi_scraper_runs_total\{status="failed"\}\s+(\d+)/,
 	);
 	return m ? Number(m[1]) : -1;
 }

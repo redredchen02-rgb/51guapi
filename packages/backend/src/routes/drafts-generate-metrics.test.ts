@@ -50,10 +50,10 @@ const fullDraft = {
 function draftCounts(out: string): { success: number; failed: number } {
 	return {
 		success: Number(
-			out.match(/publisher_drafts_total\{status="success"\} (\d+)/)?.[1],
+			out.match(/guapi_drafts_total\{status="success"\} (\d+)/)?.[1],
 		),
 		failed: Number(
-			out.match(/publisher_drafts_total\{status="failed"\} (\d+)/)?.[1],
+			out.match(/guapi_drafts_total\{status="failed"\} (\d+)/)?.[1],
 		),
 	};
 }
