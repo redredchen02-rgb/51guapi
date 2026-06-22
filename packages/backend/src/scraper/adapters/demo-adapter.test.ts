@@ -1,8 +1,16 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { demoAdapter } from "./demo-adapter.js";
 
-vi.mock("../ssrf-guard.js", () => ({
+// demo 现经共用 guardedFetchHtml 出站；保留真 SsrfError，仅替换 safeFetch。
+vi.mock("../ssrf-guard.js", async (importOriginal) => ({
+	...(await importOriginal<typeof import("../ssrf-guard.js")>()),
 	safeFetch: vi.fn(),
+}));
+
+// 无渠道记录 → enforcePathPrefix 不施加 path 约束；listChannels 空 → allowlist 仅看 env。
+vi.mock("../channel-store.js", () => ({
+	getChannelByHostname: vi.fn(() => null),
+	listChannels: vi.fn(() => []),
 }));
 
 import { safeFetch } from "../ssrf-guard.js";
@@ -15,8 +23,14 @@ function makeResponse(body: string, status = 200): Response {
 		status,
 		headers: new Headers(),
 		text: async () => body,
+		body: null,
 	} as unknown as Response;
 }
+
+beforeEach(() => {
+	mockSafeFetch.mockReset();
+	delete process.env.ALLOWED_HOSTS;
+});
 
 describe("demoAdapter.fetchContent", () => {
 	it("name 为 'demo'", () => {
@@ -60,5 +74,19 @@ describe("demoAdapter.fetchContent", () => {
 		await expect(
 			demoAdapter.fetchContent("https://example.com/d"),
 		).rejects.toThrow(/Empty body/);
+	});
+
+	// 回归闸：demo 必须经 guardedFetchHtml 出站（传真 fail-closed allowlistCheck 给
+	// safeFetch）。若被改回裸 safeFetch（无第三参），逐跳 allowlist 复检静默丢失，本断言转红。
+	it("Security：经三件套出站 → 传真 allowlistCheck 闭包（deny-by-default）", async () => {
+		mockSafeFetch.mockResolvedValueOnce(makeResponse("<p>正文</p>"));
+		await demoAdapter.fetchContent("https://example.com/e");
+		const opts = mockSafeFetch.mock.calls[0]?.[2] as
+			| { allowlistCheck?: (u: URL) => boolean }
+			| undefined;
+		expect(opts?.allowlistCheck).toEqual(expect.any(Function));
+		expect(
+			opts?.allowlistCheck?.(new URL("https://not-allowed-zzz.example/")),
+		).toBe(false);
 	});
 });

@@ -215,6 +215,72 @@ describe("POST /api/v1/scraper/trigger — SSRF allowlist", () => {
 });
 
 // ================================================================
+// 统一出站闸：config.url / discovery pick 来源也复检（A6-R3）
+// ================================================================
+
+describe("POST /api/v1/scraper/trigger — 统一出站闸（IP 字面 + allowlist 复检）", () => {
+	it("config.url 为 IP 字面 → 403（即便该 IP 在 allowlist 内，IP-literal 仍被输入层拒）", async () => {
+		// allowlist 显式放行该 IP，证明拒绝来自 IP-literal 闸而非 allowlist。
+		process.env.ALLOWED_HOSTS = "https://198.51.100.7";
+		scraperConfig.registerAdapter(makeMockAdapter("adapter-ipliteral"));
+		scraperConfig.addSiteConfig({
+			siteName: "ipliteral-site",
+			adapterName: "adapter-ipliteral",
+			url: "https://198.51.100.7",
+			cron: "0 * * * *",
+			enabled: true,
+		});
+		const res = await app.inject({
+			method: "POST",
+			url: "/api/v1/scraper/trigger",
+			payload: { siteName: "ipliteral-site", legacy: "acg" },
+		});
+		expect(res.statusCode).toBe(403);
+		expect(res.json().error).toMatch(/IP literal/i);
+	});
+
+	it("config.url 不在 allowlist → 403（此前走 config.url 退路不复检 allowlist 的缺口）", async () => {
+		process.env.ALLOWED_HOSTS = "https://*.example.com";
+		scraperConfig.registerAdapter(makeMockAdapter("adapter-blocked"));
+		scraperConfig.addSiteConfig({
+			siteName: "blocked-site",
+			adapterName: "adapter-blocked",
+			url: "https://not-allowed.test",
+			cron: "0 * * * *",
+			enabled: true,
+		});
+		const res = await app.inject({
+			method: "POST",
+			url: "/api/v1/scraper/trigger",
+			payload: { siteName: "blocked-site", legacy: "acg" },
+		});
+		expect(res.statusCode).toBe(403);
+		expect(res.json().error).toMatch(/blocked by SSRF allowlist/i);
+	});
+
+	it("config.url 在 allowlist 且非 IP → 过闸（到 LLM env 检查才 500，证非被出站闸拦）", async () => {
+		process.env.ALLOWED_HOSTS = "https://*.example.com";
+		const saved = {
+			ep: process.env.LLM_ENDPOINT,
+			key: process.env.LLM_API_KEY,
+		};
+		delete process.env.LLM_ENDPOINT;
+		delete process.env.LLM_API_KEY;
+		// 默认 beforeEach 注册的站点 config.url = https://test-site.example.com（在 allowlist）。
+		const res = await app.inject({
+			method: "POST",
+			url: "/api/v1/scraper/trigger",
+			payload: { siteName: siteName(), legacy: "acg" },
+		});
+		// 过了出站闸 → 走到 LLM 检查 → 500（而非 403）。
+		expect(res.statusCode).toBe(500);
+		expect(res.json().error).toMatch(/LLM_ENDPOINT/);
+		if (saved.ep) process.env.LLM_ENDPOINT = saved.ep;
+		if (saved.key) process.env.LLM_API_KEY = saved.key;
+	});
+});
+
+// ================================================================
 // 环境变量缺失
 // ================================================================
 
