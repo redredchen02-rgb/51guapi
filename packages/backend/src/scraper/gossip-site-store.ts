@@ -114,7 +114,7 @@ export async function getGossipSite(
 
 export async function saveGossipSite(config: GossipSiteConfig): Promise<void> {
 	await ensureBackfilled();
-	// 刷新 updatedAt（对齐原 JsonFileStore.write 全覆盖语义）。
+	// 刷新 updatedAt（整笔覆盖写入,非增量更新）。
 	insertSite({ ...config, updatedAt: new Date().toISOString() }, true);
 }
 

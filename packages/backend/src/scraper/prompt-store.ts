@@ -154,7 +154,7 @@ export async function loadPrompt(id: string): Promise<PromptTemplate | null> {
 
 export async function savePrompt(template: PromptTemplate): Promise<void> {
 	await ensureBackfilled();
-	// 归一旧格式 + 刷新 updatedAt（对齐原 JsonFileStore.write 全覆盖语义）。
+	// 归一旧格式 + 刷新 updatedAt（整笔覆盖写入,非增量更新）。
 	const t = migratePairs(template as RawPrompt);
 	insertPrompt({ ...t, updatedAt: new Date().toISOString() }, true);
 }
