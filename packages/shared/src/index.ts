@@ -9,12 +9,11 @@ export {
 	EXPORT_SCHEMA_VERSION,
 	escapeCsv,
 } from "./export.js";
-export type { FactKey, FactsBlock, FactTarget, ParsedTopic } from "./facts.js";
+export type { FactKey, FactsBlock, ParsedTopic } from "./facts.js";
 export {
 	applyPromptTemplate,
 	CORE_FACT_KEYS,
 	FACT_ORDER,
-	FACT_TARGET,
 	factUrls,
 	formatFactsForPrompt,
 	isEmptyFacts,

@@ -24,7 +24,6 @@ export interface SettingsFormValues {
 	fallbackModel: string;
 	backendUrl: string;
 	reviewCriteriaPrompt: string;
-	dailyBatchSize: string;
 }
 
 export interface UseSettingsFormReturn {
@@ -60,7 +59,6 @@ export function useSettingsForm(): UseSettingsFormReturn {
 		fallbackModel: "",
 		backendUrl: "",
 		reviewCriteriaPrompt: "",
-		dailyBatchSize: "5",
 	});
 
 	const [prompts, setPrompts] = useState<PromptTemplate[]>([]);
@@ -102,7 +100,6 @@ export function useSettingsForm(): UseSettingsFormReturn {
 			fallbackModel: s.fallbackModel ?? "",
 			backendUrl: s.backendUrl ?? "",
 			reviewCriteriaPrompt: s.reviewCriteriaPrompt ?? "",
-			dailyBatchSize: String(s.dailyBatchSize ?? 5),
 		});
 	}, []);
 
@@ -127,8 +124,6 @@ export function useSettingsForm(): UseSettingsFormReturn {
 			fallbackModel: formValues.fallbackModel || undefined,
 			backendUrl: formValues.backendUrl || undefined,
 			reviewCriteriaPrompt: formValues.reviewCriteriaPrompt || undefined,
-			dailyBatchSize:
-				Number.parseInt(formValues.dailyBatchSize, 10) || undefined,
 		});
 		await saveApiKey(apiKeyRef.current);
 		await saveBackendToken(backendTokenRef.current);
