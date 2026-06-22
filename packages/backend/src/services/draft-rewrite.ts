@@ -60,20 +60,27 @@ export async function rewriteDraftLlm(
 	// 中和后再存储/导出,剥掉 anchor / 裸文本 / markdown 一切链接形式(sanitizeToPlainText
 	// 去标签 + 裸 URL→【待补】)。模型零链接,不依赖任何允许集。真 sink 是 export.ts 的
 	// verbatim JSON/Markdown 导出,故中和必须在存储/导出前。
-	const rewritten: ContentDraft = { ...draft };
-	if (typeof parsed.title === "string" && parsed.title.trim()) {
-		const t = sanitizeToPlainText(parsed.title);
-		if (t) rewritten.title = t;
-	}
-	if (typeof parsed.body === "string" && parsed.body.trim()) {
-		const neutralized = esc(sanitizeToPlainText(parsed.body));
-		if (neutralized) rewritten.body = `<p>${neutralized}</p>`;
-	}
-	if (Array.isArray(parsed.tags)) {
-		rewritten.tags = parsed.tags
-			.map((t) => sanitizeToPlainText(String(t)))
-			.filter(Boolean);
-	}
+	// 中和必须对**最终** draft 的 title/body/tags **无条件**执行,而非仅当模型返回该字段。
+	// rewrite 仅针对部分 failedDims,模型常省略其余字段;若只中和「模型返回的字段」,模型省略
+	// 时客户端原始 draft 的裸文本/markdown 链接会原样穿透进 export.ts 的 JSON/Markdown 导出
+	// (对抗审计已实证可绕)。取「模型返回值优先,否则客户端原值」为最终值,再统一中和——无论
+	// 来源是模型还是客户端,一律剥链(anchor 去标签 / 裸 URL→【待补】 / markdown URL 剥除)。
+	const titleSrc =
+		typeof parsed.title === "string" && parsed.title.trim()
+			? parsed.title
+			: draft.title;
+	const bodySrc =
+		typeof parsed.body === "string" && parsed.body.trim()
+			? parsed.body
+			: draft.body;
+	const tagsSrc = Array.isArray(parsed.tags) ? parsed.tags : draft.tags;
+
+	const rewritten: ContentDraft = {
+		...draft,
+		title: sanitizeToPlainText(titleSrc),
+		body: `<p>${esc(sanitizeToPlainText(bodySrc))}</p>`,
+		tags: tagsSrc.map((t) => sanitizeToPlainText(String(t))).filter(Boolean),
+	};
 
 	// 纵深防御(生成路径同款,允许集恒空):中和后 body 不应含任何 <a href>。主防线是上面
 	// 的中和,此处只锁「未来若中和被绕过即拒」的不变量,正常永不触发。
