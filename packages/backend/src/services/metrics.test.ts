@@ -31,9 +31,7 @@ describe("metrics", () => {
 		expect(out).toContain("# HELP guapi_drafts_total");
 		expect(out).toContain("# TYPE guapi_drafts_total counter");
 		expect(out).toContain("# TYPE guapi_scraper_runs_total counter");
-		expect(out).not.toContain(
-			"# TYPE guapi_publish_attempts_total counter",
-		);
+		expect(out).not.toContain("# TYPE guapi_publish_attempts_total counter");
 	});
 
 	it("计数器递增后反映在输出中", () => {
