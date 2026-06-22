@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.3] - 2026-06-22
+
+### Changed
+
+- **版本号归一为合法 SemVer**：根 `VERSION` 与三个包统一为 `0.2.3`（此前根为 4 段非法 `0.2.2.1`、三包为 `0.2.2`，错位会使构建出的扩展 manifest 版本与 git tag 不一致、破坏 Chrome 更新检测）
+
+### Fixed
+
+- **`.env.example`**：`JWT_SECRET` 占位值留空（弱占位值会触发 fail-closed 首启失败）；移除 Quality gate 段下误植的重复 `ENRICHMENT_MAX_QUERIES`
+- **renovate**：弃用的 `config:base` 预设改为 `config:recommended`
+
 ## [0.2.2.1] - 2026-06-22
 
 ### Removed
