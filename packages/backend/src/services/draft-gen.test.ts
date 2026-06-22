@@ -1,7 +1,13 @@
 // @vitest-environment jsdom
 
 import type { GossipFactsBlock, Settings } from "@51guapi/shared";
-import { assembleGossipDraft, toDraft } from "@51guapi/shared";
+import {
+	assembleGossipDraft,
+	gossipFactUrls,
+	hasUnsourcedLink,
+	toDraft,
+	verifyLinks,
+} from "@51guapi/shared";
 import { describe, expect, it, vi } from "vitest";
 import {
 	buildRequest,
@@ -532,5 +538,50 @@ describe("toDraft", () => {
 		expect(d.status).toBe("draft");
 		expect(d.id).toBe("id1");
 		expect(d.createdAt).toBe("2026-06-03T00:00:00.000Z");
+	});
+});
+
+// A4a 特征化冻结:防幻觉 grounding 闸(draft-gen.ts:337 依赖的不变量)。
+// 纯谓词的边界(extractLinks/normalizeUrl/sourced 判定)已在 shared link-source.test.ts
+// 覆盖;这里冻结的是后端整合面——gossipFactUrls 取允许集 + 在真实 generateDraft 产出上
+// 的组合行为。删除/重构(A7 删未用 ACG facts 键、A8 删富化)前后此基线都必须过。
+describe("A4a 冻结:防幻觉 grounding 闸(draft-gen.ts:337 不变量)", () => {
+	it("body 含未溯源 <a href>(不在 facts 来源集)→ hasUnsourcedLink true(grounding 会拒)", async () => {
+		const foreignBody =
+			'<p>详情见<a href="https://evil.example/x">这里</a></p>';
+		const checks = verifyLinks(foreignBody, gossipFactUrls(FACTS));
+		expect(hasUnsourcedLink(checks)).toBe(true);
+	});
+
+	it("body 链接命中 facts.來源連結 → 判为已溯源(不触发 grounding)", async () => {
+		// FACTS.來源連結 = https://example.com/news;证 gossipFactUrls 确实取出该来源。
+		const sourcedBody = '<p><a href="https://example.com/news">来源</a></p>';
+		expect(
+			hasUnsourcedLink(verifyLinks(sourcedBody, gossipFactUrls(FACTS))),
+		).toBe(false);
+	});
+
+	it("结构不变量:generateDraft 产出 body 仅注入 facts.來源連結(天然溯源),grounding 组合恒过", async () => {
+		const res = await generateDraft("主题", {
+			settings,
+			apiKey: "k",
+			facts: FACTS,
+			fetchFn: mockFetch(slotsReply({ intro: "i", highlights: "h" })),
+			...base,
+		});
+		expect(res.ok).toBe(true);
+		if (res.ok) {
+			// 组装层注入的唯一链接是 facts.來源連結,它必在 gossipFactUrls 允许集内 → 已溯源;
+			// prose 槽位(intro/highlights)经 esc 转义不产链接。删除/重构若让 body 出现
+			// 来源集外链接(模型自造或注入分歧),draft-gen.ts:337 即拒。
+			expect(res.draft.body).toContain('href="https://example.com/news"');
+			// 真实组合在产出上恒过:注入链接均溯源,无幻觉链接。
+			expect(
+				hasUnsourcedLink(verifyLinks(res.draft.body, gossipFactUrls(FACTS))),
+			).toBe(false);
+			// 反向锚点(防假绿):同一 body 对空允许集 → grounding 触发,证「绿」非因
+			// verifyLinks 找不到链接,而是该链接确被判定为已溯源。
+			expect(hasUnsourcedLink(verifyLinks(res.draft.body, []))).toBe(true);
+		}
 	});
 });

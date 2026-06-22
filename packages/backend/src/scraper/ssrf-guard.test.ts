@@ -149,3 +149,56 @@ describe("safeFetch", () => {
 		);
 	});
 });
+
+// A4a 特征化冻结:safeFetch 的 allowlistCheck 逐跳复检(U6 动态渠道把信任边界降为运行期)。
+// 上面的 redirect→loopback 测的是 IP 层守卫;allowlistCheck 是另一道正交闸——
+// 即使重定向目标是合法公网 IP,只要 host 不在 allowlist 就拒,堵住「加一个渠道、
+// 一个 302 导向任意公网站」的缺口。删除/重构(A6/A7)前后此基线都必须过。
+describe("safeFetch — 每跳 allowlistCheck(U6 信任边界,A4a 冻结基线)", () => {
+	afterEach(() => vi.unstubAllGlobals());
+
+	it("初始 host 不在 allowlist → SsrfError(hop 0 即拒,不发请求)", async () => {
+		const fetchSpy = vi.fn(async () => new Response("ok", { status: 200 }));
+		vi.stubGlobal("fetch", fetchSpy);
+		// 断言具体拒因(非仅 instanceof),避免「因别的原因而拒」的假阳性。
+		await expect(
+			safeFetch("https://1.1.1.1/", {}, { allowlistCheck: () => false }),
+		).rejects.toThrow(/allowlist/i);
+		// allowlist 在 resolveAndPin 之后、fetch 之前拦下 → 不发出站请求。
+		expect(fetchSpy).not.toHaveBeenCalled();
+	});
+
+	it("逐跳复检:hop0 在 allowlist,302→另一公网 host 不在 allowlist → 拒(堵 302 导向任意公网站)", async () => {
+		// 目标 8.8.8.8 是合法公网 IP,IP 层守卫会放行;唯有 allowlist 逐跳复检能拦下
+		// 这个公网→公网的重定向。这正是 U6 信任边界的核心不变量。
+		const fetchSpy = vi.fn(
+			async () =>
+				new Response(null, {
+					status: 302,
+					headers: { location: "https://8.8.8.8/evil" },
+				}),
+		);
+		vi.stubGlobal("fetch", fetchSpy);
+		const allow = (u: URL) => u.hostname === "1.1.1.1"; // 只放行起始 host
+		// 必须因 allowlist 拒,而非 maxHops 耗尽的 too-many-redirects(否则关掉 allowlist
+		// 闸此用例仍会「因重定向超限而绿」—— 变异验证已证此点)。
+		await expect(
+			safeFetch("https://1.1.1.1/", {}, { allowlistCheck: allow }),
+		).rejects.toThrow(/allowlist/i);
+		// hop0 抓取后,hop1 在 allowlist 复检即止 → 只发一次出站请求(非耗尽 maxHops)。
+		expect(fetchSpy).toHaveBeenCalledTimes(1);
+	});
+
+	it("allowlistCheck 放行所有跳 → 正常返回(不过度拦截)", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(async () => new Response("ok", { status: 200 })),
+		);
+		const res = await safeFetch(
+			"https://1.1.1.1/",
+			{},
+			{ allowlistCheck: () => true },
+		);
+		expect(res.status).toBe(200);
+	});
+});
