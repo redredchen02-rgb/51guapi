@@ -17,7 +17,9 @@
 	"scripts": {
 		"build": "tsc",
 		"compile": "tsc",
-		"dev": "tsc --watch"
+		"dev": "tsc --watch",
+		"test": "vitest run",
+		"coverage": "vitest run --coverage"
 	},
 	"dependencies": {},
 	"devDependencies": {
