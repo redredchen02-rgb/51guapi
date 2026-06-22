@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.2.1] - 2026-06-22
+
+### Removed
+
+- **ACG 批量链路（死代码）**：移除 `RUN_BATCH`/`GET_BATCH` 消息类型、`handleRunBatch`、`batch.ts`、`assemblePrompt` 等整条 ACG 批量管线（从未被 UI 调用），净减 722 行
+- **`dailyBatchSize` 设置项**：从 `Settings` 类型、存储层、及设置面板 UI 中完全移除
+- **`FACT_TARGET` / `FactTarget`**：ACG 专用字段→草稿映射类型，随链路一并删除
+
+### Fixed
+
+- **指标页 "批次完成数" 卡片**：该卡片在 ACG 链路删除后将永远显示 0 且无法更新，已移除；空状态提示文案更新为实际可触发的路径
+
 ## [0.2.2] - 2026-06-18
 
 ### Fixed
