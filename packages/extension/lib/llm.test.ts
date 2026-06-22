@@ -233,7 +233,6 @@ describe("rewriteDraft proxy", () => {
 					draft,
 					failedDims: ["title_quality"],
 					settings: deps.settings,
-					facts,
 				}),
 			}),
 		);

@@ -302,7 +302,6 @@ export function registerDraftRoutes(app: FastifyInstance): void {
 		Body: {
 			draft: import("@51guapi/shared").ContentDraft;
 			failedDims: string[];
-			facts?: import("@51guapi/shared").GossipFactsBlock;
 			settings: import("@51guapi/shared").Settings;
 		};
 	}>(
@@ -313,7 +312,7 @@ export function registerDraftRoutes(app: FastifyInstance): void {
 			},
 		},
 		async (request, reply) => {
-			const { draft, failedDims, facts, settings } = request.body;
+			const { draft, failedDims, settings } = request.body;
 			const config = getLlmConfig(settings);
 			const validation = validateLlmConfig(config);
 			if (!validation.valid)
@@ -325,7 +324,6 @@ export function registerDraftRoutes(app: FastifyInstance): void {
 				const result = await rewriteDraftLlm(draft, failedDims, {
 					settings: resolvedSettings,
 					apiKey: config.apiKey,
-					facts,
 				});
 				if (!result.ok) return err(reply, 422, result.error);
 				return result;

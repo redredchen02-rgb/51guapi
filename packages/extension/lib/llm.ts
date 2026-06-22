@@ -233,7 +233,6 @@ export async function rewriteDraft(
 				draft,
 				failedDims,
 				settings: deps.settings,
-				...(deps.facts ? { facts: deps.facts } : {}),
 			}),
 			signal: controller.signal,
 		});

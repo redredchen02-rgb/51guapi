@@ -1,5 +1,10 @@
-import type { ContentDraft, GossipFactsBlock } from "@51guapi/shared";
-import { gossipFactUrls, hasUnsourcedLink, verifyLinks } from "@51guapi/shared";
+import type { ContentDraft } from "@51guapi/shared";
+import {
+	esc,
+	hasUnsourcedLink,
+	sanitizeToPlainText,
+	verifyLinks,
+} from "@51guapi/shared";
 import { callLlmForJson } from "./draft-gen.js";
 import { extractUsage } from "./draft-review.js";
 import type { LlmDeps } from "./fetch-backoff.js";
@@ -49,26 +54,30 @@ export async function rewriteDraftLlm(
 
 	const { raw, parsed } = result;
 
+	// A5(P0,二轮审稿终定):rewrite 路径视模型为只写散文。整个 draft 来自客户端、无服务端
+	// ground truth,故任何「客户端允许集」(facts/原 body 链接)都可被自我放行——一律否决。
+	// 改为:把模型返回的 title/body/tags 经与生成路径同款 sanitizeToPlainText(body 再 esc)
+	// 中和后再存储/导出,剥掉 anchor / 裸文本 / markdown 一切链接形式(sanitizeToPlainText
+	// 去标签 + 裸 URL→【待补】)。模型零链接,不依赖任何允许集。真 sink 是 export.ts 的
+	// verbatim JSON/Markdown 导出,故中和必须在存储/导出前。
 	const rewritten: ContentDraft = { ...draft };
-	if (typeof parsed.title === "string" && parsed.title.trim())
-		rewritten.title = parsed.title.trim();
-	if (typeof parsed.body === "string" && parsed.body.trim())
-		rewritten.body = parsed.body.trim();
+	if (typeof parsed.title === "string" && parsed.title.trim()) {
+		const t = sanitizeToPlainText(parsed.title);
+		if (t) rewritten.title = t;
+	}
+	if (typeof parsed.body === "string" && parsed.body.trim()) {
+		const neutralized = esc(sanitizeToPlainText(parsed.body));
+		if (neutralized) rewritten.body = `<p>${neutralized}</p>`;
+	}
 	if (Array.isArray(parsed.tags)) {
-		rewritten.tags = parsed.tags.map((t) => String(t)).filter(Boolean);
+		rewritten.tags = parsed.tags
+			.map((t) => sanitizeToPlainText(String(t)))
+			.filter(Boolean);
 	}
 
-	const facts: GossipFactsBlock = deps.facts ?? {
-		當事人: null,
-		事件摘要: null,
-		起因: null,
-		經過: null,
-		結果: null,
-		來源連結: null,
-		發生時間: null,
-		熱度標籤: null,
-	};
-	if (hasUnsourcedLink(verifyLinks(rewritten.body, gossipFactUrls(facts)))) {
+	// 纵深防御(生成路径同款,允许集恒空):中和后 body 不应含任何 <a href>。主防线是上面
+	// 的中和,此处只锁「未来若中和被绕过即拒」的不变量,正常永不触发。
+	if (hasUnsourcedLink(verifyLinks(rewritten.body, []))) {
 		return {
 			ok: false,
 			error: "草稿正文含未溯源链接(疑似模型自造),已拒绝。",

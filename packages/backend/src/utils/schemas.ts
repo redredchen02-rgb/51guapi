@@ -93,7 +93,6 @@ export const RewriteDraftBody = Type.Object({
 		createdAt: Type.String(),
 	}),
 	failedDims: Type.Array(Type.String()),
-	facts: Type.Optional(Type.Record(Type.String(), Type.Unknown())),
 	settings: SettingsSchema,
 });
 

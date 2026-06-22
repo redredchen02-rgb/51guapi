@@ -414,29 +414,19 @@ describe("registerDraftRoutes", () => {
 	it("POST /drafts/rewrite 成功 → 200", async () => {
 		setConfig();
 		mockRewrite.mockResolvedValueOnce({ ok: true, draft: DRAFT } as never);
-		const facts = {
-			當事人: "测试人物",
-			事件摘要: "测试摘要",
-			起因: null,
-			經過: null,
-			結果: null,
-			來源連結: "https://example.com/a",
-			發生時間: null,
-			熱度標籤: "緋聞",
-		};
 		const res = await app.inject({
 			method: "POST",
 			url: "/api/v1/drafts/rewrite",
 			payload: {
 				draft: DRAFT,
 				failedDims: ["逻辑"],
-				facts,
 				settings: SETTINGS,
 			},
 		});
 		expect(res.statusCode).toBe(200);
+		// A5:rewrite 走纯散文中和,不再接收/透传任何客户端 facts 允许集。
 		const call = mockRewrite.mock.calls.at(-1)?.[2];
-		expect(call?.facts).toEqual(facts);
+		expect(call?.facts).toBeUndefined();
 	});
 
 	it("POST /drafts/rewrite ok:false → 422", async () => {
