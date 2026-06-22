@@ -2,7 +2,7 @@
 	"name": "51guapi-extension",
 	"description": "吃瓜小帮手 — 锁定 URL 爬取目标站资源、AI 提炼吃瓜草稿的 Chrome 扩展",
 	"private": true,
-	"version": "0.2.1",
+	"version": "0.2.2",
 	"type": "module",
 	"scripts": {
 		"dev": "wxt",
