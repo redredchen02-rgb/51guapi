@@ -1,23 +1,31 @@
-import type { ContentDraft } from "@51guapi/shared";
+import type { ContentDraft, GossipFactsBlock } from "@51guapi/shared";
 import { useCallback, useEffect, useRef } from "react";
 import { logger } from "../../../lib/logger";
 import { saveCurrentDraft } from "../../../lib/storage";
 
 interface UseAutoSaveReturn {
-	saveDraft: (draft: ContentDraft, immediate?: boolean) => void;
+	saveDraft: (
+		draft: ContentDraft,
+		facts?: GossipFactsBlock | null,
+		immediate?: boolean,
+	) => void;
 }
 
 export function useAutoSave(delay = 1000): UseAutoSaveReturn {
 	const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
 	const saveDraft = useCallback(
-		(draft: ContentDraft, immediate = false) => {
+		(
+			draft: ContentDraft,
+			facts: GossipFactsBlock | null = null,
+			immediate = false,
+		) => {
 			if (timerRef.current) {
 				clearTimeout(timerRef.current);
 			}
 
 			const doSave = () => {
-				const result = saveCurrentDraft(draft);
+				const result = saveCurrentDraft(draft, facts);
 				if (result && typeof result.catch === "function") {
 					result.catch((e: unknown) =>
 						logger.error(

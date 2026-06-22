@@ -1,5 +1,8 @@
 # Phase 0 验证工作单(go/no-go)
 
+> ⚠️ **已废弃（2026-06-22）**：本文是旧版自动发布探索期的验证工作单。
+> 当前 51guapi 已拆除后台填充与发布动作；不要按本文执行发帖、POST/save、authorized 或真后台操作。
+
 > **检查 1 + 检查 2 已由 Claude 浏览器只读勘查完成(2026-06-04,全程零提交)。检查 3 仍需你补。**
 >
 > **检查 1(提交机制)✅**:后台 = layui + jQuery「51漫画管理系统」。新增表单是列表页内联 layui layer(非 iframe),`lay-event="add"` 打开。提交 = `<button lay-submit lay-filter="save">` → layui `form.on('submit(save))` → `$.post`/`$.ajax` 到 **`/admin/webarticle/save`**(**XHR/AJAX,非原生 form 提交**)。表单**无 token 命名字段**(CSRF 大概率靠 session cookie)。→ 计划已据此定:U2 走 XHR、复用页面自身 layui 提交;U3 加 fetch/XHR spy 通道。

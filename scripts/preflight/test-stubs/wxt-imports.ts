@@ -1,8 +1,7 @@
 // WXT `#imports` 虚拟模块的最小桩(仅供 preflight 测试)。
 //
-// dry-run 检查走的 batch-orchestrator 链路会**静态导入** auth-client/backend-url,
-// 它们顶部 `import { storage } from "#imports"`。但 dry-run 路径全程注入 stub deps,
-// 从不真正触达 storage。因此这里只需让模块能加载,无需真实实现。
+// preflight 会静态导入部分扩展端模块,它们顶部 `import { storage } from "#imports"`。
+// 这里仅让模块能在 Node 下加载,无需真实 Chrome storage 实现。
 
 export const storage = {
 	getItem: async () => null,

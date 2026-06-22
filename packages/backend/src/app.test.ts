@@ -254,6 +254,53 @@ describe("registerDraftRoutes", () => {
 		expect(res.json().draft.id).toBe("d1");
 	});
 
+	it("POST /drafts/generate 剥离 settings.apiKey,只使用后端 env key", async () => {
+		setConfig();
+		mockGenerate.mockResolvedValueOnce({ ok: true, draft: DRAFT } as never);
+		const res = await app.inject({
+			method: "POST",
+			url: "/api/v1/drafts/generate",
+			payload: {
+				prompt: "写帖",
+				settings: { ...SETTINGS, apiKey: "client-key-should-not-cross" },
+			},
+		});
+
+		expect(res.statusCode).toBe(200);
+		const call = mockGenerate.mock.calls.at(-1)?.[1];
+		expect(call?.apiKey).toBe("test-key");
+		expect(call?.settings).not.toHaveProperty("apiKey");
+	});
+
+	it("POST /drafts/generate 保留吃瓜 facts 字段传给生成器", async () => {
+		setConfig();
+		mockGenerate.mockResolvedValueOnce({ ok: true, draft: DRAFT } as never);
+		const facts = {
+			當事人: "测试人物",
+			事件摘要: "测试摘要",
+			起因: null,
+			經過: null,
+			結果: null,
+			來源連結: "https://example.com/a",
+			發生時間: null,
+			熱度標籤: "出軌",
+		};
+
+		const res = await app.inject({
+			method: "POST",
+			url: "/api/v1/drafts/generate",
+			payload: {
+				prompt: "写帖",
+				settings: SETTINGS,
+				facts,
+			},
+		});
+
+		expect(res.statusCode).toBe(200);
+		const call = mockGenerate.mock.calls.at(-1)?.[1];
+		expect(call?.facts).toEqual(facts);
+	});
+
 	it("POST /drafts/generate 业务失败 ok:false → 422", async () => {
 		setConfig();
 		mockGenerate.mockResolvedValueOnce({
@@ -301,6 +348,24 @@ describe("registerDraftRoutes", () => {
 			payload: { draft: DRAFT, criteriaPrompt: "标准", settings: SETTINGS },
 		});
 		expect(res.statusCode).toBe(200);
+	});
+
+	it("POST /drafts/review 剥离 settings.apiKey,只使用后端 env key", async () => {
+		setConfig();
+		mockReview.mockResolvedValueOnce({ ok: true, review: {} } as never);
+		const res = await app.inject({
+			method: "POST",
+			url: "/api/v1/drafts/review",
+			payload: {
+				draft: DRAFT,
+				settings: { ...SETTINGS, apiKey: "client-key-should-not-cross" },
+			},
+		});
+
+		expect(res.statusCode).toBe(200);
+		const call = mockReview.mock.calls.at(-1)?.[2];
+		expect(call?.apiKey).toBe("test-key");
+		expect(call?.settings).not.toHaveProperty("apiKey");
 	});
 
 	it("POST /drafts/review ok:false → 422", async () => {
@@ -352,9 +417,16 @@ describe("registerDraftRoutes", () => {
 		const res = await app.inject({
 			method: "POST",
 			url: "/api/v1/drafts/rewrite",
-			payload: { draft: DRAFT, failedDims: ["逻辑"], settings: SETTINGS },
+			payload: {
+				draft: DRAFT,
+				failedDims: ["逻辑"],
+				settings: SETTINGS,
+			},
 		});
 		expect(res.statusCode).toBe(200);
+		// A5:rewrite 走纯散文中和,不再接收/透传任何客户端 facts 允许集。
+		const call = mockRewrite.mock.calls.at(-1)?.[2];
+		expect(call?.facts).toBeUndefined();
 	});
 
 	it("POST /drafts/rewrite ok:false → 422", async () => {

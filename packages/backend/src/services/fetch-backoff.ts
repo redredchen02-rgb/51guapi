@@ -4,8 +4,6 @@ export interface LlmDeps {
 	settings: Settings;
 	apiKey: string;
 	facts?: GossipFactsBlock;
-	/** Web 搜索富化的格式化文本；为空则不注入。 */
-	enrichment?: string;
 	fetchFn?: typeof fetch;
 	now?: () => string;
 	genId?: () => string;

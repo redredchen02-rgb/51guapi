@@ -10,10 +10,8 @@ import { getBackendUrl } from "./backend-url";
 // 决定 fallback ——每个 client 仍保留自己的 try/catch 与回退值(本地存储 PRIMARY,
 // 后端 SECONDARY),这样后端不可达时扩展继续本地工作。
 //
-// 不纳入此封装的两个 client(语义不兼容):
+// 不纳入此封装的 client(语义不兼容):
 //   - auth-client.login:认证引导,无 token、无 401→clearToken。
-//   - published-posts-client:getSettings().backendUrl(无 fallback)+ localhost-only
-//     正则约束 + best-effort 静默吞错,与「错误向上可见」冲突。
 
 export interface ApiFetchInit extends Omit<RequestInit, "headers"> {
 	/** 额外请求头,与鉴权头合并(同名覆盖鉴权头之外的字段)。 */

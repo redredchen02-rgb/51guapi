@@ -1,3 +1,4 @@
+import type { ContentDraft } from "@51guapi/shared";
 import { beforeEach, describe, expect, it } from "vitest";
 import { fakeBrowser } from "wxt/testing";
 import { storage } from "#imports";
@@ -5,13 +6,11 @@ import {
 	addFewShotPair,
 	DEFAULT_SETTINGS,
 	deriveFewShotExamples,
-	getApiKey,
-	getBackendToken,
+	getCurrentDraft,
 	getExtensionCounters,
 	getSettings,
 	removeLastFewShotPair,
-	saveApiKey,
-	saveBackendToken,
+	saveCurrentDraft,
 	saveExtensionCounters,
 	saveSettings,
 } from "./storage";
@@ -50,42 +49,63 @@ describe("storage", () => {
 		expect(got.model).toBe("gpt-4o");
 	});
 
-	it("getApiKey 未设置时返回空字符串而非崩溃", async () => {
-		expect(await getApiKey()).toBe("");
-	});
+	describe("currentDraft snapshot", () => {
+		const draft: ContentDraft = {
+			id: "d1",
+			title: "草稿",
+			subtitle: "",
+			category: "2",
+			coverImageUrl: "",
+			body: "<p>x</p>",
+			tags: [],
+			description: "",
+			status: "draft",
+			createdAt: "2026-06-22T00:00:00.000Z",
+		};
 
-	it("saveApiKey 后能取回", async () => {
-		await saveApiKey("sk-test-123");
-		expect(await getApiKey()).toBe("sk-test-123");
-	});
+		it("saveCurrentDraft / getCurrentDraft 保留 draft 与 facts", async () => {
+			const facts = {
+				當事人: "A",
+				事件摘要: "摘要",
+				起因: null,
+				經過: null,
+				結果: null,
+				來源連結: "https://example.com/source",
+				發生時間: null,
+				熱度標籤: null,
+			};
 
-	describe("backendToken", () => {
-		it("未设置时返回空字符串", async () => {
-			expect(await getBackendToken()).toBe("");
+			await saveCurrentDraft(draft, facts);
+
+			await expect(getCurrentDraft()).resolves.toEqual({ draft, facts });
 		});
 
-		it("saveBackendToken 后能取回", async () => {
-			await saveBackendToken("jwt-token-abc");
-			expect(await getBackendToken()).toBe("jwt-token-abc");
+		it("兼容旧版直接存 ContentDraft 的 currentDraft", async () => {
+			await storage.setItem("local:currentDraft", draft);
+
+			await expect(getCurrentDraft()).resolves.toEqual({
+				draft,
+				facts: null,
+			});
 		});
 	});
 
 	describe("ExtensionCounters", () => {
-		it("首次调用返回默认 batchesCompleted=0", async () => {
+		it("首次调用返回默认 draftsGenerated=0", async () => {
 			const c = await getExtensionCounters();
-			expect(c).toEqual({ batchesCompleted: 0 });
+			expect(c).toEqual({ draftsGenerated: 0 });
 		});
 
-		it("save 后 getExtensionCounters 取回 batchesCompleted", async () => {
-			await saveExtensionCounters({ batchesCompleted: 3 });
+		it("save 后 getExtensionCounters 取回 draftsGenerated", async () => {
+			await saveExtensionCounters({ draftsGenerated: 3 });
 			const c = await getExtensionCounters();
-			expect(c.batchesCompleted).toBe(3);
+			expect(c.draftsGenerated).toBe(3);
 		});
 
-		it("不完整旧数据（缺 batchesCompleted）→ 回落默认而不崩溃", async () => {
+		it("不完整旧数据（缺 draftsGenerated）→ 回落默认而不崩溃", async () => {
 			await storage.setItem("local:extensionCounters", {});
 			const c = await getExtensionCounters();
-			expect(c.batchesCompleted).toBe(0);
+			expect(c.draftsGenerated).toBe(0);
 		});
 	});
 

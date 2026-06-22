@@ -37,7 +37,7 @@ export function DraftReviewPanel({
 		setCandidate(null);
 		setPhase("reviewing");
 		const settings = await getSettings();
-		const res = await reviewDraft(draft, undefined, {
+		const res = await reviewDraft(draft, settings.reviewCriteriaPrompt, {
 			settings,
 			apiKey: "", // LlmDeps.apiKey 执行时被忽略(后端用自身 key)
 		});

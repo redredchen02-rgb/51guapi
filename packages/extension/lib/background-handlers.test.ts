@@ -13,7 +13,6 @@ function makeDeps(
 	const settings: Settings = { ...DEFAULT_SETTINGS };
 	return {
 		getSettings: vi.fn(async () => settings),
-		getApiKey: vi.fn(async () => "sk-test"),
 		generateDraftFn: vi.fn(
 			async (): Promise<GenerateDraftResponse> => ({
 				ok: true,
@@ -41,7 +40,7 @@ describe("handleGenerate — forwards structured context", () => {
 		fakeBrowser.reset();
 	});
 
-	it("透传 facts 与 enrichment 到 generateDraftFn", async () => {
+	it("透传 facts 到 generateDraftFn", async () => {
 		const deps = makeDeps();
 		const handlers = createHandlers(deps);
 		const facts = {
@@ -54,16 +53,10 @@ describe("handleGenerate — forwards structured context", () => {
 			發生時間: null,
 			熱度標籤: null,
 		};
-		await handlers.handleGenerate("prompt", {
-			facts,
-			enrichment: "补充背景",
-		});
+		await handlers.handleGenerate("prompt", { facts });
 		expect(deps.generateDraftFn).toHaveBeenCalledWith(
 			expect.stringContaining("prompt"),
-			expect.objectContaining({
-				facts,
-				enrichment: "补充背景",
-			}),
+			expect.objectContaining({ facts }),
 		);
 	});
 
@@ -75,7 +68,6 @@ describe("handleGenerate — forwards structured context", () => {
 			expect.stringContaining("manual prompt"),
 			expect.objectContaining({
 				facts: undefined,
-				enrichment: undefined,
 			}),
 		);
 	});

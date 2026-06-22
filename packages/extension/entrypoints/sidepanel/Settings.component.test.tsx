@@ -12,8 +12,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 vi.mock("../../lib/storage", () => ({
 	DEFAULT_SETTINGS: {},
 	deriveFewShotExamples: vi.fn(() => ""),
-	getApiKey: vi.fn(async () => ""),
-	getBackendToken: vi.fn(async () => ""),
 	getSettings: vi.fn(async () => ({
 		endpoint: "",
 		model: "gpt-4o-mini",
@@ -21,11 +19,8 @@ vi.mock("../../lib/storage", () => ({
 		recommendedTags: ["漢化"],
 		backendUrl: "",
 		reviewCriteriaPrompt: "",
-		dailyBatchSize: 5,
 		fewShotPairs: [],
 	})),
-	saveApiKey: vi.fn(async () => {}),
-	saveBackendToken: vi.fn(async () => {}),
 	saveSettings: vi.fn(async () => {}),
 }));
 
@@ -79,6 +74,12 @@ describe("Settings 组件渲染", () => {
 		fireEvent.click(screen.getByRole("button", { name: "保存" }));
 		await waitFor(() => expect(mockSaveSettings).toHaveBeenCalledOnce());
 		expect(await screen.findByText("已保存。")).toBeTruthy();
+	});
+
+	it("不渲染浏览器本地 API Key 配置项", async () => {
+		await renderLoaded();
+		expect(screen.queryByLabelText("API Key")).toBeNull();
+		expect(screen.getByText(/扩展不会保存或发送 LLM 密钥/)).toBeTruthy();
 	});
 
 	it("endpoint 非 https → 保存被拦截，显示错误，不调 saveSettings", async () => {

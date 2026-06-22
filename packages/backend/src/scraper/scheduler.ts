@@ -4,7 +4,6 @@ import { recordScraperRun } from "../services/metrics.js";
 import { sendAlert } from "../services/telegram.js";
 import { generateId } from "../utils/generate-id.js";
 import { getChannelByHostname } from "./channel-store.js";
-import { tryEnrich } from "./enrichment-utils.js";
 import { extractFacts } from "./fact-extractor.js";
 import {
 	type PendingTopic,
@@ -95,12 +94,6 @@ async function runSingleUrl(
 				model: deps.llmModel || "gpt-4o-mini",
 			});
 
-		// Web 搜索富化：搜作品评测/讨论/背景资料
-		deps.logger?.info(
-			`[scheduler] Enriching via web search for ${site.siteName}`,
-		);
-		const enrichment = await tryEnrich({ facts, logger: deps.logger });
-
 		const now = new Date().toISOString();
 		const topic: PendingTopic = {
 			id: generateId("scheduled"),
@@ -111,7 +104,6 @@ async function runSingleUrl(
 			facts,
 			confidence,
 			...(coverImageUrl ? { coverImageUrl } : {}),
-			...(enrichment ? { enrichment } : {}),
 			status: "pending",
 			createdAt: now,
 			updatedAt: now,
@@ -127,7 +119,6 @@ async function runSingleUrl(
 			durationMs: Date.now() - runStart,
 			confidence,
 			extractionMode,
-			enriched: !!enrichment,
 		});
 		recordScraperRun(true);
 		deps.logger?.info(
@@ -222,9 +213,6 @@ async function runListDiscovery(
 				},
 			);
 
-			// Web 搜索富化（list-discovery 模式也执行）
-			const enrichment = await tryEnrich({ facts, logger: deps.logger });
-
 			const now = new Date().toISOString();
 			const topic: PendingTopic = {
 				id: generateId("discovered"),
@@ -235,7 +223,6 @@ async function runListDiscovery(
 				facts,
 				confidence,
 				...(coverImageUrl ? { coverImageUrl } : {}),
-				...(enrichment ? { enrichment } : {}),
 				status: "pending",
 				createdAt: now,
 				updatedAt: now,

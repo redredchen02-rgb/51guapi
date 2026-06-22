@@ -65,7 +65,8 @@ export function FewShotPairEditor({
 
 			{pairs.map((pair, i) => (
 				<div
-					key={pair.input}
+					// biome-ignore lint/suspicious/noArrayIndexKey: 仅末尾增删+相邻移动,index 稳定;原 key=pair.input 在两个空白 pair 时碰撞(A11/R10)
+					key={i}
 					className="card"
 					style={{
 						padding: "var(--space-lg)",

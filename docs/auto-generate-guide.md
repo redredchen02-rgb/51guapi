@@ -1,5 +1,9 @@
 # 自动批量生成指南
 
+> ⚠️ **已废弃（2026-06-22）**：本文记录旧版 ACG `FactsBlock` 自动生成接口。
+> 当前吃瓜小帮手的主流程是：吃瓜站点 URL 抓取 → `GossipFactsBlock` 提炼 → 待审池人工核对 → 预览/编辑 → 导出 JSON / Markdown。
+> `/api/v1/scraper/trigger` 与 `/api/v1/scraper/auto-generate` 需要请求体显式传入 `"legacy":"acg"` 才会执行；当前操作不要按本文作为吃瓜流程入口。
+
 ## 概述
 
 自动批量生成功能可以从待审选题池中自动提取事实、搜索富化、生成草稿，减少人工干预。
@@ -13,6 +17,7 @@
 **请求体**:
 ```json
 {
+  "legacy": "acg",
   "minConfidence": 0.5,
   "maxItems": 5,
   "enableEnrichment": true
@@ -24,6 +29,7 @@
 | minConfidence | number | 0.5 | 最低置信度阈值 |
 | maxItems | number | 5 | 单次最多生成数 |
 | enableEnrichment | boolean | true | 是否启用 Web 搜索富化 |
+| legacy | string | 必填 | 固定为 `"acg"`；显式确认调用旧 ACG 管线 |
 
 **响应**:
 ```json
@@ -97,7 +103,7 @@ TOKEN=$(curl -s -X POST http://localhost:3002/api/v1/auth/login \
 curl -s -X POST http://localhost:3002/api/v1/scraper/auto-generate \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
-  -d '{"minConfidence": 0.5, "maxItems": 5}' | jq .
+  -d '{"legacy": "acg", "minConfidence": 0.5, "maxItems": 5}' | jq .
 
 # 3. 查看质量统计
 curl -s http://localhost:3002/api/v1/healthz | jq .quality

@@ -1,6 +1,6 @@
 import type { GossipFactsBlock } from "./gossip-facts.js";
 import { GOSSIP_FACT_KEYS } from "./gossip-facts.js";
-import type { ContentDraft } from "./types.js";
+import type { ContentDraft, DraftStatus } from "./types.js";
 
 export type ExportFormat = "json" | "markdown";
 
@@ -20,7 +20,7 @@ export interface ExportedDraft {
 		tags: string[];
 		coverImageUrl: string;
 		body: string;
-		status: string;
+		status: DraftStatus;
 		createdAt: string;
 	};
 	/** 吃瓜事實結構;無事實時為 null。 */
@@ -200,7 +200,7 @@ export function assembleDraftMarkdown(
 	// 來源連結:優先取吃瓜事實的來源連結。
 	const source = facts?.來源連結?.trim();
 	if (source) {
-		lines.push(`**来源**: ${source}`);
+		lines.push(`**来源**: ${escMd(source.replace(/\s+/g, " "))}`);
 		lines.push("");
 	}
 

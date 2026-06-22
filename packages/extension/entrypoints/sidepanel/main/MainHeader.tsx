@@ -82,7 +82,7 @@ export function MainHeader({
 				<button type="button" onClick={onOpenMetrics} className="workflow-card">
 					<span className="workflow-card-title">数据指标</span>
 					<span className="workflow-card-desc">
-						抓取成功率、草稿生成率、批次完成数
+						抓取成功率、草稿生成率、验证关统计
 					</span>
 				</button>
 			</nav>

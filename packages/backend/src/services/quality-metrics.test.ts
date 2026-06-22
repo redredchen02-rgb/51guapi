@@ -1,5 +1,6 @@
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import type { GossipFactsBlock, Settings } from "@51guapi/shared";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // 使用临时数据库
 const _TEST_DB_PATH = join(process.cwd(), "data", "test-quality.db");
@@ -8,6 +9,7 @@ const _TEST_DB_PATH = join(process.cwd(), "data", "test-quality.db");
 process.env.GUAPI_DATA_DIR = join(process.cwd(), "data");
 
 import { getDb, initPendingDb } from "../scraper/pending-db.js";
+import { generateDraft } from "./draft-gen.js";
 import {
 	getQualityStats,
 	initQualityMetricsTable,
@@ -97,5 +99,61 @@ describe("quality-metrics", () => {
 
 		const stats = await getQualityStats();
 		expect(stats.recentScores).toHaveLength(10);
+	});
+
+	// A12(R12)端到端:证 recordQuality 真接进了 generateDraft 成功路径(此前零生产调用)。
+	// 非测试直改单例——走真实 generateDraft → getQualityStats 反映。
+	it("A12 集成:generateDraft 成功后 /healthz 质量随真实生成变化", async () => {
+		const settings: Settings = {
+			endpoint: "https://api.example.com/v1/chat/completions",
+			model: "m",
+			fallbackModel: "",
+			promptTemplate: "",
+			fewShotPairs: [],
+		};
+		const facts: GossipFactsBlock = {
+			當事人: "甲",
+			事件摘要: "摘要",
+			起因: null,
+			經過: null,
+			結果: null,
+			來源連結: null,
+			發生時間: null,
+			熱度標籤: "緋聞",
+		};
+		const fetchFn = vi.fn(
+			async () =>
+				({
+					ok: true,
+					status: 200,
+					statusText: "OK",
+					json: async () => ({
+						choices: [
+							{
+								message: {
+									content: JSON.stringify({
+										intro: "引子内容更丰富更有爆料感一些",
+										highlights: "看点也写得很充实很多",
+									}),
+								},
+							},
+						],
+					}),
+				}) as Response,
+		);
+		const before = await getQualityStats();
+		const res = await generateDraft("主题", {
+			settings,
+			apiKey: "k",
+			facts,
+			fetchFn,
+			now: () => "2026-06-22T00:00:00.000Z",
+			genId: () => "draft_qm_int_1",
+		});
+		expect(res.ok).toBe(true);
+		// recordQuality 已被 generateDraft await,解析时记录已落库。
+		const after = await getQualityStats();
+		expect(after.totalGenerations).toBe(before.totalGenerations + 1);
+		expect(after.avgScore).toBeGreaterThan(0);
 	});
 });

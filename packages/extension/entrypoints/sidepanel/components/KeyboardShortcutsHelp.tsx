@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface Shortcut {
 	keys: string;
@@ -7,13 +7,19 @@ interface Shortcut {
 
 const shortcuts: Shortcut[] = [
 	{ keys: "Ctrl + Enter", description: "生成草稿" },
-	{ keys: "Ctrl + Shift + Enter", description: "填充到当前页" },
 	{ keys: "Ctrl + →", description: "下一条" },
 	{ keys: "Ctrl + S", description: "保存" },
 ];
 
 export function KeyboardShortcutsHelp() {
 	const [isOpen, setIsOpen] = useState(false);
+	const dialogRef = useRef<HTMLDivElement>(null);
+
+	// A11/R10:对话框打开后聚焦容器,使 onKeyDown 的 Escape 真正可达 —— role=dialog 的 div
+	// 默认不可聚焦,收不到键盘事件,原 Esc 实际不生效。
+	useEffect(() => {
+		if (isOpen) dialogRef.current?.focus();
+	}, [isOpen]);
 
 	return (
 		<>
@@ -29,7 +35,9 @@ export function KeyboardShortcutsHelp() {
 
 			{isOpen && (
 				<div
+					ref={dialogRef}
 					role="dialog"
+					tabIndex={-1}
 					style={{
 						position: "fixed",
 						top: 0,

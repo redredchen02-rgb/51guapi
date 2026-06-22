@@ -55,7 +55,6 @@ describe("Extension LLM client proxy", () => {
 			settings,
 			apiKey: "",
 			facts: {},
-			enrichment: "补充背景",
 			fetchFn: f,
 		});
 
@@ -71,7 +70,6 @@ describe("Extension LLM client proxy", () => {
 					prompt: "hi",
 					settings,
 					facts: {},
-					enrichment: "补充背景",
 				}),
 			}),
 		);
@@ -208,15 +206,33 @@ describe("rewriteDraft proxy", () => {
 		const rewritten = { ...draft, title: "新标题" };
 		const payload = { ok: true, draft: rewritten };
 		const f = mockFetch(payload);
+		const facts = {
+			當事人: "测试人物",
+			事件摘要: "测试摘要",
+			起因: null,
+			經過: null,
+			結果: null,
+			來源連結: "https://example.com/a",
+			發生時間: null,
+			熱度標籤: "緋聞",
+		};
 		const res = await rewriteDraft(draft, ["title_quality"], {
 			...deps,
+			facts,
 			fetchFn: f,
 		});
 		expect(res.ok).toBe(true);
 		if (res.ok) expect(res.draft.title).toBe("新标题");
 		expect(f).toHaveBeenCalledWith(
 			"http://127.0.0.1:3002/api/v1/drafts/rewrite",
-			expect.objectContaining({ method: "POST" }),
+			expect.objectContaining({
+				method: "POST",
+				body: JSON.stringify({
+					draft,
+					failedDims: ["title_quality"],
+					settings: deps.settings,
+				}),
+			}),
 		);
 	});
 

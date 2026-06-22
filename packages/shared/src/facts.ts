@@ -184,7 +184,6 @@ export function applyPromptTemplate(
 	topic: string,
 	facts?: FactsBlock,
 	fewShot?: string,
-	enrichment?: string,
 ): string {
 	let out = template.includes("{{topic}}")
 		? template.replaceAll("{{topic}}", topic)
@@ -207,13 +206,8 @@ export function applyPromptTemplate(
 		out = out.replaceAll("{{fewshot}}", "");
 	}
 
-	if (enrichment && enrichment.trim() !== "") {
-		out = out.includes("{{enrichment}}")
-			? out.replaceAll("{{enrichment}}", enrichment)
-			: `${out}\n\n${enrichment}`;
-	} else {
-		out = out.replaceAll("{{enrichment}}", "");
-	}
+	// A8:Web 富化已移除 —— 清掉模板里可能残留的 {{enrichment}} 占位符。
+	out = out.replaceAll("{{enrichment}}", "");
 
 	return out.trim();
 }

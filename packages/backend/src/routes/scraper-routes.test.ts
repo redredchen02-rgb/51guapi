@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import Fastify, { type FastifyInstance } from "fastify";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PUBLIC_ROUTES, requireAuth } from "../middleware/auth-middleware.js";
+import { savePendingTopic } from "../scraper/pending-store.js";
 import { scraperConfig } from "../scraper/scraper-config.js";
 import type { RawContent, SiteAdapter } from "../scraper/site-adapter.js";
 import { registerScraperRoutes } from "./scraper-routes.js";
@@ -19,10 +20,6 @@ vi.mock("../scraper/fact-extractor.js", () => ({
 
 vi.mock("../scraper/pending-store.js", () => ({
 	savePendingTopic: vi.fn(async () => undefined),
-}));
-
-vi.mock("../scraper/web-enricher.js", () => ({
-	enrichContext: vi.fn(async () => ({ queryResults: [] })),
 }));
 
 // ---- helpers ----
@@ -98,9 +95,21 @@ describe("POST /api/v1/scraper/trigger — validation", () => {
 		const res = await app.inject({
 			method: "POST",
 			url: "/api/v1/scraper/trigger",
-			payload: { siteName: "no-such-site" },
+			payload: { siteName: "no-such-site", legacy: "acg" },
 		});
 		expect(res.statusCode).toBe(404);
+	});
+
+	it("未显式 legacy:acg → 410，避免当前吃瓜流程误用旧 FactsBlock 管线", async () => {
+		const res = await app.inject({
+			method: "POST",
+			url: "/api/v1/scraper/trigger",
+			payload: { siteName: siteName() },
+		});
+		expect(res.statusCode).toBe(410);
+		expect(res.json()).toMatchObject({
+			kind: "legacy-acg-disabled",
+		});
 	});
 
 	it("禁用站点 → 404", async () => {
@@ -115,7 +124,7 @@ describe("POST /api/v1/scraper/trigger — validation", () => {
 		const res = await app.inject({
 			method: "POST",
 			url: "/api/v1/scraper/trigger",
-			payload: { siteName: "disabled-site" },
+			payload: { siteName: "disabled-site", legacy: "acg" },
 		});
 		expect(res.statusCode).toBe(404);
 	});
@@ -134,12 +143,16 @@ describe("POST /api/v1/scraper/trigger — SSRF allowlist", () => {
 			url: "/api/v1/scraper/trigger",
 			payload: {
 				siteName: siteName(),
+				legacy: "acg",
 				url: "https://test-site.example.com/article/999",
 			},
 		});
 		// 主机名一致，SSRF 检查通过；extractFacts 已 mock，应成功返回 200
 		expect(res.statusCode).toBe(200);
 		expect(res.json().ok).toBe(true);
+		expect(vi.mocked(savePendingTopic).mock.calls.at(-1)?.[0]).toMatchObject({
+			domain: "acg",
+		});
 		delete process.env.LLM_ENDPOINT;
 		delete process.env.LLM_API_KEY;
 	});
@@ -150,6 +163,7 @@ describe("POST /api/v1/scraper/trigger — SSRF allowlist", () => {
 			url: "/api/v1/scraper/trigger",
 			payload: {
 				siteName: siteName(),
+				legacy: "acg",
 				url: "https://evil.attacker.com/malicious",
 			},
 		});
@@ -163,6 +177,7 @@ describe("POST /api/v1/scraper/trigger — SSRF allowlist", () => {
 			url: "/api/v1/scraper/trigger",
 			payload: {
 				siteName: siteName(),
+				legacy: "acg",
 				url: "not-a-valid-url",
 			},
 		});
@@ -176,6 +191,7 @@ describe("POST /api/v1/scraper/trigger — SSRF allowlist", () => {
 			url: "/api/v1/scraper/trigger",
 			payload: {
 				siteName: siteName(),
+				legacy: "acg",
 				url: "https://evil.com@test-site.example.com/path",
 			},
 		});
@@ -189,6 +205,7 @@ describe("POST /api/v1/scraper/trigger — SSRF allowlist", () => {
 			url: "/api/v1/scraper/trigger",
 			payload: {
 				siteName: siteName(),
+				legacy: "acg",
 				url: "http://test-site.example.com/article/1",
 			},
 		});
@@ -213,7 +230,7 @@ describe("POST /api/v1/scraper/trigger — env checks", () => {
 		const res = await app.inject({
 			method: "POST",
 			url: "/api/v1/scraper/trigger",
-			payload: { siteName: siteName() },
+			payload: { siteName: siteName(), legacy: "acg" },
 		});
 		expect(res.statusCode).toBe(500);
 		expect(res.json().error).toMatch(/LLM_ENDPOINT/);
@@ -239,6 +256,20 @@ describe("GET /api/v1/scraper/adapters", () => {
 			(a) => a.name,
 		);
 		expect(names).toContain(`adapter-${testId}`);
+	});
+});
+
+describe("POST /api/v1/scraper/auto-generate — legacy gate", () => {
+	it("未显式 legacy:acg → 410，避免当前吃瓜流程误用旧批量生成", async () => {
+		const res = await app.inject({
+			method: "POST",
+			url: "/api/v1/scraper/auto-generate",
+			payload: {},
+		});
+		expect(res.statusCode).toBe(410);
+		expect(res.json()).toMatchObject({
+			kind: "legacy-acg-disabled",
+		});
 	});
 });
 

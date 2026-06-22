@@ -7,11 +7,7 @@ import { createPrompt, fetchPrompts } from "../../../lib/prompt-client";
 import {
 	deriveFewShotExamples,
 	getSettings,
-	saveApiKey,
-	saveBackendToken,
 	saveSettings,
-	getApiKey as storageGetApiKey,
-	getBackendToken as storageGetBackendToken,
 } from "../../../lib/storage";
 import { parseTagsText, validateSettingsForm } from "../Settings";
 
@@ -28,10 +24,6 @@ export interface SettingsFormValues {
 
 export interface UseSettingsFormReturn {
 	formValues: SettingsFormValues;
-	getApiKey: () => string;
-	getBackendToken: () => string;
-	setApiKey: (v: string) => void;
-	setBackendToken: (v: string) => void;
 	derivedFewShotExamples: string;
 	prompts: PromptTemplate[];
 	selectedPromptId: string;
@@ -65,31 +57,13 @@ export function useSettingsForm(): UseSettingsFormReturn {
 	const [selectedPromptId, setSelectedPromptId] = useState("");
 	const [promptStatus, setPromptStatus] = useState("");
 
-	const apiKeyRef = useRef("");
-	const backendTokenRef = useRef("");
 	const loadedRef = useRef(false);
-
-	const getApiKey = useCallback(() => apiKeyRef.current, []);
-	const getBackendToken = useCallback(() => backendTokenRef.current, []);
-	const setApiKey = useCallback((v: string) => {
-		apiKeyRef.current = v;
-	}, []);
-	const setBackendToken = useCallback((v: string) => {
-		backendTokenRef.current = v;
-	}, []);
 
 	const load = useCallback(async () => {
 		if (loadedRef.current) return;
 		loadedRef.current = true;
 
-		const [s, key, bToken] = await Promise.all([
-			getSettings(),
-			storageGetApiKey(),
-			storageGetBackendToken(),
-		]);
-
-		apiKeyRef.current = key;
-		backendTokenRef.current = bToken;
+		const s = await getSettings();
 
 		setFormValues({
 			endpoint: s.endpoint,
@@ -125,8 +99,6 @@ export function useSettingsForm(): UseSettingsFormReturn {
 			backendUrl: formValues.backendUrl || undefined,
 			reviewCriteriaPrompt: formValues.reviewCriteriaPrompt || undefined,
 		});
-		await saveApiKey(apiKeyRef.current);
-		await saveBackendToken(backendTokenRef.current);
 		return null;
 	}, [formValues]);
 
@@ -193,10 +165,6 @@ export function useSettingsForm(): UseSettingsFormReturn {
 
 	return {
 		formValues,
-		getApiKey,
-		getBackendToken,
-		setApiKey,
-		setBackendToken,
 		derivedFewShotExamples,
 		prompts,
 		selectedPromptId,

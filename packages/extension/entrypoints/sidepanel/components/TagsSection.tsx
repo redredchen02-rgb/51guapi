@@ -32,7 +32,7 @@ export function TagsSection({
 
 			<div className="field-group">
 				<label htmlFor="review-criteria" className="field-label">
-					AI 评审标准（Phase 3，留空使用内置四维标准）
+					AI 评审标准（留空使用内置四维标准）
 				</label>
 				<textarea
 					id="review-criteria"
@@ -46,8 +46,8 @@ export function TagsSection({
 				/>
 			</div>
 			<p className="field-hint">
-				内置标准覆盖：内容丰富度 / 社群语气 / 标题质量 / 分类准确。Phase 3
-				启用后每条草稿生成后自动评审。
+				内置标准覆盖：内容丰富度 / 社群语气 / 标题质量 / 分类准确；草稿页点 AI
+				评审时使用。
 			</p>
 		</div>
 	);

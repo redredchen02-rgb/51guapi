@@ -60,7 +60,7 @@ export function AuthView({ onLogin }: { onLogin: () => void }) {
 								启动后端：
 							</strong>
 							<br />
-							在项目目录执行（macOS / Linux / Windows 通用）：
+							在项目目录执行：
 							<br />
 							<code
 								style={{
@@ -74,7 +74,7 @@ export function AuthView({ onLogin }: { onLogin: () => void }) {
 									userSelect: "all",
 								}}
 							>
-								node scripts/setup.mjs
+								bash scripts/start-backend.sh
 							</code>
 						</div>
 					)}

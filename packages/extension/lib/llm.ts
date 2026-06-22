@@ -11,9 +11,8 @@ import { getBackendUrl } from "./backend-url";
 
 export interface LlmDeps {
 	settings: Settings;
-	apiKey: string; // Left in interface for compatibility, but ignored in execution
+	apiKey?: string; // Legacy callers may still pass it; execution ignores it.
 	facts?: FactsBlock | GossipFactsBlock;
-	enrichment?: string;
 	fetchFn?: typeof fetch;
 	now?: () => string;
 	genId?: () => string;
@@ -85,7 +84,7 @@ export async function generateDraft(
 	prompt: string,
 	deps: LlmDeps,
 ): Promise<GenerateDraftResponse> {
-	const { settings, facts, enrichment } = deps;
+	const { settings, facts } = deps;
 	const fetchFn = deps.fetchFn ?? fetch;
 	const timeoutMs = deps.timeoutMs ?? 60_000;
 
@@ -107,7 +106,6 @@ export async function generateDraft(
 				prompt,
 				settings,
 				facts,
-				enrichment,
 			}),
 			signal: controller.signal,
 		});
@@ -229,7 +227,11 @@ export async function rewriteDraft(
 		const res = await fetchFn(`${backendUrl}/api/v1/drafts/rewrite`, {
 			method: "POST",
 			headers,
-			body: JSON.stringify({ draft, failedDims, settings: deps.settings }),
+			body: JSON.stringify({
+				draft,
+				failedDims,
+				settings: deps.settings,
+			}),
 			signal: controller.signal,
 		});
 		if (res.status === 401) {

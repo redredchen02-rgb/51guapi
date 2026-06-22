@@ -24,7 +24,7 @@ export function validateSettingsForm(
 ): string | null {
 	const { endpoint, backendUrl } = values;
 	if (endpoint && !/^https:\/\//i.test(endpoint)) {
-		return "endpoint 必须是 https:// 地址(API key 会发往此处)。";
+		return "LLM endpoint 必须是 https:// 地址;后端会用 .env 中的 LLM_API_KEY 请求此地址。";
 	}
 	if (
 		backendUrl &&
@@ -37,14 +37,7 @@ export function validateSettingsForm(
 
 export function Settings({ onClose }: { onClose: () => void }) {
 	const hook = useSettingsForm();
-	const {
-		formValues,
-		setFormValue,
-		getApiKey,
-		getBackendToken,
-		setApiKey,
-		setBackendToken,
-	} = hook;
+	const { formValues, setFormValue } = hook;
 	const [error, setError] = useState("");
 	const [saved, setSaved] = useState(false);
 
@@ -89,18 +82,14 @@ export function Settings({ onClose }: { onClose: () => void }) {
 				endpoint={formValues.endpoint}
 				model={formValues.model}
 				fallbackModel={formValues.fallbackModel}
-				getApiKey={getApiKey}
 				setEndpoint={(v) => setFormValue("endpoint", v)}
 				setModel={(v) => setFormValue("model", v)}
 				setFallbackModel={(v) => setFormValue("fallbackModel", v)}
-				setApiKey={setApiKey}
 			/>
 
 			<BackendSection
 				backendUrl={formValues.backendUrl}
-				getBackendToken={getBackendToken}
 				setBackendUrl={(v) => setFormValue("backendUrl", v)}
-				setBackendToken={setBackendToken}
 				onTestConnection={hook.testConnectionFn}
 			/>
 

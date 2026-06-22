@@ -1,5 +1,5 @@
 // 连结来源校验(R6):草稿正文里任何 URL 必须能在输入事实里找到来源,否则=违规(疑似幻觉)。
-// 与 sanitizeBody(防 XSS)正交 —— sanitize 原样放行远程 https 链接,故这是独立的另一道闸。
+// 与正文中和(sanitizeToPlainText)正交 —— 中和剥掉模型自造链接,本闸再校验程序注入的来源链接是否溯源,各管一层。
 // 纯函数;extractLinks 用正则提取 HTML <a href>(无 DOM 依赖,SW 亦可用)。
 //
 // 不自动改写/剥除连结,只返回判定结果,由审核区渲染给人决定。
@@ -41,7 +41,16 @@ export function normalizeUrl(u: string): string {
 		const url = new URL(raw);
 		const host = url.host.toLowerCase().replace(/^www\./, "");
 		const path = url.pathname.replace(/\/+$/, "");
-		return `${host}${path}${url.search}`;
+		// A11/R10:规范化 query —— 参数排序消除顺序差异(?a=1&b=2 与 ?b=2&a=1 视为同源);
+		// fragment 一律忽略(URL.pathname/search 本就不含 hash)。否则 grounding 闸会把
+		// query 乱序/带 fragment 的同源链接误判「未注源」。
+		const params = [...url.searchParams.entries()].sort(([a], [b]) =>
+			a < b ? -1 : a > b ? 1 : 0,
+		);
+		const search = params.length
+			? `?${params.map(([k, v]) => `${k}=${v}`).join("&")}`
+			: "";
+		return `${host}${path}${search}`;
 	} catch {
 		return raw.toLowerCase().replace(/\/+$/, "");
 	}

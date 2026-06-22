@@ -1,4 +1,4 @@
-// 三层(side panel / background / content script)共享的类型定义。
+// side panel / background / backend wire 共享的类型定义。
 // Migrated from both packages/backend/src/shared/types.ts and packages/extension/lib/types.ts
 import type { FactsBlock } from "./facts.js";
 import type { VerificationResult } from "./gossip-verify.js";
@@ -10,8 +10,8 @@ export interface FewShotPair {
 	output: string;
 }
 
-/** 草稿在本插件内的生命周期状态。 */
-export type DraftStatus = "draft" | "filled" | "published";
+/** 草稿在本插件内的生命周期状态:只预览/编辑/导出,不填充或发布。 */
+export type DraftStatus = "draft";
 
 /**
  * 一条内容草稿。AI 生成 title/subtitle/category/body/tags/description;
@@ -33,8 +33,6 @@ export interface ContentDraft {
 	status: DraftStatus;
 	/** ISO 时间戳。 */
 	createdAt: string;
-	/** Web 富化上下文(可选;来自 web-enricher)。 */
-	enrichment?: string;
 }
 
 /** 用户可配置的设置(API key 单独存取,不在此对象内)。 */
@@ -59,7 +57,7 @@ export interface Settings {
 	webSearchEnabled?: boolean;
 }
 
-// ---- 消息协议(side panel ↔ background ↔ content script) ----
+// ---- 消息协议(side panel ↔ background / backend) ----
 
 /** 拒绝原因枚举值（路由层校验；DB 列保留 TEXT 存储字符串值）。 */
 export type RejectionReason =
@@ -71,8 +69,8 @@ export type RejectionReason =
 
 /**
  * 待审选题的 API / wire 契约（side panel ↔ backend 单一真相,取代扩展端原本的重复定义）。
- * 后端「存储」表示(pending-store.PendingTopic:enrichment 对象 + facts 强类型 union)是实现
- * 细节,经路由 toApiTopic 映射到此形状(enrichment→enrichmentText、route 注入 folded)。
+ * 后端「存储」表示(pending-store.PendingTopic:facts 强类型 union)是实现
+ * 细节,经路由 toApiTopic 映射到此形状(route 注入 folded/extractionMode)。
  *
  * facts 用宽松可索引 dict:前后端都对 facts 做动态迭代/索引(后端 Object.entries / cast、
  * 扩展 facts[k]),无一方依赖结构化字段访问 —— 宽松 Record 统一两端且零结构化损失,
@@ -97,8 +95,6 @@ export interface PendingTopic {
 	coverImageUrl?: string;
 	/** 质量分低于 fold_threshold 时由后端路由层标记折叠（route 注入,非存储字段）。 */
 	folded?: boolean;
-	/** 预格式化的 web 富化文本（route 由 enrichment 派生,非存储字段）。 */
-	enrichmentText?: string;
 	/** 提炼模式:strict=structured output;fallback=json_object 兼容模式。 */
 	extractionMode?: "strict" | "fallback";
 	domain?: "acg" | "gossip";

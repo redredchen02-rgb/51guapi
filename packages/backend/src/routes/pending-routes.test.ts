@@ -121,6 +121,44 @@ describe("PATCH /api/v1/pending-topics/:id — rejectedReason validation", () =>
 		const body = res.json();
 		expect(body.ok).toBe(true);
 		expect(body.topic.status).toBe("approved");
+		expect(body.topic.rejectedReason ?? null).toBeNull();
+	});
+
+	it("同一 PATCH 携带 facts + verified + status → 不静默丢弃局部更新", async () => {
+		const topic = makeTopic({
+			id: "combo",
+			sourceUrl: "https://example-site.com/s/combo",
+			facts: {
+				當事人: "旧人物",
+				事件摘要: "旧事件",
+				起因: null,
+				經過: null,
+				結果: null,
+				來源連結: null,
+				發生時間: null,
+				熱度標籤: "旧题材",
+			},
+		});
+		await savePendingTopic(topic);
+
+		const res = await app.inject({
+			method: "PATCH",
+			url: `/api/v1/pending-topics/${topic.id}`,
+			payload: {
+				status: "approved",
+				verified: true,
+				facts: { 當事人: "新人", 熱度標籤: "新题材" },
+			},
+		});
+
+		expect(res.statusCode).toBe(200);
+		const body = res.json();
+		expect(body.topic.status).toBe("approved");
+		expect(body.topic.verifiedAt).toBeTruthy();
+		expect(body.topic.facts).toMatchObject({
+			當事人: "新人",
+			熱度標籤: "新题材",
+		});
 	});
 
 	it("不存在的 id → 404", async () => {
@@ -429,6 +467,45 @@ describe("U4/U5 verified + themes", () => {
 			]),
 		);
 		expect(map.出軌).toBe(1); // 只算已核对的 v1
+	});
+
+	it("U5 /themes 不统计已批准或已拒绝的题材池条目", async () => {
+		await savePendingTopic(
+			gossip({
+				id: "pending-verified",
+				sourceUrl: "https://x.com/pending-verified",
+				verifiedAt: "2026-06-18T00:00:00.000Z",
+				status: "pending",
+			}),
+		);
+		await savePendingTopic(
+			gossip({
+				id: "approved-verified",
+				sourceUrl: "https://x.com/approved-verified",
+				verifiedAt: "2026-06-18T00:00:00.000Z",
+				status: "approved",
+			}),
+		);
+		await savePendingTopic(
+			gossip({
+				id: "rejected-verified",
+				sourceUrl: "https://x.com/rejected-verified",
+				verifiedAt: "2026-06-18T00:00:00.000Z",
+				status: "rejected",
+			}),
+		);
+
+		const res = await app.inject({
+			method: "GET",
+			url: "/api/v1/pending-topics/themes",
+		});
+		const map = Object.fromEntries(
+			(res.json().themes as { theme: string; count: number }[]).map((t) => [
+				t.theme,
+				t.count,
+			]),
+		);
+		expect(map.出軌).toBe(1);
 	});
 
 	it("U4 PATCH {verified:true} 置 verifiedAt，?verified=true 命中", async () => {

@@ -44,7 +44,7 @@ describe("AuthView (自用模式·免密)", () => {
 		const onLogin = vi.fn();
 		render(<AuthView onLogin={onLogin} />);
 		expect(await screen.findByText(/启动后端/)).toBeTruthy();
-		expect(screen.getByText("node scripts/setup.mjs")).toBeTruthy();
+		expect(screen.getByText("bash scripts/start-backend.sh")).toBeTruthy();
 		expect(onLogin).not.toHaveBeenCalled();
 	});
 
@@ -64,6 +64,6 @@ describe("AuthView (自用模式·免密)", () => {
 		mockLogin.mockResolvedValueOnce({ ok: false, error: "凭证无效" } as never);
 		render(<AuthView onLogin={vi.fn()} />);
 		await screen.findByText("凭证无效");
-		expect(screen.queryByText("node scripts/setup.mjs")).toBeNull();
+		expect(screen.queryByText("bash scripts/start-backend.sh")).toBeNull();
 	});
 });
