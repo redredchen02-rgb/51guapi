@@ -55,8 +55,6 @@ export interface Settings {
 	backendUrl?: string;
 	/** AI 评审标准 prompt（Phase 3）;空时使用内置四维默认标准。 */
 	reviewCriteriaPrompt?: string;
-	/** 每日批量草稿生成上限（Phase 5）;有效范围 [1, 20],默认 5。 */
-	dailyBatchSize?: number;
 	/** 是否启用 Web 搜索富化（默认 true）;启用后抓取时自动搜索补充资讯。 */
 	webSearchEnabled?: boolean;
 }

@@ -1,14 +1,11 @@
 import type { ContentDraft, FewShotPair, Settings } from "@51guapi/shared";
 import { storage } from "#imports";
 import { clearBackendUrlCache } from "./backend-url";
-import type { Batch } from "./batch";
-import { recoverBatch } from "./batch";
 
 const SETTINGS_KEY = "local:settings";
 const API_KEY = "local:apiKey";
 const BACKEND_TOKEN_KEY = "local:backendToken";
 const CURRENT_DRAFT_KEY = "local:currentDraft";
-const BATCH_KEY = "local:batch";
 const EXTENSION_COUNTERS_KEY = "local:extensionCounters";
 
 /** 默认设置(API key 单独存取,不在此对象内)。 */
@@ -43,33 +40,20 @@ export const DEFAULT_SETTINGS: Settings = {
 	].join("\n"),
 	fewShotPairs: [] as FewShotPair[],
 	recommendedTags: [] as string[],
-	dailyBatchSize: 5,
 };
-
-/** dailyBatchSize 合法范围 [1, 20];undefined → 默认 5。 */
-function clampDailyBatchSize(v: number | undefined): number {
-	if (v === undefined) return 5;
-	return Math.max(1, Math.min(20, Math.round(v)));
-}
 
 /** 读取设置,缺失项回落默认值(storage 为空时返回完整默认对象)。 */
 export async function getSettings(): Promise<Settings> {
 	const stored = await storage.getItem<Partial<Settings>>(SETTINGS_KEY);
 	if (!stored) return structuredClone(DEFAULT_SETTINGS);
-	const merged: Settings = {
+	return {
 		...DEFAULT_SETTINGS,
 		...stored,
 	};
-	merged.dailyBatchSize = clampDailyBatchSize(merged.dailyBatchSize);
-	return merged;
 }
 
 export async function saveSettings(settings: Settings): Promise<void> {
-	const toSave: Settings = {
-		...settings,
-		dailyBatchSize: clampDailyBatchSize(settings.dailyBatchSize),
-	};
-	await storage.setItem(SETTINGS_KEY, toSave);
+	await storage.setItem(SETTINGS_KEY, settings);
 	// 清除后端 URL 缓存，确保下次请求使用新地址
 	clearBackendUrlCache();
 }
@@ -106,27 +90,7 @@ export async function clearCurrentDraft(): Promise<void> {
 	await storage.removeItem(CURRENT_DRAFT_KEY);
 }
 
-// ---- 批量队列持久化 + 崩溃恢复 ----
-// MV3 SW 随时被回收;每次状态推进都写盘。加载时跑 recoverBatch:
-// 卡在 generating 的条目 → error,可重试。
-
-/** 读批次。读到即应用崩溃恢复。无批次 → null。 */
-export async function getBatch(): Promise<Batch | null> {
-	const stored = await storage.getItem<Batch>(BATCH_KEY);
-	if (!stored || !Array.isArray(stored.items)) return null;
-	return recoverBatch(stored);
-}
-
-export async function saveBatch(batch: Batch): Promise<void> {
-	await storage.setItem(BATCH_KEY, batch);
-}
-
-export async function clearBatch(): Promise<void> {
-	await storage.removeItem(BATCH_KEY);
-}
-
 // ---- 扩展端运营计数器（跨会话持久，chrome.storage.local）----
-// batchesCompleted 由 background.ts handleRunBatch 成功完成时递增。
 
 export interface ExtensionCounters {
 	batchesCompleted: number;

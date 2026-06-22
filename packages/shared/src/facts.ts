@@ -101,26 +101,6 @@ const KEY_ALIASES: Record<string, FactKey> = {
 /** 含 URL 的事实字段(连结来源校验的允许集来自这些)。 */
 const URL_FIELDS: FactKey[] = ["漢化", "無修", "简介"];
 
-/**
- * 每个事实字段在组装后 ContentDraft 里的落点(grounding verbatim 校验用)。
- * (ACG 历史映射;吃瓜路径走 assembleGossipDraft + gossipFactUrls)作品名→title、简介→description、
- * 集数/制作/漢化/無修(+扩展 状态/章节数)→body、题材/标签→tags。
- * grounding-gate 与 assembler 共用此映射,杜绝口径漂移。
- */
-export type FactTarget = "title" | "body" | "description" | "tags";
-export const FACT_TARGET: Record<FactKey, FactTarget> = {
-	作品名: "title",
-	简介: "description",
-	集数: "body",
-	制作: "body",
-	漢化: "body",
-	無修: "body",
-	状态: "body",
-	章节数: "body",
-	题材: "tags",
-	标签: "tags",
-};
-
 const TOPIC_FACTS_SEP = "||";
 const FIELD_SEP = "|";
 

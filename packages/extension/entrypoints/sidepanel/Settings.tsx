@@ -98,10 +98,8 @@ export function Settings({ onClose }: { onClose: () => void }) {
 
 			<BackendSection
 				backendUrl={formValues.backendUrl}
-				dailyBatchSize={formValues.dailyBatchSize}
 				getBackendToken={getBackendToken}
 				setBackendUrl={(v) => setFormValue("backendUrl", v)}
-				setDailyBatchSize={(v) => setFormValue("dailyBatchSize", v)}
 				setBackendToken={setBackendToken}
 				onTestConnection={hook.testConnectionFn}
 			/>
