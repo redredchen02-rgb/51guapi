@@ -1,3 +1,4 @@
+import { isIP } from "node:net";
 import type { FastifyInstance } from "fastify";
 import { extractFacts } from "../scraper/fact-extractor.js";
 import {
@@ -18,6 +19,41 @@ interface TriggerBody {
 	siteName: string;
 	url?: string;
 	legacy?: "acg";
+}
+
+/**
+ * 出站目标统一闸：覆盖 caller url / config.url / discovery pick 三来源，交给 adapter 前逐一校验。
+ *   1. 拒 IP 字面：resolveAndPin 会放行解析为公网的 IP literal，故 IP-literal 须在路由输入层拒
+ *      （allowlist 按 hostname 匹配，IP 字面绕过 host 命名空间）。
+ *   2. isHostAllowed 复检：config.url 与 discovery pick 此前未过 allowlist（仅 caller url 过）。
+ * 返回 { status, message }（调用方转错误响应）或 null（放行）。
+ */
+function validateOutboundTarget(
+	rawUrl: string,
+): { status: number; message: string } | null {
+	let parsed: URL;
+	try {
+		parsed = new URL(rawUrl);
+	} catch {
+		return { status: 400, message: "Invalid target URL format" };
+	}
+	if (parsed.username || parsed.password) {
+		return { status: 400, message: "URL credentials not allowed" };
+	}
+	const host = parsed.hostname.replace(/^\[|\]$/g, ""); // 去 IPv6 方括号再判
+	if (isIP(host) !== 0) {
+		return {
+			status: 403,
+			message: `IP literal hosts are not allowed: ${parsed.hostname}`,
+		};
+	}
+	if (!isHostAllowed(parsed, loadSSRFAllowlist())) {
+		return {
+			status: 403,
+			message: `Target hostname blocked by SSRF allowlist: ${parsed.hostname}`,
+		};
+	}
+	return null;
 }
 
 export async function registerScraperRoutes(
@@ -132,14 +168,14 @@ export async function registerScraperRoutes(
 						`URL protocol not allowed for site ${siteName}: ${parsed.protocol}`,
 					);
 				}
+			}
 
-				if (!isHostAllowed(parsed, loadSSRFAllowlist())) {
-					return err(
-						reply,
-						403,
-						`URL hostname blocked by SSRF allowlist: ${parsed.hostname}`,
-					);
-				}
+			// 统一出站闸：无论 targetUrl 来自 caller url / config.url / discovery pick，
+			// 交给 adapter 前都拒 IP 字面 + 复检 allowlist（前者堵 IP-literal 绕过 host
+			// 命名空间，后者补 config.url/pick 此前缺失的 allowlist 校验）。
+			const targetErr = validateOutboundTarget(targetUrl);
+			if (targetErr) {
+				return err(reply, targetErr.status, targetErr.message);
 			}
 
 			const llmEndpoint = process.env.LLM_ENDPOINT;

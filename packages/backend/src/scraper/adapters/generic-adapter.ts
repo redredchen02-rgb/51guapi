@@ -1,14 +1,18 @@
 // 通用 HTML adapter：不實作 SiteAdapter interface，僅供 gossip-routes.ts 直接呼叫。
 // 以 heuristic <a href> 過濾發現詳情頁 URL，fetchContent 提取 og meta 為主。
 //
-// 門面職責：留守 SSRF/流控棧(enforcePathPrefix/readBodyCapped/allowlistCheck/
-// safeFetch 用法 + fetchListPaged 的 nextHost!==startHost 權威跨源復檢)，
+// 門面職責：留守 SSRF/流控棧（共用 guarded-fetch 的 enforcePathPrefix/readBodyCapped/
+// allowlistCheck + safeFetch 用法 + fetchListPaged 的 nextHost!==startHost 權威跨源復檢），
 // 純 HTML 提取與翻頁偵測委派 html-extractors.ts / list-pagination.ts。
 
-import { getChannelByHostname } from "../channel-store.js";
 import type { RawContent } from "../site-adapter.js";
-import { isHostAllowed, loadSSRFAllowlist } from "../ssrf-allowlist.js";
-import { SsrfError, safeFetch } from "../ssrf-guard.js";
+import { safeFetch } from "../ssrf-guard.js";
+import {
+	allowlistCheck,
+	DEFAULT_MAX_BYTES,
+	enforcePathPrefix,
+	readBodyCapped,
+} from "./guarded-fetch.js";
 import {
 	extractBody,
 	extractH1,
@@ -16,73 +20,6 @@ import {
 	extractTitle,
 } from "./html-extractors.js";
 import { detectNextPageUrl } from "./list-pagination.js";
-
-// 每跳重过 allowlist:运行时载入 env ∪ 渠道存储,redirect 目标不在表内即拒。
-function allowlistCheck(url: URL): boolean {
-	return isHostAllowed(url, loadSSRFAllowlist());
-}
-
-const DEFAULT_MAX_BYTES = 5 * 1024 * 1024;
-
-/**
- * U6 P0:抓取前强制单渠道 path_prefix。
- *
- * 信任边界:env 基线 allowlist(ALLOWED_HOSTS)来的 host 可能无渠道记录 —— 这种
- * 情况维持现状放行(host 命中即可爬全域),不破坏既有 env 渠道。只对「操作者经
- * channel-store 新增的渠道」强制其 pathPrefix:有渠道记录则 URL.pathname 必须以
- * pathPrefix 开头,否则抛 SsrfError 明确拒绝(不静默放行)。
- *
- * 返回该 host 的渠道记录(若有),供后续 max_bytes 取单渠道上限。
- */
-function enforcePathPrefix(
-	target: URL,
-): ReturnType<typeof getChannelByHostname> {
-	const channel = getChannelByHostname(target.hostname);
-	if (!channel) return null; // env-only host,无渠道约束 → 维持现状放行
-	// 归一去尾斜杠后要求分隔符边界:prefix "/news" 只放行 "/news" 与 "/news/...",
-	// 不放行兄弟路径 "/newsletter"、"/news-admin"(startsWith 无边界会越权)。
-	const prefix = (channel.pathPrefix || "/").replace(/\/+$/, "") || "/";
-	const path = target.pathname;
-	const ok = prefix === "/" || path === prefix || path.startsWith(`${prefix}/`);
-	if (!ok) {
-		throw new SsrfError(
-			`URL path ${path} 不在渠道 ${target.hostname} 允许的前缀 ${prefix} 内`,
-		);
-	}
-	return channel;
-}
-
-/**
- * U6 P0:流式读取响应体并强制 max_bytes 截断。
- *
- * 不信任 content-length(服务器可不返回或谎报)。逐块累计字节,超过 limit 即中止
- * 并抛错。redirect 跟随由 safeFetch 逐跳收敛完成,最终响应体到这层才被消费,故此
- * 处的截断也覆盖 redirect 链的最终响应体(safeFetch 内部无需改)。
- */
-async function readBodyCapped(res: Response, limit: number): Promise<string> {
-	const body = res.body;
-	if (!body) return res.text(); // 无可读流(测试桩等)→ 回退,信任 mock
-	const reader = body.getReader();
-	const decoder = new TextDecoder();
-	let total = 0;
-	let out = "";
-	try {
-		for (;;) {
-			const { done, value } = await reader.read();
-			if (done) break;
-			total += value.byteLength;
-			if (total > limit) {
-				await reader.cancel();
-				throw new Error(`Response too large (streamed > ${limit} bytes)`);
-			}
-			out += decoder.decode(value, { stream: true });
-		}
-	} finally {
-		reader.releaseLock();
-	}
-	out += decoder.decode();
-	return out;
-}
 
 const UA =
 	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36";
@@ -121,7 +58,7 @@ const MAX_PAGES = 50;
  */
 async function fetchListPage(listUrl: string): Promise<ListPageResult> {
 	// U6 P0:抓取前按目标 hostname 强制单渠道 path_prefix。
-	let channel: ReturnType<typeof getChannelByHostname>;
+	let channel: ReturnType<typeof enforcePathPrefix>;
 	try {
 		channel = enforcePathPrefix(new URL(listUrl));
 	} catch {

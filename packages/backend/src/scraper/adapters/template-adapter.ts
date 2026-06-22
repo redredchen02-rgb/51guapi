@@ -11,12 +11,17 @@
  *   - name：适配器唯一名称（与 ScraperSiteConfig.adapterName 对应）
  *   - fetchContent(url)：返回 RawContent（title + body + url + 可选 coverImageUrl）
  *
+ * 安全约束（不可绕过）：
+ *   - 出站抓取必经 guardedFetchHtml（SSRF/流控三件套：逐跳 allowlist 复检 +
+ *     渠道 path_prefix 越权拒 + readBodyCapped byte cap）。切勿改回裸 fetch/safeFetch。
+ *
  * @example
  * ```ts
+ * import { guardedFetchHtml } from "./guarded-fetch.js";
  * export class MySiteAdapter implements SiteAdapter {
  *   readonly name = "my-site";
  *   async fetchContent(url: string): Promise<RawContent> {
- *     const html = await fetch(url).then(r => r.text());
+ *     const html = await guardedFetchHtml(url, { "User-Agent": "..." });
  *     return {
  *       title: extractTitle(html),
  *       body: extractBody(html),
@@ -28,7 +33,7 @@
  */
 
 import type { RawContent, SiteAdapter } from "../site-adapter.js";
-import { safeFetch } from "../ssrf-guard.js";
+import { guardedFetchHtml } from "./guarded-fetch.js";
 
 // ---- HTML 解析辅助 ----
 // 简单正则足够应对无 DOM 环境的服务端；如目标站点有复杂 DOM 需求可引入 cheerio。
@@ -90,20 +95,15 @@ export class TemplateSiteAdapter implements SiteAdapter {
 	readonly name = "template-site";
 
 	async fetchContent(url: string): Promise<RawContent> {
-		const res = await safeFetch(url, {
-			headers: {
-				// [CUSTOMIZE] 如目标站点有 UA 限制，调整此处
-				"User-Agent":
-					"Mozilla/5.0 (compatible; 51guapi-scraper/1.0; +http://127.0.0.1:3002)",
-				// [CUSTOMIZE] 如需登录 cookie，在此添加 Cookie 头（从环境变量读取，切勿硬编码）
-			},
+		// 所有出站抓取必经 guardedFetchHtml：自动套用 SSRF/流控三件套
+		// （allowlistCheck 逐跳复检 + enforcePathPrefix 越权拒 + readBodyCapped byte cap）。
+		// [安全约束] 切勿改回裸 fetch/safeFetch——那会绕过 allowlist 逐跳复检与体积上限。
+		const html = await guardedFetchHtml(url, {
+			// [CUSTOMIZE] 如目标站点有 UA 限制，调整此处
+			"User-Agent":
+				"Mozilla/5.0 (compatible; 51guapi-scraper/1.0; +http://127.0.0.1:3002)",
+			// [CUSTOMIZE] 如需登录 cookie，在此添加 Cookie 头（从环境变量读取，切勿硬编码）
 		});
-
-		if (!res.ok) {
-			throw new Error(`HTTP ${res.status}: Failed to fetch ${url}`);
-		}
-
-		const html = await res.text();
 
 		const title = extractTitle(html);
 		const body = extractBody(html);

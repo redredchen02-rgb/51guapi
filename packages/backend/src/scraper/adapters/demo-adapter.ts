@@ -1,5 +1,5 @@
 import type { RawContent, SiteAdapter } from "../site-adapter.js";
-import { safeFetch } from "../ssrf-guard.js";
+import { guardedFetchHtml } from "./guarded-fetch.js";
 
 function extractTitle(html: string): string {
 	const m = html.match(/<title[^>]*>([^<]*)<\/title>/i);
@@ -17,18 +17,12 @@ export const demoAdapter: SiteAdapter = {
 	name: "demo",
 
 	async fetchContent(url: string): Promise<RawContent> {
-		const res = await safeFetch(url, {
-			headers: {
-				"User-Agent":
-					"Mozilla/5.0 (compatible; 51guapi-scraper/1.0; +http://127.0.0.1:3002)",
-			},
+		// 经共用三件套出站（allowlistCheck + enforcePathPrefix + readBodyCapped）：
+		// 不裸调 safeFetch，避免漏接逐跳 allowlist 复检与 byte cap。
+		const html = await guardedFetchHtml(url, {
+			"User-Agent":
+				"Mozilla/5.0 (compatible; 51guapi-scraper/1.0; +http://127.0.0.1:3002)",
 		});
-
-		if (!res.ok) {
-			throw new Error(`HTTP ${res.status}: Failed to fetch ${url}`);
-		}
-
-		const html = await res.text();
 		const title = extractTitle(html);
 		const body = extractBody(html);
 

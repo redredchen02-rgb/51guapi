@@ -1,8 +1,15 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TemplateSiteAdapter } from "./template-adapter.js";
 
-vi.mock("../ssrf-guard.js", () => ({
+// template 现经共用 guardedFetchHtml 出站；保留真 SsrfError，仅替换 safeFetch。
+vi.mock("../ssrf-guard.js", async (importOriginal) => ({
+	...(await importOriginal<typeof import("../ssrf-guard.js")>()),
 	safeFetch: vi.fn(),
+}));
+
+vi.mock("../channel-store.js", () => ({
+	getChannelByHostname: vi.fn(() => null),
+	listChannels: vi.fn(() => []),
 }));
 
 import { safeFetch } from "../ssrf-guard.js";
@@ -15,10 +22,16 @@ function makeResponse(body: string, status = 200): Response {
 		status,
 		headers: new Headers(),
 		text: async () => body,
+		body: null,
 	} as unknown as Response;
 }
 
 const adapter = new TemplateSiteAdapter();
+
+beforeEach(() => {
+	mockSafeFetch.mockReset();
+	delete process.env.ALLOWED_HOSTS;
+});
 
 describe("TemplateSiteAdapter.fetchContent", () => {
 	it("name 为 'template-site'", () => {
@@ -93,5 +106,21 @@ describe("TemplateSiteAdapter.fetchContent", () => {
 		await expect(adapter.fetchContent("https://example.com/f")).rejects.toThrow(
 			/Empty body/,
 		);
+	});
+
+	// 回归闸：脚手架默认经 guardedFetchHtml 出站，复制即继承三件套。
+	// 若改回裸 safeFetch（无 allowlistCheck 第三参），本断言转红。
+	it("Security：经三件套出站 → 传真 allowlistCheck 闭包（deny-by-default）", async () => {
+		mockSafeFetch.mockResolvedValueOnce(
+			makeResponse("<article>正文</article>"),
+		);
+		await adapter.fetchContent("https://example.com/g");
+		const opts = mockSafeFetch.mock.calls[0]?.[2] as
+			| { allowlistCheck?: (u: URL) => boolean }
+			| undefined;
+		expect(opts?.allowlistCheck).toEqual(expect.any(Function));
+		expect(
+			opts?.allowlistCheck?.(new URL("https://not-allowed-zzz.example/")),
+		).toBe(false);
 	});
 });
