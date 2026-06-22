@@ -1,5 +1,5 @@
 import type { PendingTopic, RejectionReason } from "@51guapi/shared";
-import { apiFetch } from "./api-fetch";
+import { type ApiFetchInit, apiFetch } from "./api-fetch";
 import { logger } from "./logger";
 
 // PendingTopic 现为 @51guapi/shared 的 canonical 契约;此处 re-export 保持既有 import 路径。
@@ -32,6 +32,33 @@ export interface PendingTopicResponse {
 	ok: boolean;
 	topic?: PendingTopic;
 	error?: string;
+}
+
+/**
+ * 收敛各 client 函数重复的 apiFetch + 401/非 ok 回退 + catch+logger.warn 样板。
+ *
+ * 边界:401 与非 ok 都直接返回 `fallback`(语义等价于原各函数——bool 函数 `res.ok`
+ * 在非 ok 时本就是 false;array 函数本就回退 `[]`),只有 2xx 才进 `onOk` 解析。
+ * `fnName` 作为 logger 标签逐函数传入,保持原日志可定位性。fallback 类型由调用方
+ * 决定(array 函数传 `[]`,bool 函数传 `false`),divergence 经泛型保留。
+ */
+async function requestWithFallback<T>(
+	fnName: string,
+	fallback: T,
+	path: string,
+	init: ApiFetchInit,
+	onOk: (res: Response) => Promise<T>,
+): Promise<T> {
+	try {
+		const res = await apiFetch(path, init);
+		if (res.status === 401 || !res.ok) return fallback;
+		return await onOk(res);
+	} catch (e) {
+		logger.warn("pending-client", `${fnName} failed`, {
+			error: e instanceof Error ? e.message : String(e),
+		});
+		return fallback;
+	}
 }
 
 /**
@@ -71,21 +98,16 @@ export async function fetchPendingTopics(
 	if (opts.verified !== undefined) qp.set("verified", String(opts.verified));
 	const params = qp.toString() ? `?${qp.toString()}` : "";
 
-	try {
-		const res = await apiFetch(`/api/v1/pending-topics${params}`, {
-			fetchFn,
-			timeoutMs: timeoutMs ?? 10_000,
-		});
-		if (res.status === 401) return [];
-		if (!res.ok) return [];
-		const data = (await res.json()) as PendingTopicsResponse;
-		return data.ok && data.topics ? data.topics : [];
-	} catch (e) {
-		logger.warn("pending-client", "fetchPendingTopics failed", {
-			error: e instanceof Error ? e.message : String(e),
-		});
-		return [];
-	}
+	return requestWithFallback<PendingTopic[]>(
+		"fetchPendingTopics",
+		[],
+		`/api/v1/pending-topics${params}`,
+		{ fetchFn, timeoutMs: timeoutMs ?? 10_000 },
+		async (res) => {
+			const data = (await res.json()) as PendingTopicsResponse;
+			return data.ok && data.topics ? data.topics : [];
+		},
+	);
 }
 
 /**
@@ -96,68 +118,13 @@ export async function patchPendingTopic(
 	patch: { facts?: Record<string, string> },
 	timeoutMs = 10_000,
 ): Promise<boolean> {
-	try {
-		const res = await apiFetch(
-			`/api/v1/pending-topics/${encodeURIComponent(id)}`,
-			{
-				method: "PATCH",
-				body: JSON.stringify(patch),
-				timeoutMs,
-			},
-		);
-		if (res.status === 401) return false;
-		return res.ok;
-	} catch (e) {
-		logger.warn("pending-client", "patchPendingTopic failed", {
-			error: e instanceof Error ? e.message : String(e),
-		});
-		return false;
-	}
-}
-
-/**
- * 旧 ACG 抓取入口。当前吃瓜流程请使用 gossip-client 的 from-url 路径。
- * 后端未显式 legacy opt-in 时会返回 410；保留函数只为兼容历史调用方。
- */
-export async function triggerScrape(
-	siteName: string,
-	timeoutMs = 15_000,
-): Promise<boolean> {
-	try {
-		const res = await apiFetch("/api/v1/scraper/trigger", {
-			method: "POST",
-			body: JSON.stringify({ siteName }),
-			timeoutMs,
-		});
-		if (res.status === 401) return false;
-		return res.ok;
-	} catch (e) {
-		logger.warn("pending-client", "triggerScrape failed", {
-			error: e instanceof Error ? e.message : String(e),
-		});
-		return false;
-	}
-}
-
-/**
- * 拉取已注册的适配器列表（R3）。
- */
-export async function fetchAdapters(timeoutMs = 10_000): Promise<string[]> {
-	try {
-		const res = await apiFetch("/api/v1/scraper/adapters", { timeoutMs });
-		if (res.status === 401) return [];
-		if (!res.ok) return [];
-		const data = (await res.json()) as {
-			ok: boolean;
-			adapters?: { name: string }[];
-		};
-		return data.ok && data.adapters ? data.adapters.map((a) => a.name) : [];
-	} catch (e) {
-		logger.warn("pending-client", "fetchAdapters failed", {
-			error: e instanceof Error ? e.message : String(e),
-		});
-		return [];
-	}
+	return requestWithFallback<boolean>(
+		"patchPendingTopic",
+		false,
+		`/api/v1/pending-topics/${encodeURIComponent(id)}`,
+		{ method: "PATCH", body: JSON.stringify(patch), timeoutMs },
+		async () => true,
+	);
 }
 
 /**
@@ -169,26 +136,20 @@ export async function updatePendingStatus(
 	rejectedReason?: RejectionReason,
 	timeoutMs = 10_000,
 ): Promise<boolean> {
-	try {
-		const res = await apiFetch(
-			`/api/v1/pending-topics/${encodeURIComponent(id)}`,
-			{
-				method: "PATCH",
-				body: JSON.stringify({
-					status,
-					...(rejectedReason ? { rejectedReason } : {}),
-				}),
-				timeoutMs,
-			},
-		);
-		if (res.status === 401) return false;
-		return res.ok;
-	} catch (e) {
-		logger.warn("pending-client", "updatePendingStatus failed", {
-			error: e instanceof Error ? e.message : String(e),
-		});
-		return false;
-	}
+	return requestWithFallback<boolean>(
+		"updatePendingStatus",
+		false,
+		`/api/v1/pending-topics/${encodeURIComponent(id)}`,
+		{
+			method: "PATCH",
+			body: JSON.stringify({
+				status,
+				...(rejectedReason ? { rejectedReason } : {}),
+			}),
+			timeoutMs,
+		},
+		async () => true,
+	);
 }
 
 /**
@@ -198,20 +159,16 @@ export async function fetchThemeCounts(
 	fetchFn?: typeof fetch,
 	timeoutMs = 10_000,
 ): Promise<ThemeCount[]> {
-	try {
-		const res = await apiFetch("/api/v1/pending-topics/themes", {
-			fetchFn,
-			timeoutMs,
-		});
-		if (res.status === 401 || !res.ok) return [];
-		const data = (await res.json()) as { ok: boolean; themes?: ThemeCount[] };
-		return data.ok && data.themes ? data.themes : [];
-	} catch (e) {
-		logger.warn("pending-client", "fetchThemeCounts failed", {
-			error: e instanceof Error ? e.message : String(e),
-		});
-		return [];
-	}
+	return requestWithFallback<ThemeCount[]>(
+		"fetchThemeCounts",
+		[],
+		"/api/v1/pending-topics/themes",
+		{ fetchFn, timeoutMs },
+		async (res) => {
+			const data = (await res.json()) as { ok: boolean; themes?: ThemeCount[] };
+			return data.ok && data.themes ? data.themes : [];
+		},
+	);
 }
 
 /**
@@ -222,21 +179,11 @@ export async function setPendingVerified(
 	verified: boolean,
 	timeoutMs = 10_000,
 ): Promise<boolean> {
-	try {
-		const res = await apiFetch(
-			`/api/v1/pending-topics/${encodeURIComponent(id)}`,
-			{
-				method: "PATCH",
-				body: JSON.stringify({ verified }),
-				timeoutMs,
-			},
-		);
-		if (res.status === 401) return false;
-		return res.ok;
-	} catch (e) {
-		logger.warn("pending-client", "setPendingVerified failed", {
-			error: e instanceof Error ? e.message : String(e),
-		});
-		return false;
-	}
+	return requestWithFallback<boolean>(
+		"setPendingVerified",
+		false,
+		`/api/v1/pending-topics/${encodeURIComponent(id)}`,
+		{ method: "PATCH", body: JSON.stringify({ verified }), timeoutMs },
+		async () => true,
+	);
 }
