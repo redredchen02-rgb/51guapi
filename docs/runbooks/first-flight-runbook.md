@@ -1,5 +1,7 @@
 # 首飞 Runbook（首次真实上线）
 
+> ⚠️ **历史归档（已失效）**：本文档描述的是**已删除的发布器流程**（真实发布 / 后台填充 / layui 弹层 / 密码登录）。当前产品为 **export-only 吃瓜小帮手**——只爬取＋提炼＋导出，**不发布、不写回、登入免密**。本文档仅作历史参考，**不反映现状、不作操作指南**。
+
 > 来源计划：`docs/plans/2026-06-15-001-refactor-release-readiness-remediation-plan.md`（B1）。
 > 衔接 `docs/plans/2026-06-11-004` Unit 5（路径 B 真实批次验收，仍未完成）——不重开。
 
@@ -19,7 +21,7 @@
   - [x] ~~确认 release 构建**不把 `LLM_API_KEY` 打进扩展 bundle**~~ ✅ **已查(2026-06-15)**:`LLM_API_KEY` 仅在 `packages/backend/**` 经 `process.env` 读取,扩展代码**从不引用**,结构上不可能进 bundle。
   - [x] ~~若旧 key 曾进 git 历史:`git filter-repo`/BFG 清史~~ ✅ **已查(2026-06-15)可省**:全史 `git log -S "sk-"` 搜不到任何 key 字面值,`.env` 未被追踪(仅 `.env.example`),CI gitleaks 全史扫描(`fetch-depth:0`)当前 passing。**git 历史无密钥,清史不需要。**(撤销旧 key 仍须做——防它从打包/日志等别处泄漏;revoke 才是真边界。)
 - [ ] **JWT_SECRET**：换强随机值（≥32 字节）。轮换后所有旧 token 失效，扩展须重登。
-- [ ] **JWT_ADMIN_PASSWORD_HASH**：scrypt 生成（命令见 `AGENTS.md` 第 24–26 行 / `hash-password.mjs`）。
+- [ ] ~~JWT_ADMIN_PASSWORD_HASH~~（已废弃：自用模式登入免密，无密码哈希、相关生成脚本已删）。
 - [ ] 改 `.env` 后启动后端，确认 fail-closed 校验**通过**（弱值会被拒启动）。
 
 ## Step 2 — CORS 收紧 🟢前置 + 🔴核验

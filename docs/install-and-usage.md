@@ -191,7 +191,7 @@ TG_CHAT_ID=<你的 chat id>
 - **不自动提交/发布**（硬约束）：扩展不注入第三方站点，不填表，不点发布，不写回任何站点。
 - **防幻觉**：生成草稿时同时传入结构化 facts 与 enrichment；导出 JSON / Markdown 会保留人工核对后的 facts。
 - **API key 安全**：LLM key 只存 `packages/backend/.env`，扩展不保存、不发送、不展示密钥。
-- **XSS 防护**：导入/预览 LLM 返回内容前按白名单消毒（剥除 `<script>`/事件处理器等）。
+- **正文不渲染 HTML**：草稿正文以纯文本展示/编辑，不做 HTML 渲染（无 live XSS 面）；rewrite 模型产出在导出前中和。未来若新增正文 HTML 渲染须同步引入 DOMPurify。
 
 ---
 
