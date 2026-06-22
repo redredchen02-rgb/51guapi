@@ -20,11 +20,16 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version-file: ".nvmrc"
           cache: "pnpm"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      # 脱敏强制门:与 CI 同闸,fail-fast 在任何 build/artifact 之前。tag 发布路径
+      # 此前绕过此闸(PR 必过、tag 却不过)是 fail-open,此处补齐。
+      - name: Check fixture secrets
+        run: bash scripts/check-fixture-secrets.sh
 
       - name: Build shared
         run: pnpm --filter @51guapi/shared build
@@ -55,8 +60,27 @@ jobs:
           path: extension.zip
           if-no-files-found: error
 
+  # 无条件强制密钥扫描:与 CI 同闸。tag 发布此前完全绕过 gitleaks(PR 必过、tag 却不过)
+  # 是 fail-open。fetch-depth:0 拉全史,既扫本次 tag 也覆盖历史。失败即阻断 Release。
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # 直接跑 gitleaks 二进制(非 action wrapper):wrapper 在某些 commit range 下因
+      # git 向 stderr 输出(如 dubious ownership)误判失败,即便零泄密。直接 detect 全史。
+      - name: gitleaks (binary)
+        run: |
+          VERSION=8.24.3
+          curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v${VERSION}/gitleaks_${VERSION}_linux_x64.tar.gz" \
+            | tar -xz gitleaks
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          ./gitleaks detect --source . --redact -v --exit-code 1
+
   release:
-    needs: build-and-verify
+    needs: [build-and-verify, gitleaks]
     runs-on: ubuntu-latest
     steps:
       - name: Download extension artifact
