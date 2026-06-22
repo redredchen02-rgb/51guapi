@@ -1,14 +1,18 @@
-import type { ContentDraft, FewShotPair, Settings } from "@51guapi/shared";
+import type {
+	ContentDraft,
+	FewShotPair,
+	GossipFactsBlock,
+	Settings,
+} from "@51guapi/shared";
 import { storage } from "#imports";
 import { clearBackendUrlCache } from "./backend-url";
 
 const SETTINGS_KEY = "local:settings";
-const API_KEY = "local:apiKey";
 const BACKEND_TOKEN_KEY = "local:backendToken";
 const CURRENT_DRAFT_KEY = "local:currentDraft";
 const EXTENSION_COUNTERS_KEY = "local:extensionCounters";
 
-/** 默认设置(API key 单独存取,不在此对象内)。 */
+/** 默认设置。LLM API key 只在后端 .env 中配置,扩展不保存。 */
 export const DEFAULT_SETTINGS: Settings = {
 	endpoint: "",
 	model: "gpt-4o-mini",
@@ -58,16 +62,7 @@ export async function saveSettings(settings: Settings): Promise<void> {
 	clearBackendUrlCache();
 }
 
-/** API key 单独存取(明文存于 chrome.storage.local,设置页须提示风险)。 */
-export async function getApiKey(): Promise<string> {
-	return (await storage.getItem<string>(API_KEY)) ?? "";
-}
-
-export async function saveApiKey(key: string): Promise<void> {
-	await storage.setItem(API_KEY, key);
-}
-
-/** 后端 JWT token（与 apiKey 分开存取）。 */
+/** 后端 JWT token。 */
 export async function getBackendToken(): Promise<string> {
 	return (await storage.getItem<string>(BACKEND_TOKEN_KEY)) ?? "";
 }
@@ -76,14 +71,39 @@ export async function saveBackendToken(token: string): Promise<void> {
 	await storage.setItem(BACKEND_TOKEN_KEY, token);
 }
 
-// 当前在编草稿的崩溃恢复(≠ 草稿库):side panel 重开/SW 回收都可能丢失,
-// 故每次草稿变更写一份;"下一条"或导出完成时清除。
-export async function getCurrentDraft(): Promise<ContentDraft | null> {
-	return (await storage.getItem<ContentDraft>(CURRENT_DRAFT_KEY)) ?? null;
+export interface CurrentDraftSnapshot {
+	draft: ContentDraft;
+	facts: GossipFactsBlock | null;
 }
 
-export async function saveCurrentDraft(draft: ContentDraft): Promise<void> {
-	await storage.setItem(CURRENT_DRAFT_KEY, draft);
+function isCurrentDraftSnapshot(value: unknown): value is CurrentDraftSnapshot {
+	if (typeof value !== "object" || value === null) return false;
+	const obj = value as Record<string, unknown>;
+	return typeof obj.draft === "object" && obj.draft !== null;
+}
+
+// 当前在编草稿的崩溃恢复(≠ 草稿库):side panel 重开/SW 回收都可能丢失,
+// 故每次草稿变更写一份;"下一条"或导出完成时清除。facts 一并保存,确保待审池
+// 生成的草稿恢复后仍可导出 gossipFacts。兼容旧版直接存 ContentDraft 的形状。
+export async function getCurrentDraft(): Promise<CurrentDraftSnapshot | null> {
+	const stored = await storage.getItem<ContentDraft | CurrentDraftSnapshot>(
+		CURRENT_DRAFT_KEY,
+	);
+	if (!stored) return null;
+	if (isCurrentDraftSnapshot(stored)) {
+		return {
+			draft: stored.draft,
+			facts: stored.facts ?? null,
+		};
+	}
+	return { draft: stored, facts: null };
+}
+
+export async function saveCurrentDraft(
+	draft: ContentDraft,
+	facts: GossipFactsBlock | null = null,
+): Promise<void> {
+	await storage.setItem(CURRENT_DRAFT_KEY, { draft, facts });
 }
 
 export async function clearCurrentDraft(): Promise<void> {
@@ -93,11 +113,11 @@ export async function clearCurrentDraft(): Promise<void> {
 // ---- 扩展端运营计数器（跨会话持久，chrome.storage.local）----
 
 export interface ExtensionCounters {
-	batchesCompleted: number;
+	draftsGenerated: number;
 }
 
 function defaultExtensionCounters(): ExtensionCounters {
-	return { batchesCompleted: 0 };
+	return { draftsGenerated: 0 };
 }
 
 /**
@@ -109,8 +129,12 @@ export async function getExtensionCounters(): Promise<ExtensionCounters> {
 	);
 	const def = defaultExtensionCounters();
 	if (!stored) return def;
+	const legacy = stored as Partial<ExtensionCounters> & {
+		batchesCompleted?: number;
+	};
 	return {
-		batchesCompleted: stored.batchesCompleted ?? def.batchesCompleted,
+		draftsGenerated:
+			stored.draftsGenerated ?? legacy.batchesCompleted ?? def.draftsGenerated,
 	};
 }
 

@@ -30,7 +30,7 @@ describe("useAutoSave", () => {
 			vi.advanceTimersByTime(1000);
 		});
 
-		expect(saveCurrentDraft).toHaveBeenCalledWith(draft);
+		expect(saveCurrentDraft).toHaveBeenCalledWith(draft, null);
 	});
 
 	it("debounces multiple saves", async () => {
@@ -55,7 +55,7 @@ describe("useAutoSave", () => {
 		});
 
 		expect(saveCurrentDraft).toHaveBeenCalledTimes(1);
-		expect(saveCurrentDraft).toHaveBeenCalledWith(draft2);
+		expect(saveCurrentDraft).toHaveBeenCalledWith(draft2, null);
 	});
 
 	it("saves immediately when saveImmediately is true", async () => {
@@ -63,9 +63,25 @@ describe("useAutoSave", () => {
 		const draft = { id: "1", title: "测试" };
 
 		act(() => {
-			result.current.saveDraft(draft as any, true);
+			result.current.saveDraft(draft as any, null, true);
 		});
 
-		expect(saveCurrentDraft).toHaveBeenCalledWith(draft);
+		expect(saveCurrentDraft).toHaveBeenCalledWith(draft, null);
+	});
+
+	it("saves draft with facts after delay", async () => {
+		const { result } = renderHook(() => useAutoSave());
+		const draft = { id: "1", title: "测试" };
+		const facts = { 當事人: "A", 來源連結: "https://example.com" };
+
+		act(() => {
+			result.current.saveDraft(draft as any, facts as any);
+		});
+
+		act(() => {
+			vi.advanceTimersByTime(1000);
+		});
+
+		expect(saveCurrentDraft).toHaveBeenCalledWith(draft, facts);
 	});
 });

@@ -8,7 +8,7 @@ vi.mock("../../lib/storage", () => ({
 	getSettings: vi.fn(async () => ({
 		endpoint: "http://127.0.0.1:3002",
 		model: "m",
-		apiKey: "",
+		reviewCriteriaPrompt: "",
 	})),
 }));
 
@@ -20,9 +20,11 @@ vi.mock("../../lib/llm", async (orig) => ({
 }));
 
 import { reviewDraft, rewriteDraft } from "../../lib/llm.js";
+import { getSettings } from "../../lib/storage.js";
 
 const mockReview = vi.mocked(reviewDraft);
 const mockRewrite = vi.mocked(rewriteDraft);
+const mockGetSettings = vi.mocked(getSettings);
 
 const draft: ContentDraft = {
 	id: "d1",
@@ -43,6 +45,14 @@ describe("DraftReviewPanel", () => {
 	beforeEach(() => {
 		mockReview.mockReset();
 		mockRewrite.mockReset();
+		mockGetSettings.mockResolvedValue({
+			endpoint: "http://127.0.0.1:3002",
+			model: "m",
+			promptTemplate: "",
+			fewShotPairs: [],
+			recommendedTags: [],
+			reviewCriteriaPrompt: "",
+		});
 	});
 
 	it("AI 评审 → 渲染各维度反馈", async () => {
@@ -61,6 +71,35 @@ describe("DraftReviewPanel", () => {
 		expect(await screen.findByText(/body_richness/)).toBeTruthy();
 		expect(screen.getByText(/title_quality/)).toBeTruthy();
 		expect(mockReview).toHaveBeenCalledOnce();
+	});
+
+	it("AI 评审 → 使用设置里的自定义评审标准", async () => {
+		mockGetSettings.mockResolvedValue({
+			endpoint: "http://127.0.0.1:3002",
+			model: "m",
+			promptTemplate: "",
+			fewShotPairs: [],
+			recommendedTags: [],
+			reviewCriteriaPrompt: "只按是否适合导出评分",
+		});
+		mockReview.mockResolvedValue({
+			ok: true,
+			result: { ok: true, dimensions: [] },
+		});
+
+		render(<DraftReviewPanel draft={draft} onApply={vi.fn()} />);
+		fireEvent.click(screen.getByText("AI 评审"));
+
+		await screen.findByText(/全部维度通过/);
+		expect(mockReview).toHaveBeenCalledWith(
+			draft,
+			"只按是否适合导出评分",
+			expect.objectContaining({
+				settings: expect.objectContaining({
+					reviewCriteriaPrompt: "只按是否适合导出评分",
+				}),
+			}),
+		);
 	});
 
 	it("未达标维度 → 改写 → 采纳:应用合并草稿,保留 original 的 id/coverImageUrl", async () => {

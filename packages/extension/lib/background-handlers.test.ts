@@ -13,7 +13,6 @@ function makeDeps(
 	const settings: Settings = { ...DEFAULT_SETTINGS };
 	return {
 		getSettings: vi.fn(async () => settings),
-		getApiKey: vi.fn(async () => "sk-test"),
 		generateDraftFn: vi.fn(
 			async (): Promise<GenerateDraftResponse> => ({
 				ok: true,

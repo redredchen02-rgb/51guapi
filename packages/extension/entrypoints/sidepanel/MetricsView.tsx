@@ -18,14 +18,10 @@ function parsePrometheus(text: string): BackendMetrics {
 		return m ? Number(m[1]) : 0;
 	};
 	return {
-		scraperSuccess: num(
-			/publisher_scraper_runs_total\{status="success"\}\s+(\d+)/,
-		),
-		scraperFailed: num(
-			/publisher_scraper_runs_total\{status="failed"\}\s+(\d+)/,
-		),
-		draftsSuccess: num(/publisher_drafts_total\{status="success"\}\s+(\d+)/),
-		draftsFailed: num(/publisher_drafts_total\{status="failed"\}\s+(\d+)/),
+		scraperSuccess: num(/guapi_scraper_runs_total\{status="success"\}\s+(\d+)/),
+		scraperFailed: num(/guapi_scraper_runs_total\{status="failed"\}\s+(\d+)/),
+		draftsSuccess: num(/guapi_drafts_total\{status="success"\}\s+(\d+)/),
+		draftsFailed: num(/guapi_drafts_total\{status="failed"\}\s+(\d+)/),
 	};
 }
 
@@ -107,9 +103,7 @@ export function MetricsView({ onBack }: Props) {
 							? rate(backend.scraperSuccess, backend.scraperFailed)
 							: "—"}
 				</div>
-				<div style={cardNote}>
-					自上次后端启动（publisher_scraper_runs_total）
-				</div>
+				<div style={cardNote}>自上次后端启动（guapi_scraper_runs_total）</div>
 			</div>
 
 			<div style={card}>
@@ -121,7 +115,7 @@ export function MetricsView({ onBack }: Props) {
 							? rate(backend.draftsSuccess, backend.draftsFailed)
 							: "—"}
 				</div>
-				<div style={cardNote}>自上次后端启动（publisher_drafts_total）</div>
+				<div style={cardNote}>自上次后端启动（guapi_drafts_total）</div>
 			</div>
 
 			{!backendOffline &&

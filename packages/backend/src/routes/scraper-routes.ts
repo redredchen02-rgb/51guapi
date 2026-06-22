@@ -21,12 +21,13 @@ import {
 interface TriggerBody {
 	siteName: string;
 	url?: string;
+	legacy?: "acg";
 }
 
 export async function registerScraperRoutes(
 	app: FastifyInstance,
 ): Promise<void> {
-	// 手动触发单个站点的抓取（scraper 触发是昂贵操作，加严 rate limit）
+	// Legacy ACG 手动抓取。当前吃瓜主流程使用 /api/v1/gossip/topics/from-url。
 	app.post<{ Body: TriggerBody }>(
 		"/api/v1/scraper/trigger",
 		{
@@ -36,7 +37,16 @@ export async function registerScraperRoutes(
 			},
 		},
 		async (request, reply) => {
-			const { siteName, url } = request.body;
+			const { siteName, url, legacy } = request.body;
+
+			if (legacy !== "acg") {
+				return err(
+					reply,
+					410,
+					"Legacy ACG scraper trigger is disabled for the gossip workflow. Use /api/v1/gossip/topics/from-url, or pass legacy:'acg' only for archived ACG maintenance.",
+					"legacy-acg-disabled",
+				);
+			}
 
 			if (!siteName) {
 				return err(reply, 400, "Missing required field: siteName");
@@ -199,6 +209,7 @@ export async function registerScraperRoutes(
 					rawContent,
 					facts,
 					confidence,
+					domain: "acg",
 					...(coverImageUrl ? { coverImageUrl } : {}),
 					...(enrichment ? { enrichment } : {}),
 					status: "pending",
@@ -240,6 +251,7 @@ export async function registerScraperRoutes(
 			minConfidence?: number;
 			maxItems?: number;
 			enableEnrichment?: boolean;
+			legacy?: "acg";
 		};
 	}>(
 		"/api/v1/scraper/auto-generate",
@@ -249,7 +261,17 @@ export async function registerScraperRoutes(
 			},
 		},
 		async (request, reply) => {
-			const { minConfidence, maxItems, enableEnrichment } = request.body ?? {};
+			const { minConfidence, maxItems, enableEnrichment, legacy } =
+				request.body ?? {};
+
+			if (legacy !== "acg") {
+				return err(
+					reply,
+					410,
+					"Legacy ACG auto-generate is disabled for the gossip workflow. Use pending-topic review plus /api/v1/drafts/generate, or pass legacy:'acg' only for archived ACG maintenance.",
+					"legacy-acg-disabled",
+				);
+			}
 
 			const llmEndpoint = process.env.LLM_ENDPOINT;
 			const llmApiKey = process.env.LLM_API_KEY;

@@ -25,21 +25,13 @@ describe("validateSettingsForm", () => {
 	});
 
 	it("http endpoint（非 https）→ 回傳 endpoint 錯誤", () => {
-		expect(
-			validateSettingsForm({
-				endpoint: "http://example.com",
-				backendUrl: "",
-			}),
-		).toMatch(/https/i);
-	});
-
-	it("remote backendUrl → 回傳 localhost 錯誤", () => {
-		expect(
-			validateSettingsForm({
-				endpoint: "",
-				backendUrl: "https://remote.server.com",
-			}),
-		).toMatch(/localhost/i);
+		const result = validateSettingsForm({
+			endpoint: "http://example.com",
+			backendUrl: "",
+		});
+		expect(result).toMatch(/https/i);
+		expect(result).toMatch(/LLM_API_KEY/);
+		expect(result).not.toMatch(/API key 会发往此处/);
 	});
 
 	it("endpoint 非法 且 backendUrl 非法 → 回傳 endpoint 錯誤（endpoint 優先）", () => {
@@ -49,5 +41,14 @@ describe("validateSettingsForm", () => {
 		});
 		expect(result).toMatch(/https/i);
 		expect(result).not.toMatch(/localhost/i);
+	});
+
+	it("remote backendUrl → 回傳 localhost 錯誤", () => {
+		expect(
+			validateSettingsForm({
+				endpoint: "",
+				backendUrl: "https://remote.server.com",
+			}),
+		).toMatch(/localhost/i);
 	});
 });

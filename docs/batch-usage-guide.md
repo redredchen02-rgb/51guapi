@@ -1,5 +1,9 @@
 # 批量发布使用指南
 
+> ⚠️ **已废弃（2026-06-22）**：本文记录旧版「批量填充 / dry-run / authorized 真发」发布机器。
+> 当前 51guapi 产品边界是：锁定 URL 抓取 → AI 提炼吃瓜事实 → 人工预览/编辑 → 导出 JSON / Markdown。
+> 扩展不填充第三方后台、不点击发布、不写回任何站点。当前操作请看 `docs/install-and-usage.md` 与 `docs/ops-runbook.md`。
+
 ## 概览
 
 51guapi 支持三档发布模式，满足不同安全等级的发布需求：

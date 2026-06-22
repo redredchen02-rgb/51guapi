@@ -1,5 +1,5 @@
 import type { ContentDraft, GossipFactsBlock } from "@51guapi/shared";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { isAuthenticated } from "../../lib/auth-client";
 import { buildPrompt } from "../../lib/messaging";
 import {
@@ -52,16 +52,24 @@ export function App() {
 	const loadingState = useLoadingState();
 	const { generate } = useDraftGeneration();
 	const { saveDraft } = useAutoSave();
-	const promptTemplateRef = useRef("");
 	const genTokenRef = useRef(0);
+	const generationProgressRef = useRef<ReturnType<typeof setInterval> | null>(
+		null,
+	);
+
+	const clearGenerationProgress = useCallback(() => {
+		if (generationProgressRef.current) {
+			clearInterval(generationProgressRef.current);
+			generationProgressRef.current = null;
+		}
+	}, []);
 
 	useEffect(() => {
 		void (async () => {
-			const [s, saved] = await Promise.all([getSettings(), getCurrentDraft()]);
-			promptTemplateRef.current = s.promptTemplate;
+			const saved = await getCurrentDraft();
 			if (saved) {
-				setDraft(saved);
-				setDraftFacts(null);
+				setDraft(saved.draft);
+				setDraftFacts(saved.facts);
 				setMode("draft");
 			}
 			const authed = await isAuthenticated();
@@ -71,9 +79,17 @@ export function App() {
 		})();
 	}, []);
 
-	function updateDraft(next: ContentDraft) {
+	useEffect(() => {
+		return () => clearGenerationProgress();
+	}, [clearGenerationProgress]);
+
+	function updateDraft(
+		next: ContentDraft,
+		facts = draftFacts,
+		immediate = false,
+	) {
 		setDraft(next);
-		saveDraft(next);
+		saveDraft(next, facts, immediate);
 	}
 
 	async function handleGenerate() {
@@ -84,13 +100,17 @@ export function App() {
 		clearError();
 		setMode("generating");
 		loadingState.startLoading("正在生成草稿...");
-		const progressInterval = setInterval(() => {
-			loadingState.updateProgress(Math.min(loadingState.progress + 10, 90));
+		clearGenerationProgress();
+		let progress = 0;
+		generationProgressRef.current = setInterval(() => {
+			progress = Math.min(progress + 10, 90);
+			loadingState.updateProgress(progress);
 		}, 500);
 		try {
 			const token = ++genTokenRef.current;
+			const settings = await getSettings();
 			const result = await generate(
-				buildPrompt(promptTemplateRef.current, topic),
+				buildPrompt(settings.promptTemplate, topic),
 			);
 			// exception 等同原 catch:不经 token 守卫(原代码 requestGenerate 抛错
 			// 时直接进 catch,跳过 token 比对),故先于 token 比对处理。
@@ -114,15 +134,15 @@ export function App() {
 			}
 			if (token !== genTokenRef.current) return;
 			if (result.status === "ok") {
-				updateDraft(result.draft);
 				setDraftFacts(null);
+				updateDraft(result.draft, null, true);
 				setMode("draft");
 				loadingState.completeLoading();
 				void recordOperation({ type: "generate", topic, success: true });
 			} else {
 				const errMsg =
 					result.status === "no-key"
-						? `${result.error}(点右上角设置)`
+						? "后端缺少 LLM_API_KEY,请在 packages/backend/.env 中配置后重启服务"
 						: result.error;
 				handleError(errMsg);
 				setMode(draft ? "draft" : "empty");
@@ -136,12 +156,13 @@ export function App() {
 				});
 			}
 		} finally {
-			clearInterval(progressInterval);
+			clearGenerationProgress();
 		}
 	}
 
 	function cancelGenerate() {
 		genTokenRef.current++;
+		clearGenerationProgress();
 		setMode(draft ? "draft" : "empty");
 		loadingState.completeLoading();
 	}
@@ -167,7 +188,7 @@ export function App() {
 		onNext: handleNext,
 		onSave: () => {
 			if (draft) {
-				saveDraft(draft, true);
+				saveDraft(draft, draftFacts, true);
 			}
 		},
 	});
@@ -200,18 +221,12 @@ export function App() {
 			<PendingTopicsView
 				onBack={() => setView("main")}
 				onDraftReady={({ draft, facts }) => {
-					updateDraft(draft);
 					setDraftFacts(facts);
+					updateDraft(draft, facts, true);
 					setMode("draft");
 					setView("main");
 				}}
-				onError={(msg) => {
-					if (msg === "open-settings") {
-						setView("settings");
-					} else {
-						handleError(msg);
-					}
-				}}
+				onError={handleError}
 			/>
 		);
 	if (view === "gossip")

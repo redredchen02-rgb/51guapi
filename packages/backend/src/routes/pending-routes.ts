@@ -10,7 +10,6 @@ import {
 	type PendingStatus,
 	type PendingTopic,
 	savePendingTopic,
-	updatePendingTopicStatus,
 } from "../scraper/pending-store.js";
 import { formatEnrichmentForPrompt } from "../scraper/web-enricher.js";
 import { err } from "../utils/error-response.js";
@@ -44,6 +43,20 @@ const VALID_REJECTION_REASONS = new Set<RejectionReason>([
 ]);
 
 const VALID_STATUSES_SET = new Set<string>(["pending", "approved", "rejected"]);
+
+function rerunVerification(topic: PendingTopic): void {
+	const rc = topic.rawContent;
+	if (!rc) return;
+	const rawText = `${rc.title ?? ""}\n${(rc.body ?? "").replace(/<[^>]*>/g, " ")}`;
+	topic.verification = verifyCrawledTopic({
+		facts: topic.facts as GossipFactsBlock,
+		rawText,
+		publishedTime: rc.metadata?.publishedTime,
+		now: Date.now(),
+		config: loadVerifyConfig(),
+	});
+	topic.contentFingerprint = topic.verification.fingerprint;
+}
 
 export async function registerPendingRoutes(
 	app: FastifyInstance,
@@ -146,9 +159,10 @@ export async function registerPendingRoutes(
 		async (request) => {
 			const onlyVerified = request.query.verified !== "false"; // 默认 true
 			const gossip = await listPendingTopics(200, undefined, "score", "gossip");
+			const available = gossip.filter((t) => t.status === "pending");
 			const pool = onlyVerified
-				? gossip.filter((t) => t.verifiedAt != null)
-				: gossip;
+				? available.filter((t) => t.verifiedAt != null)
+				: available;
 			const themes = countThemes(pool.map((t) => t.facts as GossipFactsBlock));
 			return { ok: true, themes };
 		},
@@ -237,7 +251,7 @@ export async function registerPendingRoutes(
 			const { id } = request.params;
 			const body = request.body;
 
-			if (body.status) {
+			if (body.status !== undefined) {
 				// 校验 status 必须是合法枚举值
 				if (!VALID_STATUSES_SET.has(body.status)) {
 					return err(
@@ -259,17 +273,10 @@ export async function registerPendingRoutes(
 						`Invalid rejectedReason "${body.rejectedReason}". Must be one of: ${[...VALID_REJECTION_REASONS].join(", ")}`,
 					);
 				}
-
-				const updated = await updatePendingTopicStatus(
-					id,
-					body.status as PendingStatus,
-					body.rejectedReason,
-				);
-				if (!updated) return err(reply, 404, "Pending topic not found");
-				return { ok: true, topic: updated };
 			}
 
-			// Partial update for facts/confidence/verified
+			// Partial update for facts/confidence/verified/status. A single PATCH may
+			// carry edited facts plus status, so apply every valid field before saving.
 			const topic = await loadPendingTopic(id);
 			if (!topic) return err(reply, 404, "Pending topic not found");
 
@@ -277,26 +284,18 @@ export async function registerPendingRoutes(
 				topic.facts = body.facts as PendingTopic["facts"];
 				// 改值后对新值重跑 grounding（基准=不可变 rawContent）——防 UI 层 rewrite 旁路:
 				// 不可只清红标，须让验证关重新判定新值是否溯源。
-				const rc = topic.rawContent;
-				if (rc) {
-					const rawText = `${rc.title ?? ""}\n${(rc.body ?? "").replace(
-						/<[^>]*>/g,
-						" ",
-					)}`;
-					topic.verification = verifyCrawledTopic({
-						facts: topic.facts as GossipFactsBlock,
-						rawText,
-						publishedTime: rc.metadata?.publishedTime,
-						now: Date.now(),
-						config: loadVerifyConfig(),
-					});
-					topic.contentFingerprint = topic.verification.fingerprint;
-				}
+				rerunVerification(topic);
 			}
 			if (body.confidence !== undefined) topic.confidence = body.confidence;
 			if (body.verified !== undefined) {
 				// 人工二次核对：置/撤销 verifiedAt（题材池只收非空）。
 				topic.verifiedAt = body.verified ? new Date().toISOString() : undefined;
+			}
+			if (body.status !== undefined) {
+				topic.status = body.status as PendingStatus;
+				topic.rejectedReason =
+					topic.status === "rejected" ? body.rejectedReason : undefined;
+				if (topic.status === "rejected") topic.verifiedAt = undefined;
 			}
 			await savePendingTopic(topic);
 			return { ok: true, topic };

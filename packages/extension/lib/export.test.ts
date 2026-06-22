@@ -107,6 +107,16 @@ describe("exportDraftAsMarkdown", () => {
 		expect(md).toContain("# \\# 标题\\|带管道");
 		expect(md).toContain("\\# 井号 \\| 管道");
 	});
+
+	it("Security: 来源链接中的 Markdown 控制字符和换行会被转义", () => {
+		const md = exportDraftAsMarkdown(
+			makeDraft(),
+			makeFacts({ 來源連結: "https://e.test/a_b\n# injected [x]" }),
+		);
+
+		expect(md).toContain("**来源**: https://e.test/a\\_b \\# injected \\[x\\]");
+		expect(md).not.toContain("\n# injected [x]");
+	});
 });
 
 describe("exportDraftAsJSON", () => {
@@ -115,6 +125,7 @@ describe("exportDraftAsJSON", () => {
 		const parsed = JSON.parse(json);
 		expect(parsed.draft.title).toBe("吃瓜标题");
 		expect(parsed.draft.tags).toEqual(["标签A", "标签B"]);
+		expect(parsed.draft.status).toBe("draft");
 		expect(parsed.gossipFacts.當事人).toBe("A,B");
 		expect(parsed.schemaVersion).toBe("0.1");
 	});

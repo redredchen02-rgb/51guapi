@@ -19,8 +19,6 @@ vi.mock("../../lib/pending-client", () => ({
 	fetchPendingTopics: vi.fn(async () => []),
 	updatePendingStatus: vi.fn(async () => true),
 	patchPendingTopic: vi.fn(async () => true),
-	triggerScrape: vi.fn(async () => true),
-	fetchAdapters: vi.fn(async () => []),
 	fetchThemeCounts: vi.fn(async () => []),
 	setPendingVerified: vi.fn(async () => true),
 }));
@@ -41,12 +39,10 @@ import { downloadFile } from "../../lib/export";
 import { requestGenerate } from "../../lib/messaging";
 
 import {
-	fetchAdapters,
 	fetchPendingTopics,
 	fetchThemeCounts,
 	patchPendingTopic,
 	setPendingVerified,
-	triggerScrape,
 	updatePendingStatus,
 } from "../../lib/pending-client";
 
@@ -107,8 +103,6 @@ beforeEach(async () => {
 	vi.mocked(fetchPendingTopics).mockResolvedValue([]);
 	vi.mocked(updatePendingStatus).mockResolvedValue(true);
 	vi.mocked(patchPendingTopic).mockResolvedValue(true);
-	vi.mocked(triggerScrape).mockResolvedValue(true);
-	vi.mocked(fetchAdapters).mockResolvedValue([]);
 	vi.mocked(fetchThemeCounts).mockResolvedValue([]);
 	vi.mocked(setPendingVerified).mockResolvedValue(true);
 	vi.mocked(requestGenerate).mockResolvedValue(makeGenerateResponse());
@@ -327,12 +321,11 @@ describe("R4 — CSV export button", () => {
 });
 
 // ================================================================
-// R3 — Trigger button
+// Legacy scraper trigger removal
 // ================================================================
 
-describe("R3 — scraper trigger button", () => {
-	it("有适配器时点击触发按钮调用 triggerScrape，完成后状态清空", async () => {
-		vi.mocked(fetchAdapters).mockResolvedValue(["test-adapter"]);
+describe("legacy scraper trigger removal", () => {
+	it("待审池不再渲染旧 ACG scraper 的「立即抓取」入口", async () => {
 		vi.mocked(fetchPendingTopics).mockResolvedValue([]);
 		render(
 			<PendingTopicsView
@@ -341,29 +334,8 @@ describe("R3 — scraper trigger button", () => {
 				onError={vi.fn()}
 			/>,
 		);
-		await waitFor(() => expect(fetchAdapters).toHaveBeenCalled());
-		fireEvent.click(screen.getByText("⚡ 立即抓取"));
-		await waitFor(() =>
-			expect(triggerScrape).toHaveBeenCalledWith("test-adapter"),
-		);
-		// handleTriggerScrape awaits refresh() before clearing status — deterministic settle
-		await waitFor(() => expect(screen.queryByText("抓取中…")).toBeNull());
-	});
-
-	it("无适配器时触发按钮禁用", async () => {
-		vi.mocked(fetchAdapters).mockResolvedValue([]);
-		vi.mocked(fetchPendingTopics).mockResolvedValue([]);
-		render(
-			<PendingTopicsView
-				onBack={vi.fn()}
-				onDraftReady={vi.fn()}
-				onError={vi.fn()}
-			/>,
-		);
-		await waitFor(() => expect(fetchAdapters).toHaveBeenCalled());
-		expect(
-			(screen.getByText("⚡ 立即抓取") as HTMLButtonElement).disabled,
-		).toBe(true);
+		await waitFor(() => screen.getByText("暂无待审核选题。"));
+		expect(screen.queryByText("⚡ 立即抓取")).toBeNull();
 	});
 });
 
@@ -373,7 +345,6 @@ describe("R3 — scraper trigger button", () => {
 
 describe("R5 — 今日一键备稿", () => {
 	it("待审池为空时显示提示，不弹确认面板", async () => {
-		vi.mocked(fetchAdapters).mockResolvedValue(["test-adapter"]);
 		vi.mocked(fetchPendingTopics).mockResolvedValue([]);
 		render(
 			<PendingTopicsView
@@ -382,7 +353,7 @@ describe("R5 — 今日一键备稿", () => {
 				onError={vi.fn()}
 			/>,
 		);
-		await waitFor(() => expect(fetchAdapters).toHaveBeenCalled());
+		await waitFor(() => screen.getByText("暂无待审核选题。"));
 
 		fireEvent.click(screen.getByText("今日一键备稿"));
 		await waitFor(() =>
@@ -392,7 +363,6 @@ describe("R5 — 今日一键备稿", () => {
 	});
 
 	it("有选题时显示确认面板，取消后面板消失", async () => {
-		vi.mocked(fetchAdapters).mockResolvedValue(["test-adapter"]);
 		vi.mocked(fetchPendingTopics)
 			.mockResolvedValueOnce([]) // initial refresh
 			.mockResolvedValueOnce([
@@ -407,7 +377,7 @@ describe("R5 — 今日一键备稿", () => {
 				onError={vi.fn()}
 			/>,
 		);
-		await waitFor(() => expect(fetchAdapters).toHaveBeenCalled());
+		await waitFor(() => screen.getByText("暂无待审核选题。"));
 
 		fireEvent.click(screen.getByText("今日一键备稿"));
 		await waitFor(() =>
@@ -424,7 +394,6 @@ describe("R5 — 今日一键备稿", () => {
 
 	it("确认生成 → 调 requestGenerate 并触发 onDraftReady", async () => {
 		const onDraftReady = vi.fn();
-		vi.mocked(fetchAdapters).mockResolvedValue(["test-adapter"]);
 		vi.mocked(fetchPendingTopics)
 			.mockResolvedValueOnce([]) // initial refresh
 			.mockResolvedValueOnce([makeTopic("t1")]); // quickDraft fetch
@@ -435,7 +404,7 @@ describe("R5 — 今日一键备稿", () => {
 				onError={vi.fn()}
 			/>,
 		);
-		await waitFor(() => expect(fetchAdapters).toHaveBeenCalled());
+		await waitFor(() => screen.getByText("暂无待审核选题。"));
 
 		fireEvent.click(screen.getByText("今日一键备稿"));
 		await waitFor(() =>
@@ -489,6 +458,38 @@ describe("U4/U5 — 验证核对 + 题材选择", () => {
 		);
 	});
 
+	it("编辑 facts 后点「确认核对」→ 先 PATCH 最新 facts 再置 verified", async () => {
+		vi.mocked(fetchPendingTopics).mockResolvedValue([makeTopic("t1")]);
+		render(
+			<PendingTopicsView
+				onBack={vi.fn()}
+				onDraftReady={vi.fn()}
+				onError={vi.fn()}
+			/>,
+		);
+		await waitFor(() => screen.getByText("选题 t1"));
+
+		fireEvent.click(screen.getByText("详情"));
+		await waitFor(() => screen.getByDisplayValue("测试人物"));
+		fireEvent.change(screen.getByDisplayValue("测试人物"), {
+			target: { value: "核对后人物" },
+		});
+
+		fireEvent.click(screen.getByText(/确认核对/));
+		await waitFor(() => {
+			expect(patchPendingTopic).toHaveBeenCalledWith(
+				"t1",
+				expect.objectContaining({
+					facts: expect.objectContaining({ 當事人: "核对后人物" }),
+				}),
+			);
+			expect(setPendingVerified).toHaveBeenCalledWith("t1", true);
+		});
+		expect(
+			vi.mocked(patchPendingTopic).mock.invocationCallOrder[0],
+		).toBeLessThan(vi.mocked(setPendingVerified).mock.invocationCallOrder[0]!);
+	});
+
 	it("选题材 chip → 以 theme + verified 重新拉取（题材池）", async () => {
 		vi.mocked(fetchThemeCounts).mockResolvedValue([
 			{ theme: "出軌", count: 2 },
@@ -504,7 +505,11 @@ describe("U4/U5 — 验证核对 + 题材选择", () => {
 		fireEvent.click(screen.getByText("出軌 2"));
 		await waitFor(() =>
 			expect(fetchPendingTopics).toHaveBeenCalledWith(
-				expect.objectContaining({ theme: "出軌", verified: true }),
+				expect.objectContaining({
+					status: "pending",
+					theme: "出軌",
+					verified: true,
+				}),
 			),
 		);
 	});

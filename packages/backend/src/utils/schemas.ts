@@ -12,18 +12,10 @@ export const ErrorBody = Type.Object({
 export const SettingsSchema = Type.Object({
 	endpoint: Type.String(),
 	model: Type.String(),
-	apiKey: Type.Optional(Type.String()),
 	promptTemplate: Type.Optional(Type.String()),
 	facts: Type.Optional(Type.String()),
 	fewShot: Type.Optional(Type.String()),
 	extraInstructions: Type.Optional(Type.String()),
-	publishMode: Type.Optional(
-		Type.Union([
-			Type.Literal("off"),
-			Type.Literal("dry-run"),
-			Type.Literal("authorized"),
-		]),
-	),
 });
 
 // ── FactsBlock ────────────────────────────────────────
@@ -39,7 +31,7 @@ export const FactsBlockSchema = Type.Object({
 export const GenerateDraftBody = Type.Object({
 	prompt: Type.String({ minLength: 1 }),
 	settings: SettingsSchema,
-	facts: Type.Optional(FactsBlockSchema),
+	facts: Type.Optional(Type.Record(Type.String(), Type.Unknown())),
 	enrichment: Type.Optional(Type.String()),
 });
 
@@ -101,6 +93,7 @@ export const RewriteDraftBody = Type.Object({
 		createdAt: Type.String(),
 	}),
 	failedDims: Type.Array(Type.String()),
+	facts: Type.Optional(Type.Record(Type.String(), Type.Unknown())),
 	settings: SettingsSchema,
 });
 
@@ -198,12 +191,14 @@ export const AutoGenerateBody = Type.Object({
 	minConfidence: Type.Optional(Type.Number({ minimum: 0, maximum: 1 })),
 	maxItems: Type.Optional(Type.Number({ minimum: 1, maximum: 50 })),
 	enableEnrichment: Type.Optional(Type.Boolean()),
+	legacy: Type.Optional(Type.Literal("acg")),
 });
 
 // ── Scraper ──────────────────────────────────────────
 export const TriggerScrapeBody = Type.Object({
 	siteName: Type.String({ minLength: 1 }),
 	url: Type.Optional(Type.String()),
+	legacy: Type.Optional(Type.Literal("acg")),
 });
 
 // ── Prompts ──────────────────────────────────────────

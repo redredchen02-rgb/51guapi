@@ -43,9 +43,9 @@ describe("useKeyboardShortcuts", () => {
 		expect(onGenerate).not.toHaveBeenCalled();
 	});
 
-	it("Ctrl+Shift+Enter 触发 onFill", () => {
-		const onFill = vi.fn();
-		renderHook(() => useKeyboardShortcuts({ onFill }));
+	it("Ctrl+Shift+Enter 不再绑定已移除的填充动作", () => {
+		const onGenerate = vi.fn();
+		renderHook(() => useKeyboardShortcuts({ onGenerate }));
 
 		act(() => {
 			window.dispatchEvent(
@@ -57,7 +57,7 @@ describe("useKeyboardShortcuts", () => {
 			);
 		});
 
-		expect(onFill).toHaveBeenCalled();
+		expect(onGenerate).not.toHaveBeenCalled();
 	});
 
 	it("Ctrl+ArrowRight 触发 onNext", () => {

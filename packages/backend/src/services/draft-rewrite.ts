@@ -1,4 +1,5 @@
-import type { ContentDraft } from "@51guapi/shared";
+import type { ContentDraft, GossipFactsBlock } from "@51guapi/shared";
+import { gossipFactUrls, hasUnsourcedLink, verifyLinks } from "@51guapi/shared";
 import { callLlmForJson } from "./draft-gen.js";
 import { extractUsage } from "./draft-review.js";
 import type { LlmDeps } from "./fetch-backoff.js";
@@ -55,6 +56,23 @@ export async function rewriteDraftLlm(
 		rewritten.body = parsed.body.trim();
 	if (Array.isArray(parsed.tags)) {
 		rewritten.tags = parsed.tags.map((t) => String(t)).filter(Boolean);
+	}
+
+	const facts: GossipFactsBlock = deps.facts ?? {
+		當事人: null,
+		事件摘要: null,
+		起因: null,
+		經過: null,
+		結果: null,
+		來源連結: null,
+		發生時間: null,
+		熱度標籤: null,
+	};
+	if (hasUnsourcedLink(verifyLinks(rewritten.body, gossipFactUrls(facts)))) {
+		return {
+			ok: false,
+			error: "草稿正文含未溯源链接(疑似模型自造),已拒绝。",
+		};
 	}
 
 	const rewriteCostTokens = extractUsage(raw);

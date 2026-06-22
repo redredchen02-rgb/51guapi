@@ -3,7 +3,7 @@ import { getStorage } from "../../../lib/chrome-storage-utils";
 
 interface OperationRecord {
 	id: string;
-	type: "generate" | "fill" | "publish" | "error";
+	type: "generate" | "error";
 	topic: string;
 	success: boolean;
 	details?: Record<string, unknown>;
@@ -32,13 +32,19 @@ export function useOperationHistory(): UseOperationHistoryReturn {
 				id: crypto.randomUUID(),
 				timestamp: new Date().toISOString(),
 			};
+			const newHistory = [record, ...history].slice(0, 100); // 保留最近 100 条
 
-			setHistory((prev) => {
-				const newHistory = [record, ...prev].slice(0, 100); // 保留最近 100 条
-				return newHistory;
-			});
+			setHistory(newHistory);
+			try {
+				const storage = getStorage();
+				if (storage) {
+					await storage.set({ [STORAGE_KEY]: newHistory });
+				}
+			} catch {
+				// 静默失败
+			}
 		},
-		[],
+		[history],
 	);
 
 	const retrieveHistory = useCallback(async () => {

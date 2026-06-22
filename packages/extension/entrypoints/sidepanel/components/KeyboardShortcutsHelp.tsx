@@ -7,7 +7,6 @@ interface Shortcut {
 
 const shortcuts: Shortcut[] = [
 	{ keys: "Ctrl + Enter", description: "生成草稿" },
-	{ keys: "Ctrl + Shift + Enter", description: "填充到当前页" },
 	{ keys: "Ctrl + →", description: "下一条" },
 	{ keys: "Ctrl + S", description: "保存" },
 ];

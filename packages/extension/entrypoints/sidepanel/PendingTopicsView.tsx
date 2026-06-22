@@ -3,14 +3,12 @@ import { GOSSIP_FACT_KEYS } from "@51guapi/shared";
 import { useCallback, useEffect, useState } from "react";
 import { downloadFile, exportTopicsAsCSV } from "../../lib/export";
 import {
-	fetchAdapters,
 	fetchPendingTopics,
 	fetchThemeCounts,
 	type PendingTopic,
 	patchPendingTopic,
 	setPendingVerified,
 	type ThemeCount,
-	triggerScrape,
 	updatePendingStatus,
 } from "../../lib/pending-client";
 import { useDraftGeneration } from "./hooks/useDraftGeneration";
@@ -39,8 +37,6 @@ export function PendingTopicsView({ onBack, onDraftReady, onError }: Props) {
 	const [localFacts, setLocalFacts] = useState<
 		Record<string, Record<string, string>>
 	>({});
-	const [adapters, setAdapters] = useState<string[]>([]);
-	const [scrapeStatus, setScrapeStatus] = useState("");
 	const [busy, setBusy] = useState(false);
 	const [loading, setLoading] = useState(true);
 	const [hideLowScore, setHideLowScore] = useState(false);
@@ -60,6 +56,7 @@ export function PendingTopicsView({ onBack, onDraftReady, onError }: Props) {
 		// 选中题材 → 题材池视图（仅已核对 + 该题材）；否则 → 全部待审（供逐条核对）。
 		const list = selectedTheme
 			? await fetchPendingTopics({
+					status: "pending",
 					domain: "gossip",
 					sort_by: "score",
 					theme: selectedTheme,
@@ -86,16 +83,22 @@ export function PendingTopicsView({ onBack, onDraftReady, onError }: Props) {
 
 	useEffect(() => {
 		void refreshThemes();
-		void fetchAdapters().then(setAdapters);
 	}, [refreshThemes]);
 
 	async function handleVerify(id: string) {
 		setVerifyingId(id);
-		const ok = await setPendingVerified(id, true);
-		setVerifyingId(null);
-		if (ok) {
-			await refresh();
-			await refreshThemes();
+		try {
+			const edited = localFacts[id];
+			if (edited) await patchPendingTopic(id, { facts: edited });
+			const ok = await setPendingVerified(id, true);
+			if (ok) {
+				await refresh();
+				await refreshThemes();
+			}
+		} catch {
+			onError("核对失败,请重试。");
+		} finally {
+			setVerifyingId(null);
 		}
 	}
 
@@ -188,7 +191,7 @@ export function PendingTopicsView({ onBack, onDraftReady, onError }: Props) {
 				const isKeyError = result.status === "no-key";
 				setApproveError(
 					isKeyError
-						? "请先在设置中填写 API Key"
+						? "后端缺少 LLM_API_KEY,请在 packages/backend/.env 中配置后重启服务"
 						: `生成草稿失败：${result.error}`,
 				);
 			}
@@ -198,18 +201,6 @@ export function PendingTopicsView({ onBack, onDraftReady, onError }: Props) {
 			);
 		} finally {
 			setBusy(false);
-		}
-	}
-
-	async function handleTriggerScrape() {
-		const site = adapters[0] ?? null;
-		if (!site) return;
-		setScrapeStatus("抓取中…");
-		try {
-			await triggerScrape(site);
-			await refresh();
-		} finally {
-			setScrapeStatus("");
 		}
 	}
 
@@ -292,7 +283,7 @@ export function PendingTopicsView({ onBack, onDraftReady, onError }: Props) {
 				const isKeyError = result.status === "no-key";
 				setApproveError(
 					isKeyError
-						? "请先在设置中填写 API Key"
+						? "后端缺少 LLM_API_KEY,请在 packages/backend/.env 中配置后重启服务"
 						: `生成草稿失败：${result.error}`,
 				);
 			}
@@ -317,27 +308,11 @@ export function PendingTopicsView({ onBack, onDraftReady, onError }: Props) {
 				<div className="flex gap-sm" style={{ alignItems: "center" }}>
 					<button
 						type="button"
-						disabled={busy || adapters.length === 0}
+						disabled={busy}
 						onClick={() => void handleQuickDraft()}
 						className="btn btn-primary btn-sm"
 					>
 						{quickDraftStatus === "备稿中…" ? "备稿中…" : "今日一键备稿"}
-					</button>
-					<button
-						type="button"
-						disabled={busy || adapters.length === 0}
-						onClick={() => void handleTriggerScrape()}
-						className="btn btn-sm"
-						style={{
-							background:
-								adapters.length > 0
-									? "var(--color-warning)"
-									: "var(--color-border-lighter)",
-							color:
-								adapters.length > 0 ? "#fff" : "var(--color-text-disabled)",
-						}}
-					>
-						⚡ 立即抓取
 					</button>
 					<button
 						type="button"
@@ -363,17 +338,6 @@ export function PendingTopicsView({ onBack, onDraftReady, onError }: Props) {
 					</button>
 				</div>
 			</nav>
-			{scrapeStatus && (
-				<div
-					className="text-warning"
-					style={{
-						fontSize: "var(--font-sm)",
-						marginBottom: "var(--space-sm)",
-					}}
-				>
-					{scrapeStatus}
-				</div>
-			)}
 
 			{quickDraftStatus && !quickDraftConfirm && (
 				<div
@@ -440,7 +404,7 @@ export function PendingTopicsView({ onBack, onDraftReady, onError }: Props) {
 							color: "var(--color-text-disabled)",
 						}}
 					>
-						可通过后端 POST /api/v1/scraper/trigger 抓取新内容。
+						可在「吃瓜站点」页发现文章并生成入池。
 					</div>
 				</div>
 			)}
@@ -503,19 +467,6 @@ export function PendingTopicsView({ onBack, onDraftReady, onError }: Props) {
 							}}
 						>
 							<span style={{ flex: 1 }}>{approveError}</span>
-							{approveError.includes("API Key") && (
-								<button
-									type="button"
-									className="btn btn-plain btn-sm"
-									onClick={() => {
-										// bubble up to App via onError to navigate to settings
-										onError("open-settings");
-									}}
-									style={{ whiteSpace: "nowrap", flexShrink: 0 }}
-								>
-									打开设置
-								</button>
-							)}
 							<button
 								type="button"
 								className="btn btn-plain btn-sm"

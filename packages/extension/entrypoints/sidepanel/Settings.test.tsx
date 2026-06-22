@@ -21,15 +21,14 @@ vi.mock("./hooks/useSettingsForm", () => ({
 			model: "gpt-4",
 			promptTemplate: "",
 			fewShotPairs: [],
+			tagsText: "",
+			fallbackModel: "",
 			recommendedTags: [],
 			backendUrl: "http://localhost:3002",
 			reviewCriteriaPrompt: "",
-			dailyBatchSize: 5,
 		},
 		setFormValue: vi.fn(),
-		getApiKey: vi.fn(),
 		getBackendToken: vi.fn(),
-		setApiKey: vi.fn(),
 		setBackendToken: vi.fn(),
 		derivedFewShotExamples: "",
 		prompts: [],
@@ -72,6 +71,13 @@ describe("Settings UI — handleSave", () => {
 		expect(screen.queryByText("已保存。")).toBeNull();
 		// 等待再次显示
 		await waitFor(() => expect(screen.getByText("已保存。")).toBeTruthy());
+	});
+
+	it("不再展示扩展端 API Key 输入框", () => {
+		render(<Settings onClose={vi.fn()} />);
+
+		expect(screen.queryByLabelText("API Key")).toBeNull();
+		expect(screen.getByText(/扩展不会保存或发送 LLM 密钥/)).toBeTruthy();
 	});
 });
 

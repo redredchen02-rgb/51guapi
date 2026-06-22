@@ -1,4 +1,4 @@
-// 三层(side panel / background / content script)共享的类型定义。
+// side panel / background / backend wire 共享的类型定义。
 // Migrated from both packages/backend/src/shared/types.ts and packages/extension/lib/types.ts
 import type { FactsBlock } from "./facts.js";
 import type { VerificationResult } from "./gossip-verify.js";
@@ -10,8 +10,8 @@ export interface FewShotPair {
 	output: string;
 }
 
-/** 草稿在本插件内的生命周期状态。 */
-export type DraftStatus = "draft" | "filled" | "published";
+/** 草稿在本插件内的生命周期状态:只预览/编辑/导出,不填充或发布。 */
+export type DraftStatus = "draft";
 
 /**
  * 一条内容草稿。AI 生成 title/subtitle/category/body/tags/description;
@@ -59,7 +59,7 @@ export interface Settings {
 	webSearchEnabled?: boolean;
 }
 
-// ---- 消息协议(side panel ↔ background ↔ content script) ----
+// ---- 消息协议(side panel ↔ background / backend) ----
 
 /** 拒绝原因枚举值（路由层校验；DB 列保留 TEXT 存储字符串值）。 */
 export type RejectionReason =

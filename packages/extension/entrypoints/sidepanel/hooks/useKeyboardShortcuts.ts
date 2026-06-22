@@ -2,7 +2,6 @@ import { useEffect, useRef } from "react";
 
 interface KeyboardShortcutsOptions {
 	onGenerate?: () => void;
-	onFill?: () => void;
 	onNext?: () => void;
 	onSave?: () => void;
 }
@@ -23,13 +22,6 @@ export function useKeyboardShortcuts(options: KeyboardShortcutsOptions) {
 			if (modifier && event.key === "Enter" && !event.shiftKey) {
 				event.preventDefault();
 				handlers.onGenerate?.();
-				return;
-			}
-
-			// Ctrl/Cmd + Shift + Enter: 填充到当前页
-			if (modifier && event.shiftKey && event.key === "Enter") {
-				event.preventDefault();
-				handlers.onFill?.();
 				return;
 			}
 

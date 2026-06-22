@@ -4,22 +4,18 @@ interface LLMSectionProps {
 	endpoint: string;
 	model: string;
 	fallbackModel: string;
-	getApiKey: () => string;
 	setEndpoint: (v: string) => void;
 	setModel: (v: string) => void;
 	setFallbackModel: (v: string) => void;
-	setApiKey: (v: string) => void;
 }
 
 export function LLMSection({
 	endpoint,
 	model,
 	fallbackModel,
-	getApiKey,
 	setEndpoint,
 	setModel,
 	setFallbackModel,
-	setApiKey,
 }: LLMSectionProps) {
 	const [fallbackOpen, setFallbackOpen] = useState(!!fallbackModel);
 
@@ -49,23 +45,9 @@ export function LLMSection({
 					onChange={(e) => setModel(e.target.value)}
 				/>
 			</div>
-			<div className="field-group">
-				<label htmlFor="api-key" className="field-label">
-					API Key
-				</label>
-				<input
-					id="api-key"
-					className="field-input"
-					type="password"
-					autoComplete="off"
-					value={getApiKey()}
-					onChange={(e) => setApiKey(e.target.value)}
-				/>
-			</div>
 			<p className="field-hint">
-				⚠️ key
-				以明文存储于本地浏览器(chrome.storage.local),并会随请求发往上面配置的
-				endpoint。请只配置可信地址,建议使用权限受限的专用 key。
+				API Key 由后端服务 .env 中的 LLM_API_KEY 提供,扩展不会保存或发送 LLM
+				密钥。
 			</p>
 
 			<div className="card" style={{ marginTop: "var(--space-lg)" }}>

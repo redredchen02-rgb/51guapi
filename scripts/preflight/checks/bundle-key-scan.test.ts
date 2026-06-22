@@ -43,6 +43,35 @@ describe("evaluateBundleScan（特征化:植入 key 判红）", () => {
 		expect(r.status).toBe("pass");
 	});
 
+	it("manifest 顶层公开 extension key 不按密钥泄漏判红", () => {
+		const d = tmp();
+		writeFileSync(
+			join(d, "manifest.json"),
+			JSON.stringify({
+				manifest_version: 3,
+				name: "x",
+				key: "A".repeat(240),
+			}),
+		);
+		const r = evaluateBundleScan(d);
+		expect(r.status).toBe("pass");
+	});
+
+	it("manifest 非 key 字段含 API key 形状仍判红", () => {
+		const d = tmp();
+		writeFileSync(
+			join(d, "manifest.json"),
+			JSON.stringify({
+				manifest_version: 3,
+				name: "x",
+				key: "A".repeat(240),
+				description: "sk-" + "x".repeat(24),
+			}),
+		);
+		const r = evaluateBundleScan(d);
+		expect(r.status).toBe("fail");
+	});
+
 	it("scanForKeys 只返回计数,不返回明文", () => {
 		const res = scanForKeys([
 			{ name: "a.js", content: PLANTED_KEY },

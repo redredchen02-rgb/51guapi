@@ -11,7 +11,7 @@ import { getBackendUrl } from "./backend-url";
 
 export interface LlmDeps {
 	settings: Settings;
-	apiKey: string; // Left in interface for compatibility, but ignored in execution
+	apiKey?: string; // Legacy callers may still pass it; execution ignores it.
 	facts?: FactsBlock | GossipFactsBlock;
 	enrichment?: string;
 	fetchFn?: typeof fetch;
@@ -229,7 +229,12 @@ export async function rewriteDraft(
 		const res = await fetchFn(`${backendUrl}/api/v1/drafts/rewrite`, {
 			method: "POST",
 			headers,
-			body: JSON.stringify({ draft, failedDims, settings: deps.settings }),
+			body: JSON.stringify({
+				draft,
+				failedDims,
+				settings: deps.settings,
+				...(deps.facts ? { facts: deps.facts } : {}),
+			}),
 			signal: controller.signal,
 		});
 		if (res.status === 401) {

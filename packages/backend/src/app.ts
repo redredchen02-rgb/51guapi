@@ -191,6 +191,23 @@ interface GenerateDraftBody {
 	enrichment?: string;
 }
 
+function resolveRequestSettings(
+	settings: Settings,
+	config: { endpoint: string; model: string },
+): Settings {
+	return {
+		endpoint: config.endpoint.trim(),
+		model: config.model,
+		fallbackModel: settings.fallbackModel,
+		promptTemplate: settings.promptTemplate,
+		fewShotPairs: settings.fewShotPairs,
+		recommendedTags: settings.recommendedTags,
+		backendUrl: settings.backendUrl,
+		reviewCriteriaPrompt: settings.reviewCriteriaPrompt,
+		webSearchEnabled: settings.webSearchEnabled,
+	};
+}
+
 export function registerDraftRoutes(app: FastifyInstance): void {
 	app.get("/api/v1/models", async (request, reply) => {
 		const config = getLlmConfig();
@@ -220,11 +237,7 @@ export function registerDraftRoutes(app: FastifyInstance): void {
 			const validation = validateLlmConfig(config);
 			if (!validation.valid)
 				return err(reply, 500, validation.error ?? "Unknown error", "no-key");
-			const resolvedSettings = {
-				...settings,
-				endpoint: config.endpoint.trim(),
-				model: config.model,
-			};
+			const resolvedSettings = resolveRequestSettings(settings, config);
 			try {
 				const result = await generateDraft(prompt, {
 					settings: resolvedSettings,
@@ -270,11 +283,7 @@ export function registerDraftRoutes(app: FastifyInstance): void {
 			const validation = validateLlmConfig(config);
 			if (!validation.valid)
 				return err(reply, 500, validation.error ?? "Unknown error");
-			const resolvedSettings = {
-				...settings,
-				endpoint: config.endpoint,
-				model: config.model,
-			};
+			const resolvedSettings = resolveRequestSettings(settings, config);
 			try {
 				const result = await reviewDraftLlm(draft, criteriaPrompt, {
 					settings: resolvedSettings,
@@ -293,6 +302,7 @@ export function registerDraftRoutes(app: FastifyInstance): void {
 		Body: {
 			draft: import("@51guapi/shared").ContentDraft;
 			failedDims: string[];
+			facts?: import("@51guapi/shared").GossipFactsBlock;
 			settings: import("@51guapi/shared").Settings;
 		};
 	}>(
@@ -303,22 +313,19 @@ export function registerDraftRoutes(app: FastifyInstance): void {
 			},
 		},
 		async (request, reply) => {
-			const { draft, failedDims, settings } = request.body;
+			const { draft, failedDims, facts, settings } = request.body;
 			const config = getLlmConfig(settings);
 			const validation = validateLlmConfig(config);
 			if (!validation.valid)
 				return err(reply, 500, validation.error ?? "Unknown error");
 			if (failedDims.length === 0)
 				return err(reply, 400, "failedDims must be a non-empty array.");
-			const resolvedSettings = {
-				...settings,
-				endpoint: config.endpoint,
-				model: config.model,
-			};
+			const resolvedSettings = resolveRequestSettings(settings, config);
 			try {
 				const result = await rewriteDraftLlm(draft, failedDims, {
 					settings: resolvedSettings,
 					apiKey: config.apiKey,
+					facts,
 				});
 				if (!result.ok) return err(reply, 422, result.error);
 				return result;

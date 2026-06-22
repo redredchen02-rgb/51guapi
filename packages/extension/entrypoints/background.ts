@@ -7,20 +7,18 @@ import { generateDraft } from "../lib/llm";
 import { logger } from "../lib/logger";
 import type { GenerateDraftOptions, RuntimeMessage } from "../lib/messages";
 import { buildConstraintSuffix } from "../lib/prompt-assembly";
-import { getApiKey, getSettings } from "../lib/storage";
+import { getSettings } from "../lib/storage";
 
 // Background service worker:生成调度中心。
 // - 点扩展图标打开 side panel
-// - 路由 GENERATE_DRAFT → 调大模型(鉴权 + CORS 集中在此;key 绝不进 content)
+// - 路由 GENERATE_DRAFT → 请求本地后端代理(鉴权 + LLM key 均由后端集中处理)
 
 export interface BackgroundHandlerDeps {
 	getSettings: () => Promise<import("@51guapi/shared").Settings>;
-	getApiKey: () => Promise<string>;
 	generateDraftFn: (
 		prompt: string,
 		opts: {
 			settings: import("@51guapi/shared").Settings;
-			apiKey: string;
 			facts?: FactsBlock | GossipFactsBlock;
 			enrichment?: string;
 		},
@@ -35,15 +33,11 @@ export function createHandlers(deps: BackgroundHandlerDeps) {
 		options: GenerateDraftOptions = {},
 	): Promise<GenerateDraftResponse> {
 		try {
-			const [settings, apiKey] = await Promise.all([
-				deps.getSettings(),
-				deps.getApiKey(),
-			]);
+			const settings = await deps.getSettings();
 			const constrainedPrompt =
 				prompt + buildConstraintSuffix(settings.recommendedTags ?? []);
 			return await deps.generateDraftFn(constrainedPrompt, {
 				settings,
-				apiKey,
 				facts: options.facts,
 				enrichment: options.enrichment,
 			});
@@ -85,7 +79,6 @@ export default defineBackground(() => {
 
 	const liveDeps: BackgroundHandlerDeps = {
 		getSettings,
-		getApiKey,
 		generateDraftFn: generateDraft,
 	};
 

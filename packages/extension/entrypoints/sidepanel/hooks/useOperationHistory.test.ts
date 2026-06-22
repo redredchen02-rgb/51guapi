@@ -1,9 +1,14 @@
 // @vitest-environment jsdom
 import { act, cleanup, renderHook } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { fakeBrowser } from "wxt/testing";
 import { useOperationHistory } from "./useOperationHistory";
 
 describe("useOperationHistory", () => {
+	beforeEach(() => {
+		fakeBrowser.reset();
+	});
+
 	afterEach(() => {
 		cleanup();
 	});
@@ -42,6 +47,27 @@ describe("useOperationHistory", () => {
 
 		const exported = result.current.exportHistory();
 		expect(exported).toContain("测试选题");
+	});
+
+	it("persists history for later retrieval", async () => {
+		const first = renderHook(() => useOperationHistory());
+
+		await act(async () => {
+			await first.result.current.recordOperation({
+				type: "generate",
+				topic: "可恢复选题",
+				success: true,
+			});
+		});
+		first.unmount();
+
+		const second = renderHook(() => useOperationHistory());
+		await act(async () => {
+			await second.result.current.retrieveHistory();
+		});
+
+		expect(second.result.current.history).toHaveLength(1);
+		expect(second.result.current.history[0]?.topic).toBe("可恢复选题");
 	});
 
 	it("clears history", async () => {

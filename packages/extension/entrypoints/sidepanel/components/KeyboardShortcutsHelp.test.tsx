@@ -19,6 +19,7 @@ describe("KeyboardShortcutsHelp", () => {
 		expect(screen.getByText("快捷键帮助")).toBeTruthy();
 		expect(screen.getByText("Ctrl + Enter")).toBeTruthy();
 		expect(screen.getByText("生成草稿")).toBeTruthy();
+		expect(screen.queryByText("填充到当前页")).toBeNull();
 	});
 
 	it("shows help when triggered", () => {

@@ -6,7 +6,7 @@
 // `.output/` 不存在 = 0 个可扫目标 → 判 fail 并提示「先构建」(防假绿:没产物不能算过)。
 
 import { readdirSync, readFileSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { CheckResult, GreenCheck } from "../types.ts";
 
@@ -47,6 +47,19 @@ function listFiles(dir: string): string[] {
 	return out;
 }
 
+function stripAllowedPublicExtensionKey(name: string, content: string): string {
+	if (basename(name) !== "manifest.json") return content;
+	try {
+		const manifest = JSON.parse(content) as Record<string, unknown>;
+		if (typeof manifest.key === "string") {
+			return JSON.stringify({ ...manifest, key: "[PUBLIC_EXTENSION_KEY]" });
+		}
+	} catch {
+		return content;
+	}
+	return content;
+}
+
 /** 纯函数:扫一组文件,只返回「命中文件数」(布尔友好),不返回任何明文。 */
 export function scanForKeys(files: { name: string; content: string }[]): {
 	hitCount: number;
@@ -54,7 +67,8 @@ export function scanForKeys(files: { name: string; content: string }[]): {
 } {
 	let hitCount = 0;
 	for (const f of files) {
-		if (KEY_PATTERNS.some((re) => re.test(f.content))) hitCount += 1;
+		const content = stripAllowedPublicExtensionKey(f.name, f.content);
+		if (KEY_PATTERNS.some((re) => re.test(content))) hitCount += 1;
 	}
 	return { hitCount, scanned: files.length };
 }

@@ -58,12 +58,16 @@ export async function registerPreflightRoutes(
 			// 不可逆残留:后端无法替操作者验证的部分(只列出)。
 			const residuals: PreflightResidual[] = [
 				{
-					id: "real-backend-smoke",
-					label: "真后台人工冒烟(动态提交 handler 实发一次)",
+					id: "extension-load-smoke",
+					label: "Chrome 扩展人工加载与侧边栏冒烟",
 				},
 				{
-					id: "extension-reload",
-					label: "chrome://extensions 重载扩展并刷新目标页",
+					id: "crawl-target-smoke",
+					label: "真实抓取目标人工冒烟",
+				},
+				{
+					id: "export-artifact-review",
+					label: "导出 JSON / Markdown 人工抽查",
 				},
 			];
 

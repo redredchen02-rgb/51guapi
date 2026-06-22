@@ -4,10 +4,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
 	getSettings: vi.fn(),
-	getApiKey: vi.fn(),
 	getBackendToken: vi.fn(),
 	saveSettings: vi.fn(),
-	saveApiKey: vi.fn(),
 	saveBackendToken: vi.fn(),
 	fetchPrompts: vi.fn(),
 	createPrompt: vi.fn(),
@@ -19,10 +17,8 @@ vi.mock("../../../lib/storage", async (importOriginal) => {
 	return {
 		...actual,
 		getSettings: mocks.getSettings,
-		getApiKey: mocks.getApiKey,
 		getBackendToken: mocks.getBackendToken,
 		saveSettings: mocks.saveSettings,
-		saveApiKey: mocks.saveApiKey,
 		saveBackendToken: mocks.saveBackendToken,
 	};
 });
@@ -48,17 +44,14 @@ const DEFAULT_SETTINGS_MOCK = {
 	fallbackModel: undefined,
 	backendUrl: "http://localhost:3002",
 	reviewCriteriaPrompt: "",
-	dailyBatchSize: 5,
 };
 
 describe("useSettingsForm — Unit 2: load / save", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mocks.getSettings.mockResolvedValue({ ...DEFAULT_SETTINGS_MOCK });
-		mocks.getApiKey.mockResolvedValue("test-api-key");
 		mocks.getBackendToken.mockResolvedValue("test-backend-token");
 		mocks.saveSettings.mockResolvedValue(undefined);
-		mocks.saveApiKey.mockResolvedValue(undefined);
 		mocks.saveBackendToken.mockResolvedValue(undefined);
 	});
 
@@ -70,13 +63,12 @@ describe("useSettingsForm — Unit 2: load / save", () => {
 		expect(result.current.formValues.endpoint).toBe("https://api.example.com");
 	});
 
-	it("load() 呼叫 getSettings + getApiKey + getBackendToken 各一次", async () => {
+	it("load() 呼叫 getSettings + getBackendToken 各一次", async () => {
 		const { result } = renderHook(() => useSettingsForm());
 		await act(async () => {
 			await result.current.load();
 		});
 		expect(mocks.getSettings).toHaveBeenCalledTimes(1);
-		expect(mocks.getApiKey).toHaveBeenCalledTimes(1);
 		expect(mocks.getBackendToken).toHaveBeenCalledTimes(1);
 	});
 
@@ -93,7 +85,7 @@ describe("useSettingsForm — Unit 2: load / save", () => {
 		expect(result.current.formValues.fewShotPairs).toEqual(pairs);
 	});
 
-	it("save() 驗證通過 → saveSettings/saveApiKey/saveBackendToken 各呼叫一次，回傳 null", async () => {
+	it("save() 驗證通過 → saveSettings/saveBackendToken 各呼叫一次，回傳 null", async () => {
 		const { result } = renderHook(() => useSettingsForm());
 		await act(async () => {
 			await result.current.load();
@@ -104,7 +96,6 @@ describe("useSettingsForm — Unit 2: load / save", () => {
 		});
 		expect(saveResult).toBeNull();
 		expect(mocks.saveSettings).toHaveBeenCalledTimes(1);
-		expect(mocks.saveApiKey).toHaveBeenCalledTimes(1);
 		expect(mocks.saveBackendToken).toHaveBeenCalledTimes(1);
 	});
 
@@ -201,10 +192,8 @@ describe("useSettingsForm — Unit 3: loadPrompts / selectPrompt / savePromptToB
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mocks.getSettings.mockResolvedValue({ ...DEFAULT_SETTINGS_MOCK });
-		mocks.getApiKey.mockResolvedValue("test-api-key");
 		mocks.getBackendToken.mockResolvedValue("test-backend-token");
 		mocks.saveSettings.mockResolvedValue(undefined);
-		mocks.saveApiKey.mockResolvedValue(undefined);
 		mocks.saveBackendToken.mockResolvedValue(undefined);
 		mocks.fetchPrompts.mockResolvedValue({
 			ok: true,

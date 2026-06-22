@@ -116,7 +116,8 @@ export async function patchPendingTopic(
 }
 
 /**
- * 触发立即抓取（R3）。
+ * 旧 ACG 抓取入口。当前吃瓜流程请使用 gossip-client 的 from-url 路径。
+ * 后端未显式 legacy opt-in 时会返回 410；保留函数只为兼容历史调用方。
  */
 export async function triggerScrape(
 	siteName: string,
