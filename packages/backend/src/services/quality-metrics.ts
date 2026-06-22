@@ -36,8 +36,12 @@ function _rowToMetric(row: QualityMetricRow): QualityMetric {
 	};
 }
 
-/** 初始化质量指标表。 */
+// DDL 只需跑一次；记忆化避免每次 recordQuality/getQualityStats 都重发 CREATE。
+let _ddlReady = false;
+
+/** 初始化质量指标表（记忆化：进程内仅首次真正执行 DDL）。 */
 export function initQualityMetricsTable(db: BetterSqlite3DB): void {
+	if (_ddlReady) return;
 	db.exec(`
 		CREATE TABLE IF NOT EXISTS quality_metrics (
 			id TEXT PRIMARY KEY,
@@ -48,6 +52,12 @@ export function initQualityMetricsTable(db: BetterSqlite3DB): void {
 		);
 		CREATE INDEX IF NOT EXISTS idx_quality_created ON quality_metrics(created_at DESC);
 	`);
+	_ddlReady = true;
+}
+
+/** 测试隔离：清除 DDL 记忆，让下次调用对新 db 重新建表。 */
+export function __resetForTest(): void {
+	_ddlReady = false;
 }
 
 /** 记录一条质量指标。 */
@@ -80,11 +90,9 @@ export async function getQualityStats(): Promise<{
 }> {
 	const db = getDb();
 
-	try {
-		initQualityMetricsTable(db);
-	} catch {
-		// 表可能已存在
-	}
+	// 不再吞掉 DDL/查询错误：CREATE IF NOT EXISTS 不会因表已存在而抛，
+	// 此处任何异常都是真实 DB 故障，应向上传播（healthz 自有兜底 catch）。
+	initQualityMetricsTable(db);
 
 	const stats = db
 		.prepare(`
