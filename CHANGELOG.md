@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.2] - 2026-06-18
+
+### Fixed
+
+- **gossip-theme 双向包含匹配 bug**：`parseThemes()` 的 `ftt.includes(ft)` 方向导致输入 `戀情` 被错误归入 `公開戀情`（因为 `"公開戀情".includes("戀情") === true`）；移除该方向，保留 `ft.includes(ftt)` 单向包含，确保精确匹配
+
+### Added (Tests)
+
+- **gossip-theme 精确断言**：`公開戀情` / `戀情` 各自独立测试用例替代旧 `.toMatch(/戀情/)` 弱断言；新增 fold passthrough 与简繁兼容测试
+- **draft-gen category fallback 测试**：覆盖 `熱度標籤 为空` 时回落 `normalizeCategory(parsed.category)` 路径
+- **prompt-assembly THEME_ALLOWLIST 断言**：验证 `buildConstraintSuffix` 输出包含实际词条 `出軌`
+
 ## [0.2.1.0] - 2026-06-16
 
 ### Changed

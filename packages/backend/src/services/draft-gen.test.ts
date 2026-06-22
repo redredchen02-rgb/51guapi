@@ -247,6 +247,20 @@ describe("generateDraft (结构化组装)", () => {
 		}
 	});
 
+	it("熱度標籤 为空时 category 回落 normalizeCategory(parsed.category)", async () => {
+		const res = await generateDraft("主题", {
+			settings,
+			apiKey: "k",
+			facts: { 當事人: "某明星", 事件摘要: null, 起因: null, 經過: null, 結果: null, 來源連結: null, 發生時間: null, 熱度標籤: null },
+			fetchFn: mockFetch(slotsReply({ intro: "i", highlights: "h", category: "塌房" })),
+			...base,
+		});
+		expect(res.ok).toBe(true);
+		if (res.ok) {
+			expect(res.draft.category).toBe("塌房");
+		}
+	});
+
 	it("零事实 → 全骨架【待补】,仍 ok(不崩溃)", async () => {
 		const res = await generateDraft("主题", {
 			settings,

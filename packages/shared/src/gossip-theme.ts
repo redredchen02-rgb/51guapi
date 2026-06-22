@@ -69,7 +69,7 @@ export function parseThemes(hot: string | null | undefined): string[] {
 		const ft = fold(tag);
 		const match = THEME_ALLOWLIST.find((t) => {
 			const ftt = fold(t);
-			return ft === ftt || ft.includes(ftt) || ftt.includes(ft);
+			return ft === ftt || ft.includes(ftt);
 		});
 		themes.add(match ?? OTHER_THEME);
 	}

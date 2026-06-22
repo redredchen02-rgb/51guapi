@@ -67,6 +67,10 @@ describe("buildConstraintSuffix (moved to lib)", () => {
 		expect(buildConstraintSuffix([])).not.toContain("标签约束");
 	});
 
+	it("分类约束含 THEME_ALLOWLIST 实际词条（出軌等）", () => {
+		expect(buildConstraintSuffix([])).toContain("出軌");
+	});
+
 	it("有标签 → 含标签约束且逗号连接", () => {
 		const out = buildConstraintSuffix(["a", "b"]);
 		expect(out).toContain("标签约束");

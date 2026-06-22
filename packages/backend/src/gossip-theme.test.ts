@@ -24,10 +24,11 @@ describe("parseThemes", () => {
 	it("已知标签归一", () => {
 		expect(parseThemes("出軌")).toEqual(["出軌"]);
 	});
-	it("公開戀情 归到戀情/公開戀情 类(包含匹配)", () => {
-		const t = parseThemes("公開戀情");
-		expect(t.length).toBe(1);
-		expect(t[0]).toMatch(/戀情/);
+	it("公開戀情 精确归到 公開戀情 类", () => {
+		expect(parseThemes("公開戀情")).toEqual(["公開戀情"]);
+	});
+	it("戀情 归到 戀情（不应被 公開戀情 吸收）", () => {
+		expect(parseThemes("戀情")).toEqual(["戀情"]);
 	});
 	it("多标签 → 多题材去重", () => {
 		expect(parseThemes("出軌,撕逼,出軌").sort()).toEqual(
@@ -44,6 +45,10 @@ describe("parseThemes", () => {
 	it("已知 + 未知混合 → 已知题材 + 其他", () => {
 		const t = parseThemes("出軌,某种怪标签").sort();
 		expect(t).toEqual(["其他", "出軌"].sort());
+	});
+	it("非折叠字符（全ASCII/无简繁差异）原样通过 fold passthrough", () => {
+		expect(parseThemes("hello world")).toEqual([OTHER_THEME]);
+		expect(parseThemes("爆料")).toEqual(["爆料"]);
 	});
 	it("简体熱度標籤 → 命中繁体题材表（简繁兼容）", () => {
 		expect(parseThemes("出轨")).toEqual(["出軌"]);
