@@ -31,12 +31,19 @@ export function useErrorLogger(): UseErrorLoggerReturn {
 				context,
 				timestamp: new Date().toISOString(),
 			};
-			setLogs((prev) => {
-				const newLogs = [log, ...prev].slice(0, 100);
-				return newLogs;
-			});
+			// A14(R14):持久化到 chrome.storage —— 此前只 setLogs,刷新 side panel 即丢日志。
+			// 先算 newLogs 再 setLogs + storage.set(仿 useOperationHistory);结构化字段,
+			// 不写响应体/密钥。持久化失败静默,绝不影响主流程。
+			const newLogs = [log, ...logs].slice(0, 100);
+			setLogs(newLogs);
+			try {
+				const storage = getStorage();
+				if (storage) await storage.set({ [STORAGE_KEY]: newLogs });
+			} catch {
+				// 静默失败
+			}
 		},
-		[],
+		[logs],
 	);
 
 	const retrieveLogs = useCallback(async () => {

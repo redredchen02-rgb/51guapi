@@ -349,6 +349,24 @@ export async function generateDraft(
 		.filter((c) => !c.pass)
 		.map((c) => ({ name: c.name, message: c.message }));
 
+	// A12(R12):把每次生成的质量分接入 quality_metrics —— 此前 recordQuality 零生产调用,
+	// /healthz 的 quality 面板恒 0。topic_id = draft 自身 id(GENERATE_DRAFT 无 pending 关联,
+	// 质量是 per-draft 度量;scheduler 无生成路径,故此处是唯一接线点)。better-sqlite3 同步、
+	// <1ms,await 即可;try/catch 保证质量记录失败绝不破坏生成请求(仿 healthz)。动态 import
+	// 沿用本函数 evaluateQuality 范式,避免把 DB 依赖拉进纯逻辑/jsdom 测试。
+	try {
+		const { recordQuality } = await import("./quality-metrics.js");
+		await recordQuality({
+			id: draft.id,
+			topicId: draft.id,
+			overall: quality.overall,
+			checks: quality.checks,
+			createdAt: now,
+		});
+	} catch {
+		// 质量记录失败不影响生成结果
+	}
+
 	return {
 		ok: true,
 		draft,
