@@ -7,9 +7,7 @@ import { createPrompt, fetchPrompts } from "../../../lib/prompt-client";
 import {
 	deriveFewShotExamples,
 	getSettings,
-	saveBackendToken,
 	saveSettings,
-	getBackendToken as storageGetBackendToken,
 } from "../../../lib/storage";
 import { parseTagsText, validateSettingsForm } from "../Settings";
 
@@ -26,8 +24,6 @@ export interface SettingsFormValues {
 
 export interface UseSettingsFormReturn {
 	formValues: SettingsFormValues;
-	getBackendToken: () => string;
-	setBackendToken: (v: string) => void;
 	derivedFewShotExamples: string;
 	prompts: PromptTemplate[];
 	selectedPromptId: string;
@@ -61,24 +57,13 @@ export function useSettingsForm(): UseSettingsFormReturn {
 	const [selectedPromptId, setSelectedPromptId] = useState("");
 	const [promptStatus, setPromptStatus] = useState("");
 
-	const backendTokenRef = useRef("");
 	const loadedRef = useRef(false);
-
-	const getBackendToken = useCallback(() => backendTokenRef.current, []);
-	const setBackendToken = useCallback((v: string) => {
-		backendTokenRef.current = v;
-	}, []);
 
 	const load = useCallback(async () => {
 		if (loadedRef.current) return;
 		loadedRef.current = true;
 
-		const [s, bToken] = await Promise.all([
-			getSettings(),
-			storageGetBackendToken(),
-		]);
-
-		backendTokenRef.current = bToken;
+		const s = await getSettings();
 
 		setFormValues({
 			endpoint: s.endpoint,
@@ -114,7 +99,6 @@ export function useSettingsForm(): UseSettingsFormReturn {
 			backendUrl: formValues.backendUrl || undefined,
 			reviewCriteriaPrompt: formValues.reviewCriteriaPrompt || undefined,
 		});
-		await saveBackendToken(backendTokenRef.current);
 		return null;
 	}, [formValues]);
 
@@ -181,8 +165,6 @@ export function useSettingsForm(): UseSettingsFormReturn {
 
 	return {
 		formValues,
-		getBackendToken,
-		setBackendToken,
 		derivedFewShotExamples,
 		prompts,
 		selectedPromptId,

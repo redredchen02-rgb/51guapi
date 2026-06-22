@@ -28,8 +28,6 @@ vi.mock("./hooks/useSettingsForm", () => ({
 			reviewCriteriaPrompt: "",
 		},
 		setFormValue: vi.fn(),
-		getBackendToken: vi.fn(),
-		setBackendToken: vi.fn(),
 		derivedFewShotExamples: "",
 		prompts: [],
 		promptStatus: "",

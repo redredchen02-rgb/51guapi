@@ -8,7 +8,6 @@ import { storage } from "#imports";
 import { clearBackendUrlCache } from "./backend-url";
 
 const SETTINGS_KEY = "local:settings";
-const BACKEND_TOKEN_KEY = "local:backendToken";
 const CURRENT_DRAFT_KEY = "local:currentDraft";
 const EXTENSION_COUNTERS_KEY = "local:extensionCounters";
 
@@ -60,15 +59,6 @@ export async function saveSettings(settings: Settings): Promise<void> {
 	await storage.setItem(SETTINGS_KEY, settings);
 	// 清除后端 URL 缓存，确保下次请求使用新地址
 	clearBackendUrlCache();
-}
-
-/** 后端 JWT token。 */
-export async function getBackendToken(): Promise<string> {
-	return (await storage.getItem<string>(BACKEND_TOKEN_KEY)) ?? "";
-}
-
-export async function saveBackendToken(token: string): Promise<void> {
-	await storage.setItem(BACKEND_TOKEN_KEY, token);
 }
 
 export interface CurrentDraftSnapshot {
@@ -129,12 +119,8 @@ export async function getExtensionCounters(): Promise<ExtensionCounters> {
 	);
 	const def = defaultExtensionCounters();
 	if (!stored) return def;
-	const legacy = stored as Partial<ExtensionCounters> & {
-		batchesCompleted?: number;
-	};
 	return {
-		draftsGenerated:
-			stored.draftsGenerated ?? legacy.batchesCompleted ?? def.draftsGenerated,
+		draftsGenerated: stored.draftsGenerated ?? def.draftsGenerated,
 	};
 }
 

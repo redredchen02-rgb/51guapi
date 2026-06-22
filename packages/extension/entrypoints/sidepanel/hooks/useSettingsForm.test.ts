@@ -4,9 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
 	getSettings: vi.fn(),
-	getBackendToken: vi.fn(),
 	saveSettings: vi.fn(),
-	saveBackendToken: vi.fn(),
 	fetchPrompts: vi.fn(),
 	createPrompt: vi.fn(),
 	testConnection: vi.fn(),
@@ -17,9 +15,7 @@ vi.mock("../../../lib/storage", async (importOriginal) => {
 	return {
 		...actual,
 		getSettings: mocks.getSettings,
-		getBackendToken: mocks.getBackendToken,
 		saveSettings: mocks.saveSettings,
-		saveBackendToken: mocks.saveBackendToken,
 	};
 });
 
@@ -50,9 +46,7 @@ describe("useSettingsForm — Unit 2: load / save", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mocks.getSettings.mockResolvedValue({ ...DEFAULT_SETTINGS_MOCK });
-		mocks.getBackendToken.mockResolvedValue("test-backend-token");
 		mocks.saveSettings.mockResolvedValue(undefined);
-		mocks.saveBackendToken.mockResolvedValue(undefined);
 	});
 
 	it("load() 後 formValues.endpoint 等於 storage 回傳值", async () => {
@@ -63,13 +57,12 @@ describe("useSettingsForm — Unit 2: load / save", () => {
 		expect(result.current.formValues.endpoint).toBe("https://api.example.com");
 	});
 
-	it("load() 呼叫 getSettings + getBackendToken 各一次", async () => {
+	it("load() 呼叫 getSettings 一次", async () => {
 		const { result } = renderHook(() => useSettingsForm());
 		await act(async () => {
 			await result.current.load();
 		});
 		expect(mocks.getSettings).toHaveBeenCalledTimes(1);
-		expect(mocks.getBackendToken).toHaveBeenCalledTimes(1);
 	});
 
 	it("load() 後 fewShotPairs 正確回填", async () => {
@@ -85,7 +78,7 @@ describe("useSettingsForm — Unit 2: load / save", () => {
 		expect(result.current.formValues.fewShotPairs).toEqual(pairs);
 	});
 
-	it("save() 驗證通過 → saveSettings/saveBackendToken 各呼叫一次，回傳 null", async () => {
+	it("save() 驗證通過 → saveSettings 呼叫一次，回傳 null", async () => {
 		const { result } = renderHook(() => useSettingsForm());
 		await act(async () => {
 			await result.current.load();
@@ -96,7 +89,6 @@ describe("useSettingsForm — Unit 2: load / save", () => {
 		});
 		expect(saveResult).toBeNull();
 		expect(mocks.saveSettings).toHaveBeenCalledTimes(1);
-		expect(mocks.saveBackendToken).toHaveBeenCalledTimes(1);
 	});
 
 	it("save() → saveSettings 收到 fewShotPairs（不含 fewShotExamples）", async () => {
@@ -192,9 +184,7 @@ describe("useSettingsForm — Unit 3: loadPrompts / selectPrompt / savePromptToB
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mocks.getSettings.mockResolvedValue({ ...DEFAULT_SETTINGS_MOCK });
-		mocks.getBackendToken.mockResolvedValue("test-backend-token");
 		mocks.saveSettings.mockResolvedValue(undefined);
-		mocks.saveBackendToken.mockResolvedValue(undefined);
 		mocks.fetchPrompts.mockResolvedValue({
 			ok: true,
 			prompts: PROMPT_LIST_MOCK,

@@ -37,7 +37,7 @@ export function validateSettingsForm(
 
 export function Settings({ onClose }: { onClose: () => void }) {
 	const hook = useSettingsForm();
-	const { formValues, setFormValue, getBackendToken, setBackendToken } = hook;
+	const { formValues, setFormValue } = hook;
 	const [error, setError] = useState("");
 	const [saved, setSaved] = useState(false);
 
@@ -89,9 +89,7 @@ export function Settings({ onClose }: { onClose: () => void }) {
 
 			<BackendSection
 				backendUrl={formValues.backendUrl}
-				getBackendToken={getBackendToken}
 				setBackendUrl={(v) => setFormValue("backendUrl", v)}
-				setBackendToken={setBackendToken}
 				onTestConnection={hook.testConnectionFn}
 			/>
 

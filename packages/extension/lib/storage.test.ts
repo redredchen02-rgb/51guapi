@@ -6,12 +6,10 @@ import {
 	addFewShotPair,
 	DEFAULT_SETTINGS,
 	deriveFewShotExamples,
-	getBackendToken,
 	getCurrentDraft,
 	getExtensionCounters,
 	getSettings,
 	removeLastFewShotPair,
-	saveBackendToken,
 	saveCurrentDraft,
 	saveExtensionCounters,
 	saveSettings,
@@ -49,17 +47,6 @@ describe("storage", () => {
 		const got = await getSettings();
 		expect(got.endpoint).toBe("https://api.example.com/v1/chat/completions");
 		expect(got.model).toBe("gpt-4o");
-	});
-
-	describe("backendToken", () => {
-		it("未设置时返回空字符串", async () => {
-			expect(await getBackendToken()).toBe("");
-		});
-
-		it("saveBackendToken 后能取回", async () => {
-			await saveBackendToken("jwt-token-abc");
-			expect(await getBackendToken()).toBe("jwt-token-abc");
-		});
 	});
 
 	describe("currentDraft snapshot", () => {
@@ -119,12 +106,6 @@ describe("storage", () => {
 			await storage.setItem("local:extensionCounters", {});
 			const c = await getExtensionCounters();
 			expect(c.draftsGenerated).toBe(0);
-		});
-
-		it("旧 batchesCompleted 数据 → 迁移为 draftsGenerated", async () => {
-			await storage.setItem("local:extensionCounters", { batchesCompleted: 4 });
-			const c = await getExtensionCounters();
-			expect(c.draftsGenerated).toBe(4);
 		});
 	});
 

@@ -12,7 +12,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 vi.mock("../../lib/storage", () => ({
 	DEFAULT_SETTINGS: {},
 	deriveFewShotExamples: vi.fn(() => ""),
-	getBackendToken: vi.fn(async () => ""),
 	getSettings: vi.fn(async () => ({
 		endpoint: "",
 		model: "gpt-4o-mini",
@@ -22,7 +21,6 @@ vi.mock("../../lib/storage", () => ({
 		reviewCriteriaPrompt: "",
 		fewShotPairs: [],
 	})),
-	saveBackendToken: vi.fn(async () => {}),
 	saveSettings: vi.fn(async () => {}),
 }));
 

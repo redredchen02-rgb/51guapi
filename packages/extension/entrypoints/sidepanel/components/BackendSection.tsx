@@ -3,17 +3,13 @@ import type { ConnectionTestResult } from "../../../lib/connection-test";
 
 interface BackendSectionProps {
 	backendUrl: string;
-	getBackendToken: () => string;
 	setBackendUrl: (v: string) => void;
-	setBackendToken: (v: string) => void;
 	onTestConnection: () => Promise<ConnectionTestResult>;
 }
 
 export function BackendSection({
 	backendUrl,
-	getBackendToken,
 	setBackendUrl,
-	setBackendToken,
 	onTestConnection,
 }: BackendSectionProps) {
 	const [testing, setTesting] = useState(false);
@@ -47,19 +43,6 @@ export function BackendSection({
 				/>
 			</div>
 			<div className="field-group">
-				<label htmlFor="backend-token" className="field-label">
-					后端 JWT Token（可选）
-				</label>
-				<input
-					id="backend-token"
-					className="field-input"
-					type="password"
-					autoComplete="off"
-					value={getBackendToken()}
-					onChange={(e) => setBackendToken(e.target.value)}
-				/>
-			</div>
-			<div className="field-group">
 				<button
 					type="button"
 					className="btn btn-plain btn-sm"
@@ -75,7 +58,7 @@ export function BackendSection({
 					>
 						{testResult.status === "ok"
 							? "✓ 連線成功"
-							: "✗ 連線失敗，請確認 URL 和 Token"}
+							: "✗ 連線失敗，請確認 URL"}
 					</p>
 				)}
 			</div>
