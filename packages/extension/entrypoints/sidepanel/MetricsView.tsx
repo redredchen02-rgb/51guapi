@@ -1,9 +1,5 @@
 import { useEffect, useState } from "react";
 import { apiFetch } from "../../lib/api-fetch";
-import {
-	type ExtensionCounters,
-	getExtensionCounters,
-} from "../../lib/storage";
 
 interface Props {
 	onBack: () => void;
@@ -67,26 +63,13 @@ const cardNote: React.CSSProperties = {
 export function MetricsView({ onBack }: Props) {
 	const [backend, setBackend] = useState<BackendMetrics | null>(null);
 	const [backendOffline, setBackendOffline] = useState(false);
-	const [counters, setCounters] = useState<ExtensionCounters | null>(null);
 
 	useEffect(() => {
-		const [metricsP, countersP] = [
-			apiFetch("/api/v1/metrics")
-				.then((r) => r.text())
-				.then(parsePrometheus)
-				.catch(() => null),
-			getExtensionCounters().catch(() => null),
-		];
-		Promise.allSettled([metricsP, countersP]).then(([mRes, cRes]) => {
-			if (mRes.status === "fulfilled" && mRes.value) {
-				setBackend(mRes.value);
-			} else {
-				setBackendOffline(true);
-			}
-			if (cRes.status === "fulfilled" && cRes.value) {
-				setCounters(cRes.value);
-			}
-		});
+		apiFetch("/api/v1/metrics")
+			.then((r) => r.text())
+			.then(parsePrometheus)
+			.then(setBackend)
+			.catch(() => setBackendOffline(true));
 	}, []);
 
 	return (
@@ -141,19 +124,12 @@ export function MetricsView({ onBack }: Props) {
 				<div style={cardNote}>自上次后端启动（publisher_drafts_total）</div>
 			</div>
 
-			<div style={card}>
-				<div style={cardTitle}>批次完成数</div>
-				<div style={cardValue}>{counters?.batchesCompleted ?? "—"}</div>
-				<div style={cardNote}>跨会话累计（本地存储）</div>
-			</div>
-
 			{!backendOffline &&
 				backend &&
 				backend.scraperSuccess === 0 &&
 				backend.scraperFailed === 0 &&
 				backend.draftsSuccess === 0 &&
-				backend.draftsFailed === 0 &&
-				(!counters || counters.batchesCompleted === 0) && (
+				backend.draftsFailed === 0 && (
 					<p
 						style={{
 							textAlign: "center",
@@ -162,7 +138,7 @@ export function MetricsView({ onBack }: Props) {
 							marginTop: 16,
 						}}
 					>
-						暂无数据，完成一次批次任务后将显示统计
+						暂无数据，抓取并生成草稿后将显示统计
 					</p>
 				)}
 		</div>
