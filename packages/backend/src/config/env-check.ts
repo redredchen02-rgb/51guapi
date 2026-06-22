@@ -11,6 +11,20 @@ const WEAK_SECRETS = new Set([
 	"dev-secret",
 ]);
 
+// 默认拒绝:仅 127.0.0.0/8、::1、localhost 视为环回;其余(0.0.0.0、::、::0、
+// 局域网/公网 IP、主机名)一律非环回。括号/zone-id 归一后比对,避免 "[::1]" 漏判。
+function isLoopbackHost(host: string): boolean {
+	const h =
+		host
+			.trim()
+			.toLowerCase()
+			.replace(/^\[/, "")
+			.replace(/\]$/, "")
+			.split("%")[0] ?? ""; // 去 IPv6 zone id (fe80::1%en0)
+	if (h === "localhost" || h === "::1") return true;
+	return /^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(h);
+}
+
 export function checkEnv(env: NodeJS.ProcessEnv = process.env): string[] {
 	const errors: string[] = [];
 
@@ -31,6 +45,20 @@ export function checkEnv(env: NodeJS.ProcessEnv = process.env): string[] {
 			"CORS_ORIGIN is not set or is '*'. Set it to your extension's origin, e.g. " +
 				"chrome-extension://<extension-id>. Comma-separate for dev+prod IDs. " +
 				"Wildcard '*' is rejected to prevent open cross-origin access.",
+		);
+	}
+
+	// 自用模式为免密登入(plan 2026-06-18-003):凡能触达后端者即可换取 token。默认绑定
+	// 环回(index.ts HOST 缺省 127.0.0.1)是安全前提。若显式把 HOST 设成非环回地址
+	// (0.0.0.0 / :: / 局域网 IP / 主机名),等于把免密登入暴露给同网段,故 fail-closed
+	// 拒启动,除非操作者显式 opt-in。opt-in 严格布尔(=== "true",仿 TG_ENABLED):
+	// "1"/"yes"/"TRUE"/"false" 均不启用。判定采"非环回即需 opt-in"的默认拒绝姿态。
+	const host = (env.HOST ?? "").trim();
+	if (host && !isLoopbackHost(host) && env.ALLOW_NONLOOPBACK_AUTH !== "true") {
+		errors.push(
+			`HOST is set to a non-loopback address (${host}) while login is passwordless. ` +
+				"Anyone who can reach this host can obtain a token. Bind to 127.0.0.1 / ::1 / " +
+				"localhost, or set ALLOW_NONLOOPBACK_AUTH=true to explicitly opt in.",
 		);
 	}
 

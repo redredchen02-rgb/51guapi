@@ -85,3 +85,60 @@ describe("checkEnv", () => {
 		expect(() => validateEnv(goodEnv())).not.toThrow();
 	});
 });
+
+// R4:免密登入下,非环回 HOST 绑定须显式 opt-in,否则 fail-closed 拒启动。
+describe("non-loopback passwordless guard (R4)", () => {
+	it("HOST 未设 → 不触发(index.ts 缺省回环)", () => {
+		expect(checkEnv(goodEnv())).toEqual([]);
+	});
+
+	it("环回 HOST 默认放行(无需 opt-in)", () => {
+		for (const h of ["127.0.0.1", "127.0.0.53", "::1", "[::1]", "localhost"]) {
+			expect(checkEnv(goodEnv({ HOST: h })), h).toEqual([]);
+		}
+	});
+
+	it("非环回 HOST 无 opt-in → fail-closed 报错(种坏输入确认红)", () => {
+		for (const h of [
+			"0.0.0.0",
+			"::",
+			"::0",
+			"[::]",
+			"192.168.1.10",
+			"10.0.0.5",
+			"my-server.local",
+		]) {
+			const errors = checkEnv(goodEnv({ HOST: h }));
+			expect(
+				errors.some((e) => e.includes("non-loopback")),
+				h,
+			).toBe(true);
+		}
+	});
+
+	it('opt-in 严格布尔:仅 ALLOW_NONLOOPBACK_AUTH="true" 放行', () => {
+		// 严格 true → 放行
+		expect(
+			checkEnv(goodEnv({ HOST: "0.0.0.0", ALLOW_NONLOOPBACK_AUTH: "true" })),
+		).toEqual([]);
+		// 宽松真值/其他值 → 仍拒(不启用)
+		for (const v of ["1", "yes", "TRUE", "True", "false", "0", ""]) {
+			const errors = checkEnv(
+				goodEnv({ HOST: "0.0.0.0", ALLOW_NONLOOPBACK_AUTH: v }),
+			);
+			expect(
+				errors.some((e) => e.includes("non-loopback")),
+				`ALLOW_NONLOOPBACK_AUTH=${v}`,
+			).toBe(true);
+		}
+	});
+
+	it("validateEnv 在非环回 HOST 缺 opt-in 时 throw,opt-in 后不 throw", () => {
+		expect(() => validateEnv(goodEnv({ HOST: "0.0.0.0" }))).toThrow(
+			/Fail-closed/,
+		);
+		expect(() =>
+			validateEnv(goodEnv({ HOST: "0.0.0.0", ALLOW_NONLOOPBACK_AUTH: "true" })),
+		).not.toThrow();
+	});
+});
