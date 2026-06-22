@@ -174,3 +174,48 @@ describe("migration runner", () => {
 		).toEqual(["51cg1.com", "added-by-user.com"].sort());
 	});
 });
+
+describe("migration runner — atomicity (A4b)", () => {
+	afterEach(() => {
+		if (dbPath) {
+			for (const suffix of ["", "-wal", "-shm"]) {
+				rmSync(`${dbPath}${suffix}`, { force: true });
+			}
+			dbPath = "";
+		}
+	});
+
+	it("多语句迁移第 2 句失败 → 整条回滚(列未加、账本未写),可安全重跑无 duplicate-column", () => {
+		const path = freshDbPath();
+		const bad: Record<string, string> = {
+			"001-base.sql": "CREATE TABLE t (a TEXT);",
+			"002-partial.sql":
+				"ALTER TABLE t ADD COLUMN b TEXT; THIS IS NOT VALID SQL;",
+		};
+		// 第 2 句非法 → 002 整条事务回滚(含已执行的 ADD COLUMN)。
+		expect(() => runMigrations(path, bad)).toThrow();
+		// 001 已提交:表在;002 回滚:列 b 不在、账本无 002。
+		expect(tableExists(path, "t")).toBe(true);
+		expect(columnNames(path, "t").has("b")).toBe(false);
+		expect(appliedMigrations(path).has("002-partial.sql")).toBe(false);
+
+		// 修正 002 后重跑:因上次已回滚,ADD COLUMN 不会撞 duplicate-column。
+		const fixed: Record<string, string> = {
+			"001-base.sql": "CREATE TABLE t (a TEXT);",
+			"002-partial.sql": "ALTER TABLE t ADD COLUMN b TEXT;",
+		};
+		expect(() => runMigrations(path, fixed)).not.toThrow();
+		expect(columnNames(path, "t").has("b")).toBe(true);
+		expect(appliedMigrations(path).has("002-partial.sql")).toBe(true);
+	});
+
+	it("成功的多语句迁移正常应用并记入账本", () => {
+		const path = freshDbPath();
+		const ok: Record<string, string> = {
+			"001-x.sql": "CREATE TABLE u (a TEXT); ALTER TABLE u ADD COLUMN b TEXT;",
+		};
+		runMigrations(path, ok);
+		expect(columnNames(path, "u").has("b")).toBe(true);
+		expect(appliedMigrations(path).has("001-x.sql")).toBe(true);
+	});
+});

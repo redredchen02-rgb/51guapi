@@ -145,7 +145,11 @@ ALTER TABLE pending_topics ADD COLUMN verified_at TEXT DEFAULT NULL;
 CREATE INDEX IF NOT EXISTS idx_pending_fingerprint ON pending_topics(content_fingerprint);`,
 };
 
-export function runMigrations(dbPath: string): void {
+export function runMigrations(
+	dbPath: string,
+	// 默认用内置 MIGRATIONS；可注入(测试用)以验证部分失败回滚，不改生产行为。
+	migrations: Record<string, string> = MIGRATIONS,
+): void {
 	const dataDir = dirname(dbPath);
 	if (!existsSync(dataDir)) mkdirSync(dataDir, { recursive: true });
 
@@ -167,15 +171,23 @@ export function runMigrations(dbPath: string): void {
 		).map((r) => r.name),
 	);
 
-	const names = Object.keys(MIGRATIONS).sort();
+	const names = Object.keys(migrations).sort();
 	const insert = db.prepare("INSERT INTO _migrations (name) VALUES (?)");
 
-	for (const name of names) {
-		if (applied.has(name)) continue;
-		db.exec(MIGRATIONS[name]);
+	// 单条迁移原子化：SQL 应用 + 账本写入同一事务。多语句迁移中途失败则整条回滚，
+	// 避免「列已加但账本未写 → 重跑 duplicate-column」的部分应用陷阱。
+	const applyOne = db.transaction((name: string) => {
+		db.exec(migrations[name]);
 		insert.run(name);
-		console.log(`[migration] Applied: ${name}`);
-	}
+	});
 
-	db.close();
+	try {
+		for (const name of names) {
+			if (applied.has(name)) continue;
+			applyOne(name);
+			console.log(`[migration] Applied: ${name}`);
+		}
+	} finally {
+		db.close();
+	}
 }

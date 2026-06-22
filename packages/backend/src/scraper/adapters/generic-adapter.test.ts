@@ -493,3 +493,38 @@ describe("generic-adapter.fetchListPaged（U1 翻頁能力）", () => {
 		}
 	});
 });
+
+// A4a 特征化冻结:门面把「真 fail-closed allowlistCheck 闭包」逐次传给 safeFetch。
+// 本测试套件 mock 掉了 safeFetch,故 safeFetch 自身的逐跳 allowlist 行为在
+// ssrf-guard.test.ts 直接覆盖;这里冻结的是另一半——adapter 确实把 allowlistCheck
+// 接线进去了。若 A6/删除重构把第三参漏传、或换成 ()=>true 桩,生产即静默丢失逐跳
+// allowlist 强制(ssrf-guard 的测试照样绿,因它直接测 safeFetch),唯本断言能拦下。
+describe("A4a 冻结:每跳 allowlistCheck 接线(adapter 必传真 fail-closed 闭包)", () => {
+	// 捕获传给 safeFetch 的第三参,验证 allowlistCheck 是真 allowlist 检查而非桩。
+	// env ALLOWED_HOSTS 未设 + 渠道源(listChannels)在本套件未 mock → fail-closed 全拒,
+	// 故真闭包对任意 host 返回 false;若被换成 ()=>true 或漏传,断言转红。
+	function capturedAllowlistCheck(): ((u: URL) => boolean) | undefined {
+		const opts = mockSafeFetch.mock.calls[0]?.[2] as
+			| { allowlistCheck?: (u: URL) => boolean }
+			| undefined;
+		return opts?.allowlistCheck;
+	}
+
+	it("fetchContent 把真 allowlistCheck 闭包传给 safeFetch(deny-by-default)", async () => {
+		mockGetChannel.mockReturnValue(null);
+		mockSafeFetch.mockResolvedValueOnce(makeResponse(ARTICLE_HTML));
+		await fetchContent("https://example.com/gossip/12345");
+		const check = capturedAllowlistCheck();
+		expect(check).toEqual(expect.any(Function));
+		expect(check?.(new URL("https://not-allowed-zzz.example/"))).toBe(false);
+	});
+
+	it("fetchList 同样把真 allowlistCheck 闭包传给 safeFetch", async () => {
+		mockGetChannel.mockReturnValue(null);
+		mockSafeFetch.mockResolvedValueOnce(makeResponse(LIST_HTML));
+		await fetchList("https://example.com/latest");
+		const check = capturedAllowlistCheck();
+		expect(check).toEqual(expect.any(Function));
+		expect(check?.(new URL("https://not-allowed-zzz.example/"))).toBe(false);
+	});
+});
