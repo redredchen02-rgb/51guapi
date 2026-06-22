@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { getStorage } from "../../../lib/chrome-storage-utils";
 
 interface ErrorLog {
@@ -21,6 +21,10 @@ const STORAGE_KEY = "pfa-error-logs";
 
 export function useErrorLogger(): UseErrorLoggerReturn {
 	const [logs, setLogs] = useState<ErrorLog[]>([]);
+	// U7:logsRef 是「最新数组」的同步真相源。logError 同步追加到 ref,
+	// state 更新与 storage 写入都从 ref 取值,这样同一渲染周期内的多次 logError
+	// 互不覆盖(此前从闭包 logs 取值 + deps [logs],后者会盖掉前者,双双丢记录)。
+	const logsRef = useRef<ErrorLog[]>([]);
 
 	const logError = useCallback(
 		async (error: Error, context?: Record<string, unknown>) => {
@@ -32,9 +36,9 @@ export function useErrorLogger(): UseErrorLoggerReturn {
 				timestamp: new Date().toISOString(),
 			};
 			// A14(R14):持久化到 chrome.storage —— 此前只 setLogs,刷新 side panel 即丢日志。
-			// 先算 newLogs 再 setLogs + storage.set(仿 useOperationHistory);结构化字段,
-			// 不写响应体/密钥。持久化失败静默,绝不影响主流程。
-			const newLogs = [log, ...logs].slice(0, 100);
+			// 结构化字段,不写响应体/密钥。持久化失败静默,绝不影响主流程。
+			const newLogs = [log, ...logsRef.current].slice(0, 100);
+			logsRef.current = newLogs;
 			setLogs(newLogs);
 			try {
 				const storage = getStorage();
@@ -43,7 +47,7 @@ export function useErrorLogger(): UseErrorLoggerReturn {
 				// 静默失败
 			}
 		},
-		[logs],
+		[],
 	);
 
 	const retrieveLogs = useCallback(async () => {
@@ -51,7 +55,10 @@ export function useErrorLogger(): UseErrorLoggerReturn {
 			const storage = getStorage();
 			if (storage) {
 				const result = await storage.get<Record<string, unknown>>(STORAGE_KEY);
-				setLogs((result?.[STORAGE_KEY] as ErrorLog[] | undefined) ?? []);
+				const restored =
+					(result?.[STORAGE_KEY] as ErrorLog[] | undefined) ?? [];
+				logsRef.current = restored;
+				setLogs(restored);
 			}
 		} catch {
 			// 静默失败
@@ -59,6 +66,7 @@ export function useErrorLogger(): UseErrorLoggerReturn {
 	}, []);
 
 	const clearLogs = useCallback(async () => {
+		logsRef.current = [];
 		setLogs([]);
 		try {
 			const storage = getStorage();
