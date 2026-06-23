@@ -1,3 +1,5 @@
+import { HTTP_URL_PATTERN } from "./link-source.js";
+
 /** 吃瓜（娛樂八卦）選題的結構化事實。全欄位可為 null；缺失欄位不編造。 */
 export interface GossipFactsBlock {
 	當事人: string | null;
@@ -22,7 +24,7 @@ const GOSSIP_URL_FIELDS: GossipFactKey[] = ["來源連結"];
  */
 export function gossipFactUrls(facts: GossipFactsBlock): string[] {
 	const urls: string[] = [];
-	const urlRe = /https?:\/\/[^\s|]+/gi;
+	const urlRe = new RegExp(HTTP_URL_PATTERN, "gi");
 	for (const k of GOSSIP_URL_FIELDS) {
 		const v = facts[k];
 		if (!v) continue;

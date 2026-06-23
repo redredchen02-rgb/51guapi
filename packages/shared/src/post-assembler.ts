@@ -11,6 +11,7 @@
 // Migrated from packages/extension/lib/post-assembler.ts (identical to packages/backend/src/shared/post-assembler.ts)
 
 import type { GossipFactsBlock } from "./gossip-facts.js";
+import { HTTP_URL_PATTERN } from "./link-source.js";
 
 export const PLACEHOLDER = "【待补】";
 
@@ -52,7 +53,7 @@ export interface AssembledDraft {
 
 /** 从 來源連結 字段值里抽第一个 URL，与 gossipFactUrls 同规则。 */
 function firstUrl(s: string): string | null {
-	const m = s.match(/https?:\/\/[^\s|]+/i);
+	const m = s.match(new RegExp(HTTP_URL_PATTERN, "i"));
 	return m ? m[0] : null;
 }
 
@@ -69,7 +70,7 @@ export function sanitizeToPlainText(s: string | undefined): string {
 	if (!s) return "";
 	let t = s.replace(/<[^>]*>/g, " ");
 	t = t
-		.replace(/https?:\/\/[^\s]+/gi, PLACEHOLDER)
+		.replace(new RegExp(HTTP_URL_PATTERN, "gi"), PLACEHOLDER)
 		.replace(/\bwww\.[^\s]+/gi, PLACEHOLDER);
 	return t.replace(/\s+/g, " ").trim();
 }
