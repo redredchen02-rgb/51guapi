@@ -201,7 +201,7 @@ graph TB
 - Anti-false-green：临时移除 assembler 中和（模拟回退）→ evil.com 漏进导出 → 用例变红（证中和真在生效，而非 grounding 闸）。
 **Verification:** facts verbatim 入导出；模型链接经 assembler 中和、零进导出（负向断言）；**不**误判 grounding 闸为 reject 路径；A12 计数反映真实生成。
 
-- [ ] **E3: rewrite 中和 端到端（A5）**
+- [x] **E3: rewrite 中和 端到端（A5）** ✅ 已实现（commit `54019dcd`，A5 f2879cef 先合入 main）：`draft-rewrite-e2e.test.ts`，vi.stubGlobal("fetch") 拦截全局 fetch，rewriteDraftLlm 走真实实现，4 测试绿；覆盖 anchor 链接中和、omit-path P0（模型省略 body 时客户端裸文本 URL 仍被无条件中和）、happy path、failedDims 空→400；anti-false-green 验过（翻转 omit-path 断言 → 变红）。与 draft-rewrite.test.ts 的差异：本单元走 HTTP 路由层（POST /api/v1/drafts/rewrite），彼单元直测服务函数（fetchFn 注入）。
 
 **Goal:** 端到端证 rewrite 路径模型输出经「纯散文 + 导出前中和」后，任何形式链接（anchor / 裸文本 / markdown）均不进导出物，客户端无法自我放行。**与 E2 的关键区别**：生成路径（E2）的 assembler 中和**已在 main**；rewrite 路径（`draft-rewrite.ts`）当前**接受模型 body verbatim、不中和**——A5 才补上中和。故 E3 的 A5 gate **是实的**（中和逻辑确实尚不存在于 rewrite 路径），非冗余。
 **Requirements:** R2, R5
