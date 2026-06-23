@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.4] - 2026-06-23
+
+### Fixed
+
+- **useErrorLogger / useOperationHistory 竞态**：同一渲染周期内的两次写入不再互相覆盖（改用 `useRef` 作同步真相源，存储写入与 state 更新都从 ref 取最新值）
+- **ExportPanel 定时器泄漏**：`setTimeout` 在 unmount 后可能触发的 `setState` 已改为 `clearTimeout` 清理，消除 React 控制台警告
+- **telegram 日志脱敏**：catch 块改为只打印 `e.message`（避免 cause 链意外带出 token），并对错误信息中残留的 token 做 `replaceAll` 脱敏
+- **generate-id 同毫秒碰撞**：改用 `crypto.randomUUID()` 前段 + 进程内单调计数器后缀，杜绝同毫秒生成的 ID 相撞
+
+### Changed
+
+- **quality-metrics DDL 记忆化**：全局 bool 换成 `WeakSet<BetterSqlite3DB>`，以 db 实例为键——新连接自动重建表，测试不再需要外部复位操作；DDL/查询错误不再静默吞掉（`healthz` 可感知真实 DB 故障）
+- **data-dir 弃用提醒**：单次进程仅警告一次 `PUBLISHER_DATA_DIR is deprecated`，避免每次调用刷屏
+- **gossip-client / pending-client 错误样板收敛**：401/非 2xx 处理逻辑从 5 处重复降为 1 个 `handleGossipResponse` helper；`pending-client` 同理抽出 `requestWithFallback`，删除已死亡函数
+- **DraftReviewPanel 无障碍**：错误态加 `role="alert"` ARIA live region；review/rewrite 失败后可直接点击重试，不需手动刷新
+
+### Added
+
+- **audit-log 单测**：`auditLogin` 之前无测试，新增 append-only、结构化字段、吞错误、不泄漏 PII 等四类验证
+- **CI release 安全门补齐**：`release.yml` 同步 Node 版本到 `.nvmrc`；fixture 脱敏闸（`check-fixture-secrets`）和 gitleaks 全史密钥扫描从 PR 门延伸至 tag 发布路径（之前 tag 是 fail-open）；gitleaks job 加 `timeout-minutes: 10` 和最小权限 `contents: read`
+
 ## [0.2.3] - 2026-06-22
 
 ### Changed

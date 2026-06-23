@@ -1,35 +1,35 @@
 {
-	"name": "51guapi-extension",
-	"description": "吃瓜小帮手 — 锁定 URL 爬取目标站资源、AI 提炼吃瓜草稿的 Chrome 扩展",
-	"private": true,
-	"version": "0.2.3",
-	"type": "module",
-	"scripts": {
-		"dev": "wxt",
-		"build": "wxt build",
-		"zip": "wxt zip",
-		"compile": "wxt prepare && tsc --noEmit",
-		"test": "vitest run",
-		"coverage": "vitest run --coverage",
-		"test:watch": "vitest",
-		"check:fixtures": "bash scripts/check-fixture-secrets.sh",
-		"postinstall": "wxt prepare || true"
-	},
-	"dependencies": {
-		"@51guapi/shared": "workspace:*",
-		"react": "^19.2.7",
-		"react-dom": "^19.2.7"
-	},
-	"devDependencies": {
-		"@testing-library/dom": "^10.4.1",
-		"@testing-library/react": "^16.3.2",
-		"@types/react": "^19.2.16",
-		"@types/react-dom": "^19.2.3",
-		"@wxt-dev/module-react": "^1.2.2",
-		"jsdom": "^29.1.1",
-		"quill": "2.0.2",
-		"typescript": "^6.0.3",
-		"vitest": "^4.1.8",
-		"wxt": "^0.20.26"
-	}
+  "name": "51guapi-extension",
+  "description": "吃瓜小帮手 — 锁定 URL 爬取目标站资源、AI 提炼吃瓜草稿的 Chrome 扩展",
+  "private": true,
+  "version": "0.2.4",
+  "type": "module",
+  "scripts": {
+    "dev": "wxt",
+    "build": "wxt build",
+    "zip": "wxt zip",
+    "compile": "wxt prepare && tsc --noEmit",
+    "test": "vitest run",
+    "coverage": "vitest run --coverage",
+    "test:watch": "vitest",
+    "check:fixtures": "bash scripts/check-fixture-secrets.sh",
+    "postinstall": "wxt prepare || true"
+  },
+  "dependencies": {
+    "@51guapi/shared": "workspace:*",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
+  },
+  "devDependencies": {
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/react": "^19.2.16",
+    "@types/react-dom": "^19.2.3",
+    "@wxt-dev/module-react": "^1.2.2",
+    "jsdom": "^29.1.1",
+    "quill": "2.0.2",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.8",
+    "wxt": "^0.20.26"
+  }
 }

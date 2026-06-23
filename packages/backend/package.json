@@ -1,38 +1,38 @@
 {
-	"name": "51guapi-backend",
-	"version": "0.2.3",
-	"private": true,
-	"type": "module",
-	"scripts": {
-		"dev": "tsx watch src/index.ts",
-		"build": "tsc",
-		"compile": "tsc --noEmit",
-		"start": "node dist/index.js",
-		"test": "vitest run",
-		"coverage": "vitest run --coverage"
-	},
-	"dependencies": {
-		"@51guapi/shared": "workspace:*",
-		"@fastify/cors": "^10.0.2",
-		"@fastify/rate-limit": "^11.0.0",
-		"@fastify/swagger": "^9.7.0",
-		"@fastify/swagger-ui": "^6.0.0",
-		"@fastify/type-provider-typebox": "^6.1.0",
-		"@sinclair/typebox": "^0.34.49",
-		"better-sqlite3": "^12.10.0",
-		"dotenv": "^16.4.7",
-		"fastify": "^5.2.1",
-		"jsonwebtoken": "^9.0.2",
-		"node-cron": "^4.2.1",
-		"undici": "^6.27.0"
-	},
-	"devDependencies": {
-		"@types/better-sqlite3": "^7.6.13",
-		"@types/jsonwebtoken": "^9.0.9",
-		"@types/node": "^22.13.5",
-		"@types/node-cron": "^3.0.11",
-		"tsx": "^4.19.3",
-		"typescript": "^6.0.3",
-		"vitest": "^4.1.8"
-	}
+  "name": "51guapi-backend",
+  "version": "0.2.4",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "compile": "tsc --noEmit",
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@51guapi/shared": "workspace:*",
+    "@fastify/cors": "^10.0.2",
+    "@fastify/rate-limit": "^11.0.0",
+    "@fastify/swagger": "^9.7.0",
+    "@fastify/swagger-ui": "^6.0.0",
+    "@fastify/type-provider-typebox": "^6.1.0",
+    "@sinclair/typebox": "^0.34.49",
+    "better-sqlite3": "^12.10.0",
+    "dotenv": "^16.4.7",
+    "fastify": "^5.2.1",
+    "jsonwebtoken": "^9.0.2",
+    "node-cron": "^4.2.1",
+    "undici": "^6.27.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/jsonwebtoken": "^9.0.9",
+    "@types/node": "^22.13.5",
+    "@types/node-cron": "^3.0.11",
+    "tsx": "^4.19.3",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.8"
+  }
 }
