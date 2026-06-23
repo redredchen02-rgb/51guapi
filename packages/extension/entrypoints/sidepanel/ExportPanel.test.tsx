@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import type { ContentDraft } from "@51guapi/shared";
 import {
+	act,
 	cleanup,
 	fireEvent,
 	render,
@@ -75,5 +76,64 @@ describe("ExportPanel", () => {
 		await waitFor(() => expect(mockCopy).toHaveBeenCalledWith("# md"));
 		expect(mockMd).toHaveBeenCalled();
 		expect(await screen.findByText("已复制到剪贴板")).toBeTruthy();
+	});
+
+	it("2s 窗口内卸载 + advanceTimers → 无 unmount 后 setState 警告", () => {
+		vi.useFakeTimers();
+		const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		try {
+			const { unmount } = render(<ExportPanel draft={makeDraft()} />);
+			fireEvent.click(screen.getByText("导出 JSON"));
+			expect(screen.getByText("已导出 JSON")).toBeTruthy();
+			unmount();
+			act(() => {
+				vi.advanceTimersByTime(2000);
+			});
+			// timer 已在 cleanup 中清除:卸载后推进时钟既不报 unmount 后 setState
+			// 警告,也不产生任何 console.error
+			const warned = errSpy.mock.calls.some((args) =>
+				String(args[0]).includes("unmounted component"),
+			);
+			expect(warned).toBe(false);
+			expect(errSpy).not.toHaveBeenCalled();
+		} finally {
+			errSpy.mockRestore();
+			vi.useRealTimers();
+		}
+	});
+
+	it("快速重 flash → 旧 timer 被清,新提示在旧倒计时到点后仍在", () => {
+		vi.useFakeTimers();
+		try {
+			render(<ExportPanel draft={makeDraft()} />);
+			fireEvent.click(screen.getByText("导出 JSON"));
+			expect(screen.getByText("已导出 JSON")).toBeTruthy();
+			act(() => {
+				vi.advanceTimersByTime(1000);
+			});
+			fireEvent.click(screen.getByText("导出 Markdown"));
+			// 旧 timer 已被清:再走到旧 timer 的 2000ms 点,新提示不应被清空
+			act(() => {
+				vi.advanceTimersByTime(1000);
+			});
+			expect(screen.getByText("已导出 Markdown")).toBeTruthy();
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it("正常 hint 生命周期:显示后在 2000ms 消失", () => {
+		vi.useFakeTimers();
+		try {
+			render(<ExportPanel draft={makeDraft()} />);
+			fireEvent.click(screen.getByText("导出 JSON"));
+			expect(screen.getByText("已导出 JSON")).toBeTruthy();
+			act(() => {
+				vi.advanceTimersByTime(2000);
+			});
+			expect(screen.queryByText("已导出 JSON")).toBeNull();
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 });

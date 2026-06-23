@@ -26,6 +26,8 @@ export function DraftReviewPanel({
 	const [result, setResult] = useState<ReviewResult | null>(null);
 	const [candidate, setCandidate] = useState<ContentDraft | null>(null);
 	const [error, setError] = useState<string | null>(null);
+	// 记录出错的操作,供错误态的「重试」重放对应请求(review 失败回 idle、rewrite 失败回 reviewed)。
+	const [failedOp, setFailedOp] = useState<"review" | "rewrite" | null>(null);
 
 	const failedDims = (result?.dimensions ?? [])
 		.filter((d) => !d.pass)
@@ -34,6 +36,7 @@ export function DraftReviewPanel({
 
 	async function runReview() {
 		setError(null);
+		setFailedOp(null);
 		setCandidate(null);
 		setPhase("reviewing");
 		const settings = await getSettings();
@@ -43,6 +46,7 @@ export function DraftReviewPanel({
 		});
 		if (!res.ok) {
 			setError(res.error);
+			setFailedOp("review");
 			setPhase("idle");
 			return;
 		}
@@ -52,6 +56,7 @@ export function DraftReviewPanel({
 
 	async function runRewrite() {
 		setError(null);
+		setFailedOp(null);
 		setPhase("rewriting");
 		const settings = await getSettings();
 		const res = await rewriteDraft(draft, failedDims, {
@@ -60,6 +65,7 @@ export function DraftReviewPanel({
 		});
 		if (!res.ok) {
 			setError(res.error);
+			setFailedOp("rewrite");
 			setPhase("reviewed");
 			return;
 		}
@@ -77,6 +83,7 @@ export function DraftReviewPanel({
 		setResult(null);
 		setCandidate(null);
 		setError(null);
+		setFailedOp(null);
 	}
 
 	return (
@@ -97,10 +104,27 @@ export function DraftReviewPanel({
 
 			{error && (
 				<div
+					role="alert"
 					className="text-sm"
-					style={{ marginTop: "var(--space-sm)", color: "#c0392b" }}
+					style={{
+						marginTop: "var(--space-sm)",
+						color: "#c0392b",
+						display: "flex",
+						alignItems: "center",
+						gap: "var(--space-md)",
+					}}
 				>
-					{error}
+					<span style={{ flex: 1 }}>{error}</span>
+					{failedOp && (
+						<button
+							type="button"
+							onClick={failedOp === "review" ? runReview : runRewrite}
+							disabled={busy}
+							style={{ whiteSpace: "nowrap", flexShrink: 0 }}
+						>
+							重试
+						</button>
+					)}
 				</div>
 			)}
 

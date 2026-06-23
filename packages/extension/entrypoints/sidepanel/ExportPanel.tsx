@@ -1,5 +1,5 @@
 import type { ContentDraft, GossipFactsBlock } from "@51guapi/shared";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
 	copyToClipboard,
 	downloadFile,
@@ -17,10 +17,20 @@ export function ExportPanel({
 	facts?: GossipFactsBlock | null;
 }) {
 	const [hint, setHint] = useState<string>("");
+	const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+	// 卸载时清掉未触发的 timer,避免 unmount 后 setState 警告
+	useEffect(() => {
+		return () => {
+			if (timerRef.current) clearTimeout(timerRef.current);
+		};
+	}, []);
 
 	const flash = (msg: string) => {
+		// 快速重 flash 时先清旧 timer,防止旧的 2s 倒计时提前清空新提示
+		if (timerRef.current) clearTimeout(timerRef.current);
 		setHint(msg);
-		setTimeout(() => setHint(""), 2000);
+		timerRef.current = setTimeout(() => setHint(""), 2000);
 	};
 
 	const onExportJSON = () => {

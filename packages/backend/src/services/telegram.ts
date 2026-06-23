@@ -40,10 +40,11 @@ export async function sendAlert(
 			redirect: "error",
 		});
 	} catch (e) {
-		console.warn(
-			"[telegram] sendAlert failed (fire-and-forget):",
-			e instanceof Error ? e.message : e,
-		);
+		// 只取 e.message(绝不打印原始对象,避免 cause 链/字段意外带出 token)。
+		// 错误信息可能回显含 token 的完整 URL(如 SsrfError「Invalid URL: ...」),故再脱敏。
+		const reason = e instanceof Error ? e.message : String(e);
+		const safeReason = token ? reason.replaceAll(token, "[REDACTED]") : reason;
+		console.warn("[telegram] sendAlert failed (fire-and-forget):", safeReason);
 	}
 }
 

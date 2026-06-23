@@ -171,4 +171,87 @@ describe("DraftReviewPanel", () => {
 		expect(await screen.findByText(/全部维度通过/)).toBeTruthy();
 		expect(screen.queryByText(/改写未达标维度/)).toBeNull();
 	});
+
+	it("评审失败 → 错误节点带 role='alert' 且含消息", async () => {
+		mockReview.mockResolvedValue({
+			ok: false,
+			kind: "network",
+			error: "无法连接到后端服务。",
+		});
+		render(<DraftReviewPanel draft={draft} onApply={vi.fn()} />);
+		fireEvent.click(screen.getByText("AI 评审"));
+		const alert = await screen.findByRole("alert");
+		expect(alert.textContent).toContain("无法连接到后端服务。");
+	});
+
+	it("改写失败 → 错误节点带 role='alert' 且 phase 回到 reviewed", async () => {
+		mockReview.mockResolvedValue({
+			ok: true,
+			result: {
+				ok: false,
+				dimensions: [{ name: "body_richness", pass: false }],
+			},
+		});
+		mockRewrite.mockResolvedValue({
+			ok: false,
+			kind: "network",
+			error: "改写请求失败。",
+		});
+		render(<DraftReviewPanel draft={draft} onApply={vi.fn()} />);
+		fireEvent.click(screen.getByText("AI 评审"));
+		fireEvent.click(await screen.findByText(/改写未达标维度/));
+		const alert = await screen.findByRole("alert");
+		expect(alert.textContent).toContain("改写请求失败。");
+		// phase 回到 reviewed:改写按钮仍在(reviewed 才渲染)。
+		expect(screen.getByText(/改写未达标维度/)).toBeTruthy();
+	});
+
+	it("评审失败后点重试 → 重新调用 reviewDraft 并清除旧错误", async () => {
+		mockReview
+			.mockResolvedValueOnce({
+				ok: false,
+				kind: "network",
+				error: "无法连接到后端服务。",
+			})
+			.mockResolvedValueOnce({
+				ok: true,
+				result: { ok: true, dimensions: [] },
+			});
+		render(<DraftReviewPanel draft={draft} onApply={vi.fn()} />);
+		fireEvent.click(screen.getByText("AI 评审"));
+		await screen.findByText("无法连接到后端服务。");
+		fireEvent.click(screen.getByText("重试"));
+		await screen.findByText(/全部维度通过/);
+		expect(mockReview).toHaveBeenCalledTimes(2);
+		expect(screen.queryByText("无法连接到后端服务。")).toBeNull();
+	});
+
+	it("改写失败后点重试 → 用相同 failedDims 重新调用 rewriteDraft", async () => {
+		mockReview.mockResolvedValue({
+			ok: true,
+			result: {
+				ok: false,
+				dimensions: [{ name: "body_richness", pass: false }],
+			},
+		});
+		mockRewrite
+			.mockResolvedValueOnce({
+				ok: false,
+				kind: "network",
+				error: "改写请求失败。",
+			})
+			.mockResolvedValueOnce({ ok: true, draft: { ...draft, body: "重写后" } });
+		render(<DraftReviewPanel draft={draft} onApply={vi.fn()} />);
+		fireEvent.click(screen.getByText("AI 评审"));
+		fireEvent.click(await screen.findByText(/改写未达标维度/));
+		await screen.findByText("改写请求失败。");
+		fireEvent.click(screen.getByText("重试"));
+		await screen.findByText("重写后");
+		expect(mockRewrite).toHaveBeenCalledTimes(2);
+		expect(mockRewrite).toHaveBeenLastCalledWith(
+			draft,
+			["body_richness"],
+			expect.anything(),
+		);
+	});
 });

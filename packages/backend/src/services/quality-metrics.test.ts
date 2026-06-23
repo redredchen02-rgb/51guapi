@@ -11,6 +11,7 @@ process.env.GUAPI_DATA_DIR = join(process.cwd(), "data");
 import { getDb, initPendingDb } from "../scraper/pending-db.js";
 import { generateDraft } from "./draft-gen.js";
 import {
+	__resetForTest,
 	getQualityStats,
 	initQualityMetricsTable,
 	recordQuality,
@@ -18,6 +19,8 @@ import {
 
 describe("quality-metrics", () => {
 	beforeEach(() => {
+		// 每个用例从干净的 DDL 记忆开始，避免跨用例的记忆化串味。
+		__resetForTest();
 		// 初始化测试数据库
 		initPendingDb();
 		const db = getDb();
@@ -99,6 +102,61 @@ describe("quality-metrics", () => {
 
 		const stats = await getQualityStats();
 		expect(stats.recentScores).toHaveLength(10);
+	});
+
+	it("DDL 记忆化：跨多次调用只执行一次 CREATE", async () => {
+		// beforeEach 已先建表一次；此处复位记忆以从干净状态计数 db.exec。
+		__resetForTest();
+		const db = getDb();
+		const execSpy = vi.spyOn(db, "exec");
+
+		await recordQuality({
+			id: "ddl-1",
+			topicId: "t",
+			overall: 0.5,
+			checks: [],
+			createdAt: "2026-01-01",
+		});
+		await getQualityStats();
+		await recordQuality({
+			id: "ddl-2",
+			topicId: "t",
+			overall: 0.6,
+			checks: [],
+			createdAt: "2026-01-02",
+		});
+		await getQualityStats();
+
+		// N>=3 次会触达 initQualityMetricsTable，但 DDL exec 仅首次真正执行。
+		expect(execSpy).toHaveBeenCalledTimes(1);
+		execSpy.mockRestore();
+	});
+
+	it("__resetForTest 对相同 db 实例重置 DDL 记忆，下次调用重新执行 DDL", () => {
+		const db = getDb();
+		// 第一次：记忆已在 beforeEach 置位，再调用不触发 exec。
+		const firstSpy = vi.spyOn(db, "exec");
+		initQualityMetricsTable(db);
+		expect(firstSpy).not.toHaveBeenCalled();
+		firstSpy.mockRestore();
+
+		// 复位后：db 实例从 WeakSet 移除，同一实例再次调用应重新执行一次 DDL。
+		__resetForTest();
+		const secondSpy = vi.spyOn(db, "exec");
+		initQualityMetricsTable(db);
+		expect(secondSpy).toHaveBeenCalledTimes(1);
+		secondSpy.mockRestore();
+	});
+
+	it("getQualityStats 在真实 DB 故障时向上抛（不再静默吞）", async () => {
+		const db = getDb();
+		const boom = new Error("simulated DB failure");
+		const prepareSpy = vi.spyOn(db, "prepare").mockImplementation(() => {
+			throw boom;
+		});
+
+		await expect(getQualityStats()).rejects.toThrow("simulated DB failure");
+		prepareSpy.mockRestore();
 	});
 
 	// A12(R12)端到端:证 recordQuality 真接进了 generateDraft 成功路径(此前零生产调用)。
