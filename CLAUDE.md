@@ -45,7 +45,7 @@ npx vitest run -t "测试名"                     # 按名称过滤
 
 ### 扩展
 
-- `entrypoints/background.ts` — service worker,调度中心。路由 `GENERATE_DRAFT`(调 LLM 提炼)、`GENERATE_ARTICLE`(调后端 `/api/v1/drafts/generate-article` 生成九段落文章)、读取/导出相关消息;API key 只在此处;**无任何发布/填充/注入逻辑**
+- `entrypoints/background.ts` — service worker,调度中心。路由 `GENERATE_DRAFT`(调 LLM 提炼,LLM API key 在此直调)、`GENERATE_ARTICLE`(调后端 `/api/v1/drafts/generate-article` 生成九段落文章,后端侧再用 `getLlmConfig().apiKey`)、读取/导出相关消息;**无任何发布/填充/注入逻辑**
 - `entrypoints/sidepanel/` — React UI:渠道管理、待审选题、草稿预览/编辑、导出(JSON / Markdown)、设置
 
 ### 安全与防幻觉(改动前必读)
@@ -63,7 +63,7 @@ npx vitest run -t "测试名"                     # 按名称过滤
 - `src/services/draft-article-gen.ts` — 九段落吃瓜文章生成服务:gossip facts → LLM 叙事槽位 → `assembleGossipArticle()` verbatim 注入事实 → `ContentDraft`；路由 `POST /api/v1/drafts/generate-article`（需 `status='approved'` 且 `domain='gossip'`）
 - 数据流:URL → `generic-adapter.fetchContent()` → `gossipExtractFacts()` → `pending-store`(SQLite,`domain='gossip'`)→ 扩展经 `/api/v1/gossip/*` 读回
 - 文章生成流:approved gossip topic → `/api/v1/drafts/generate-article` → `generateArticleDraft()` → `assembleGossipArticle()` → `ContentDraft`(附 `qualityWarnings`)
-- 扩展对后端的调用统一走 `authHeaders()` + 401 时 `clearToken()` 模式
+- 扩展对后端的调用统一走 `getToken()` 内联注入 `Authorization: Bearer <token>` + 401 时 `clearToken()` 模式(见 `lib/llm.ts`)
 
 ## 迭代节奏
 
