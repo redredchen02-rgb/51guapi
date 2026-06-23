@@ -1,0 +1,21 @@
+{
+	"compilerOptions": {
+		"target": "ESNext",
+		"module": "ESNext",
+		"moduleResolution": "bundler",
+		"jsx": "react-jsx",
+		"strict": true,
+		"noUncheckedIndexedAccess": true,
+		"skipLibCheck": true,
+		"resolveJsonModule": true,
+		"ignoreDeprecations": "6.0",
+		"baseUrl": ".",
+		"paths": {
+			"@/*": ["./src/*"]
+		},
+		"lib": ["ESNext", "DOM", "DOM.Iterable"],
+		"types": ["node"]
+	},
+	"include": ["src", "vite.config.ts"],
+	"exclude": ["node_modules", "dist"]
+}
