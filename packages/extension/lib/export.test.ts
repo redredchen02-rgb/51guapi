@@ -159,9 +159,9 @@ describe("exportTopicsAsCSV", () => {
 		const lines = csv.split("\r\n");
 		expect(lines).toHaveLength(4); // 表头 + 3 列
 		const header = lines[0]!.split(",");
-		// 8 元资料 + 8 事实 = 16 栏
-		expect(header).toHaveLength(16);
-		expect(header.slice(0, 8)).toEqual([
+		// 9 元资料 + 8 事实 = 17 栏（O2 加了 status 欄）
+		expect(header).toHaveLength(17);
+		expect(header.slice(0, 9)).toEqual([
 			"id",
 			"title",
 			"siteName",
@@ -169,9 +169,10 @@ describe("exportTopicsAsCSV", () => {
 			"confidence",
 			"score",
 			"domain",
+			"status",
 			"createdAt",
 		]);
-		expect(header.slice(8)).toEqual([
+		expect(header.slice(9)).toEqual([
 			"當事人",
 			"事件摘要",
 			"起因",
@@ -181,7 +182,7 @@ describe("exportTopicsAsCSV", () => {
 			"發生時間",
 			"熱度標籤",
 		]);
-		// score 取自 qualityScore
+		// score 取自 qualityScore（索引 5 不變）
 		expect(lines[1]!.split(",")[5]).toBe("0.75");
 	});
 
@@ -193,10 +194,10 @@ describe("exportTopicsAsCSV", () => {
 			}),
 		]);
 		const cells = csv.split("\r\n")[1]!.split(",");
-		expect(cells[5]).toBe(""); // score 缺失
-		expect(cells[8]).toBe("C"); // 當事人
-		expect(cells[9]).toBe(""); // 事件摘要 缺失
-		expect(cells[13]).toBe(""); // 來源連結 为 null
+		expect(cells[5]).toBe(""); // score 缺失（索引不變）
+		expect(cells[9]).toBe("C"); // 當事人（status 欄插入後 +1）
+		expect(cells[10]).toBe(""); // 事件摘要 缺失
+		expect(cells[14]).toBe(""); // 來源連結 为 null
 	});
 
 	it("Edge: 标题含逗号/双引号/换行 → 正确转义", () => {
