@@ -3,7 +3,8 @@ import type {
 	GenerateDraftResponse,
 	GossipFactsBlock,
 } from "@51guapi/shared";
-import { generateDraft } from "../lib/llm";
+import type { GenerateArticleResponse } from "../lib/llm";
+import { generateArticle, generateDraft } from "../lib/llm";
 import { logger } from "../lib/logger";
 import type { GenerateDraftOptions, RuntimeMessage } from "../lib/messages";
 import { buildConstraintSuffix } from "../lib/prompt-assembly";
@@ -11,7 +12,8 @@ import { getSettings } from "../lib/storage";
 
 // Background service worker:生成调度中心。
 // - 点扩展图标打开 side panel
-// - 路由 GENERATE_DRAFT → 请求本地后端代理(鉴权 + LLM key 均由后端集中处理)
+// - 路由 GENERATE_DRAFT → 生成吃瓜草稿
+// - 路由 GENERATE_ARTICLE → 生成规范七/八 九段落文章
 
 export interface BackgroundHandlerDeps {
 	getSettings: () => Promise<import("@51guapi/shared").Settings>;
@@ -22,6 +24,7 @@ export interface BackgroundHandlerDeps {
 			facts?: FactsBlock | GossipFactsBlock;
 		},
 	) => Promise<GenerateDraftResponse>;
+	generateArticleFn: (topicId: string) => Promise<GenerateArticleResponse>;
 }
 
 export { buildConstraintSuffix };
@@ -51,7 +54,24 @@ export function createHandlers(deps: BackgroundHandlerDeps) {
 		}
 	}
 
-	return { handleGenerate };
+	async function handleGenerateArticle(
+		topicId: string,
+	): Promise<GenerateArticleResponse> {
+		try {
+			return await deps.generateArticleFn(topicId);
+		} catch (err) {
+			logger.error("bg", "生成文章失败", {
+				err: err instanceof Error ? err.message : String(err),
+			});
+			return {
+				ok: false,
+				kind: "network",
+				error: "生成文章时发生内部错误，请重试。",
+			};
+		}
+	}
+
+	return { handleGenerate, handleGenerateArticle };
 }
 
 export default defineBackground(() => {
@@ -78,6 +98,7 @@ export default defineBackground(() => {
 	const liveDeps: BackgroundHandlerDeps = {
 		getSettings,
 		generateDraftFn: generateDraft,
+		generateArticleFn: generateArticle,
 	};
 
 	const handlers = createHandlers(liveDeps);
@@ -85,6 +106,8 @@ export default defineBackground(() => {
 	browser.runtime.onMessage.addListener((message: RuntimeMessage) => {
 		if (message?.type === "GENERATE_DRAFT")
 			return handlers.handleGenerate(message.prompt, message.options);
+		if (message?.type === "GENERATE_ARTICLE")
+			return handlers.handleGenerateArticle(message.topicId);
 		return undefined;
 	});
 });

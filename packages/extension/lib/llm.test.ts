@@ -1,12 +1,18 @@
 import type { ContentDraft, Settings } from "@51guapi/shared";
 import { describe, expect, it, vi } from "vitest";
 import {
+	generateArticle,
 	generateDraft,
 	listModels,
 	mergeRewriteResult,
 	reviewDraft,
 	rewriteDraft,
 } from "./llm";
+
+vi.mock("./backend-url", () => ({
+	getBackendUrl: vi.fn(async () => "http://127.0.0.1:3002"),
+	clearBackendUrlCache: vi.fn(),
+}));
 
 function mockFetch(
 	payload: unknown,
@@ -274,5 +280,69 @@ describe("mergeRewriteResult", () => {
 		const r = mergeRewriteResult(draft, {}, ["title_quality", "body_richness"]);
 		expect(r.title).toBe(draft.title);
 		expect(r.body).toBe(draft.body);
+	});
+});
+
+describe("generateArticle proxy", () => {
+	const MOCK_DRAFT: ContentDraft = {
+		id: "art_001",
+		title: "张三出轨疑云持续发酵",
+		subtitle: "",
+		category: "出轨",
+		coverImageUrl: "",
+		body: "<!-- section:intro --><p>测试</p>",
+		tags: ["张三", "出轨", "吃瓜"],
+		description: "网传出轨",
+		status: "draft" as const,
+		createdAt: "2026-06-23T00:00:00Z",
+	};
+
+	it("200 → ok:true, draft, qualityWarnings[]", async () => {
+		const payload = { ok: true, draft: MOCK_DRAFT, qualityWarnings: [] };
+		const f = mockFetch(payload);
+		const result = await generateArticle("topic-001", f);
+		expect(result.ok).toBe(true);
+		if (!result.ok) throw new Error("expected ok:true");
+		expect(result.draft.title).toContain("张三");
+		expect(Array.isArray(result.qualityWarnings)).toBe(true);
+		expect(f).toHaveBeenCalledWith(
+			"http://127.0.0.1:3002/api/v1/drafts/generate-article",
+			expect.objectContaining({ method: "POST" }),
+		);
+	});
+
+	it("401 → ok:false kind:network", async () => {
+		const f = mockFetch({}, { ok: false, status: 401 });
+		const result = await generateArticle("topic-401", f);
+		expect(result.ok).toBe(false);
+		if (result.ok) throw new Error("expected ok:false");
+		expect(result.kind).toBe("network");
+	});
+
+	it("422 → ok:false kind:network", async () => {
+		const f = mockFetch(
+			{ error: "选题尚未审核通过，无法生成文章。" },
+			{ ok: false, status: 422 },
+		);
+		const result = await generateArticle("topic-422", f);
+		expect(result.ok).toBe(false);
+		if (result.ok) throw new Error("expected ok:false");
+		expect(result.kind).toBe("network");
+	});
+
+	it("AbortError（超时）→ ok:false, error 含「超时」", async () => {
+		const f = mockFetch({}, { throwName: "AbortError" });
+		const result = await generateArticle("topic-timeout", f, 100);
+		expect(result.ok).toBe(false);
+		if (result.ok) throw new Error("expected ok:false");
+		expect(result.error).toContain("超时");
+	});
+
+	it("TypeError（无法连接）→ ok:false, error 含「无法连接」", async () => {
+		const f = mockFetch({}, { throwName: "TypeError" });
+		const result = await generateArticle("topic-err", f);
+		expect(result.ok).toBe(false);
+		if (result.ok) throw new Error("expected ok:false");
+		expect(result.error).toContain("无法连接");
 	});
 });

@@ -1,4 +1,8 @@
-import type { GenerateDraftResponse, Settings } from "@51guapi/shared";
+import type {
+	ContentDraft,
+	GenerateDraftResponse,
+	Settings,
+} from "@51guapi/shared";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeBrowser } from "wxt/testing";
 import {
@@ -31,9 +35,81 @@ function makeDeps(
 				llmCostTokens: { prompt: 5, completion: 5 },
 			}),
 		),
+		generateArticleFn: vi.fn(async () => ({
+			ok: false as const,
+			kind: "not-impl",
+			error: "not implemented in test stub",
+		})),
 		...overrides,
 	};
 }
+
+describe("handleGenerateArticle", () => {
+	type ArticleErrResult = { ok: false; kind?: string; error: string };
+	type ArticleOkResult = {
+		ok: true;
+		draft: ContentDraft;
+		qualityWarnings: string[];
+	};
+	type ArticleResult = ArticleOkResult | ArticleErrResult;
+
+	const MOCK_ARTICLE_DRAFT: ContentDraft = {
+		id: "art_001",
+		title: "张三出轨疑云持续发酵热度不减",
+		subtitle: "",
+		category: "出轨",
+		coverImageUrl: "",
+		body: "<!-- section:intro --><p>测试</p>",
+		tags: ["张三", "出轨", "吃瓜"],
+		description: "网传出轨",
+		status: "draft" as const,
+		createdAt: "2026-06-23T00:00:00Z",
+	};
+
+	beforeEach(() => {
+		fakeBrowser.reset();
+	});
+
+	it("正常路径：转发 topicId 到 generateArticleFn，返回其结果", async () => {
+		const mockResult: ArticleResult = {
+			ok: true,
+			draft: MOCK_ARTICLE_DRAFT,
+			qualityWarnings: [],
+		};
+		const deps = makeDeps({
+			generateArticleFn: vi.fn(async () => mockResult),
+		});
+		const handlers = createHandlers(deps);
+		const result = await handlers.handleGenerateArticle("topic-abc");
+		expect(deps.generateArticleFn).toHaveBeenCalledWith("topic-abc");
+		expect(result).toEqual(mockResult);
+	});
+
+	it("服务层返回 ok:false → 透传错误给调用方", async () => {
+		const errResult: ArticleResult = {
+			ok: false,
+			kind: "llm_error",
+			error: "LLM timeout",
+		};
+		const deps = makeDeps({
+			generateArticleFn: vi.fn(async () => errResult),
+		});
+		const handlers = createHandlers(deps);
+		const result = await handlers.handleGenerateArticle("topic-xyz");
+		expect(result).toEqual(errResult);
+	});
+
+	it("generateArticleFn 抛出 → 返回 ok:false kind:network", async () => {
+		const deps = makeDeps({
+			generateArticleFn: vi.fn(async () => {
+				throw new Error("network failure");
+			}),
+		});
+		const handlers = createHandlers(deps);
+		const result = await handlers.handleGenerateArticle("topic-err");
+		expect(result).toMatchObject({ ok: false, kind: "network" });
+	});
+});
 
 describe("handleGenerate — forwards structured context", () => {
 	beforeEach(() => {

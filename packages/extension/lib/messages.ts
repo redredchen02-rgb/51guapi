@@ -4,9 +4,14 @@ export interface GenerateDraftOptions {
 	facts?: FactsBlock | GossipFactsBlock;
 }
 
-// 扩展内部消息协议(发布/填充/批量机器已拆除,只保留单条生成消息)。
-export type RuntimeMessage = {
-	type: "GENERATE_DRAFT";
-	prompt: string;
-	options?: GenerateDraftOptions;
-};
+// 扩展内部消息协议(发布/填充/批量机器已拆除,只保留生成消息)。
+export type RuntimeMessage =
+	| {
+			type: "GENERATE_DRAFT";
+			prompt: string;
+			options?: GenerateDraftOptions;
+	  }
+	| {
+			type: "GENERATE_ARTICLE";
+			topicId: string;
+	  };

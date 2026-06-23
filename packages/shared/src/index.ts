@@ -1,5 +1,12 @@
 // Shared types and utilities for 吃瓜小帮手 (51guapi) monorepo
 
+export type { ArticleSlots, AssembledArticle } from "./article-assembler.js";
+export { assembleGossipArticle } from "./article-assembler.js";
+export type { TagValidationResult } from "./article-tags.js";
+export {
+	MARKETING_WORD_BLOCKLIST,
+	validateArticleTags,
+} from "./article-tags.js";
 export { toDraft } from "./draft.js";
 export type { ExportedDraft, ExportFormat, TopicForCSV } from "./export.js";
 export {
@@ -26,6 +33,7 @@ export {
 	GOSSIP_FACT_KEYS,
 	GOSSIP_FACTS_SCHEMA,
 	gossipFactUrls,
+	isGossipFactsBlock,
 } from "./gossip-facts.js";
 export {
 	countThemes,

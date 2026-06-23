@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.0.0] - 2026-06-23
+
+### Added
+
+- **吃瓜文章生成**：在「待审核选题」页对已核对的 gossip 选题点击「生成文章」，可一键生成符合规范七/八的九段落结构文章（开头简介 → 快速看懂 → 事件经过 → 图片/视频占位 → FAQ → 结尾总结 → 来源链接），文章主体由 LLM 生成散文槽位 + 系统 verbatim 注入事实骨架，防幻觉不变量确保 body 里唯一的 `<a href>` 来自 facts.來源連結
+- **品质警告**：标题过短、含营销词等品质问题在文章生成后以警告提示显示，不阻断草稿编辑流程
+- **内容标签校验**：`validateArticleTags` 检测营销词（爆款、必看、炸裂等），统计不足 3 个标签时给出警告
+
+### Fixed
+
+- **并发生成保护**：某条选题正在生成文章时，其余选题的「生成文章」按钮自动禁用，防止并发 LLM 调用重复扣费
+- **「生成文章」按钮样式**：补充缺失的 `.btn-secondary` CSS 规则，修复按钮无背景色呈现空白的问题
+- **已审核状态守卫**：后端路由新增 `status === 'approved'` 检查，已拒绝/待审核选题不会触发文章生成
+- **domain 守卫简化**：`rowToTopic()` 始终强制 domain 为 `gossip` 或 `acg`，移除冗余的 `topic.domain &&` 真值检查
+
+### Changed
+
+- **测试覆盖**：新增 `generateArticle` 代理层测试（422/超时/网络错误/正常路径）；新增选题状态守卫路由测试；新增 `handleGenerateArticle` 路由与 fetch 错误路径测试
+
 ## [0.2.5] - 2026-06-23
 
 ### Removed

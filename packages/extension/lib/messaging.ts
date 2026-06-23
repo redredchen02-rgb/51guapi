@@ -1,6 +1,7 @@
 import type { GenerateDraftResponse } from "@51guapi/shared";
 import { applyPromptTemplate, type FactsBlock } from "@51guapi/shared";
 import { browser } from "#imports";
+import type { GenerateArticleResponse } from "./llm";
 import type { GenerateDraftOptions, RuntimeMessage } from "./messages";
 
 // MV3 Service Worker 随时可能被回收。sendMessage 若 SW 死亡可能永久 pending。
@@ -9,6 +10,7 @@ const SW_TIMEOUT: Partial<Record<RuntimeMessage["type"], number>> = {
 	// A11/R10:SW 看门狗须 ≥ 请求超时(llm.ts generate 默认 60s),否则 SW 先于请求超时报
 	// "请重试",而后端 LLM 请求仍在跑 → 用户重试 = 重复调用 LLM 重复扣费。65s 留 5s 缓冲。
 	GENERATE_DRAFT: 65_000,
+	GENERATE_ARTICLE: 65_000,
 };
 
 function sendMsg<T>(msg: RuntimeMessage): Promise<T> {
@@ -45,6 +47,16 @@ export async function requestGenerate(
 		type: "GENERATE_DRAFT",
 		prompt,
 		options,
+	});
+}
+
+/** side panel → background:为已审 gossip 选题生成九段落文章草稿。 */
+export async function requestGenerateArticle(
+	topicId: string,
+): Promise<GenerateArticleResponse> {
+	return sendMsg<GenerateArticleResponse>({
+		type: "GENERATE_ARTICLE",
+		topicId,
 	});
 }
 

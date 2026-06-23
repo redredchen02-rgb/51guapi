@@ -194,11 +194,13 @@ export function App() {
 		return (
 			<PendingTopicsView
 				onBack={() => setView("main")}
-				onDraftReady={({ draft, facts }) => {
+				onDraftReady={({ draft, facts, qualityWarnings }) => {
 					setDraftFacts(facts);
 					updateDraft(draft, facts, true);
 					setMode("draft");
 					setView("main");
+					if (qualityWarnings?.length)
+						handleError(`品质警告：${qualityWarnings.join("；")}`);
 				}}
 				onError={handleError}
 			/>
