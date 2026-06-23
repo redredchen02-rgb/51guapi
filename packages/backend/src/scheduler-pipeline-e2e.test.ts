@@ -134,7 +134,7 @@ afterEach(() => {
 });
 
 describe("E5 scheduler 单条 URL 路径 → 真 pending-store", () => {
-	it("cron 回调 await 一次 → 真入池可读回，字段正确，domain 特征化为 'acg'(defaulted)", async () => {
+	it("cron 回调 await 一次 → 真入池可读回，字段正确，domain='gossip'", async () => {
 		const job = startAndGetLatestJob(singleUrlAdapter(`single-${testId}`));
 		await job();
 
@@ -145,14 +145,13 @@ describe("E5 scheduler 单条 URL 路径 → 真 pending-store", () => {
 		expect(t.sourceUrl).toBe(currentUrl);
 		expect(t.siteName).toBe(currentSite);
 		expect(t.title).toBe(MOCK_RAW.title);
-		// 特征化：ACG 形状 facts（非吃瓜 GossipFactsBlock），与 domain='acg' 同源。
 		expect(t.facts).toMatchObject({ 作品名: "测试作品" });
 		expect(t.confidence).toBe(0.8);
 		expect(t.status).toBe("pending");
 		// score 由真 computeScore 算出（mock 版本拿不到）。
 		expect(t.score).toBeGreaterThan(0);
-		// 已核实的分歧：scheduler 不设 domain → 默认 'acg'（非吃瓜池的 'gossip'）。
-		expect(t.domain).toBe("acg");
+		// scheduler 渠道均为吃瓜站，明确写入 domain='gossip'（已修复默认 'acg' 的 bug）。
+		expect(t.domain).toBe("gossip");
 		// 未经人工二次核对。
 		expect(t.verifiedAt).toBeUndefined();
 	});
