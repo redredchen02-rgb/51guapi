@@ -96,4 +96,19 @@ describe("assembleGossipDraft (anti-hallucination invariants)", () => {
 		const out = assembleGossipDraft({ intro: "i", highlights: "h" }, f);
 		expect(verifyLinks(out.body, gossipFactUrls(f))).toHaveLength(0);
 	});
+	it("INVARIANT: URL injected via titleSuffix is neutralized — model cannot author title links", () => {
+		const f = facts({ 當事人: "甲" });
+		const out = assembleGossipDraft(
+			{
+				intro: "i",
+				highlights: "h",
+				titleSuffix: "見 https://evil.com/leak 丑闻",
+			},
+			f,
+		);
+		expect(out.title).not.toContain("evil.com");
+		expect(out.title).not.toContain("https://");
+		expect(out.title).toContain("甲");
+		expect(out.title).toContain(PLACEHOLDER);
+	});
 });

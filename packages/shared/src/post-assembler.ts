@@ -104,7 +104,7 @@ export function assembleGossipDraft(
 ): AssembledDraft {
 	const name = facts.當事人?.trim();
 	const title = name
-		? `${name}${(slots.titleSuffix ?? "").trim()}`
+		? `${name}${sanitizeToPlainText(slots.titleSuffix).trim()}`
 		: PLACEHOLDER;
 	const subtitle = sanitizeToPlainText(slots.subtitle);
 	const description =
