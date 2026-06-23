@@ -1,4 +1,8 @@
-import type { ContentDraft, GenerateDraftResponse, Settings } from "@51guapi/shared";
+import type {
+	ContentDraft,
+	GenerateDraftResponse,
+	Settings,
+} from "@51guapi/shared";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeBrowser } from "wxt/testing";
 import {
@@ -42,7 +46,11 @@ function makeDeps(
 
 describe("handleGenerateArticle", () => {
 	type ArticleErrResult = { ok: false; kind?: string; error: string };
-	type ArticleOkResult = { ok: true; draft: ContentDraft; qualityWarnings: string[] };
+	type ArticleOkResult = {
+		ok: true;
+		draft: ContentDraft;
+		qualityWarnings: string[];
+	};
 	type ArticleResult = ArticleOkResult | ArticleErrResult;
 
 	const MOCK_ARTICLE_DRAFT: ContentDraft = {

@@ -167,7 +167,11 @@ describe("POST /api/v1/drafts/generate-article 路由边界", () => {
 	});
 
 	it("topic.domain = 'acg' → 400 含 gossip 提示", async () => {
-		topicStore.set("t1", { facts: GOSSIP_FACTS, domain: "acg", status: "approved" });
+		topicStore.set("t1", {
+			facts: GOSSIP_FACTS,
+			domain: "acg",
+			status: "approved",
+		});
 		const res = await app.inject({
 			method: "POST",
 			url: "/api/v1/drafts/generate-article",
@@ -214,7 +218,11 @@ describe("POST /api/v1/drafts/generate-article 路由边界", () => {
 	});
 
 	it("正常路径：qualityWarnings 穿过 TypeBox schema 到达响应 body（不被剥除）", async () => {
-		topicStore.set("t1", { facts: GOSSIP_FACTS, domain: "gossip", status: "approved" });
+		topicStore.set("t1", {
+			facts: GOSSIP_FACTS,
+			domain: "gossip",
+			status: "approved",
+		});
 		vi.mocked(generateArticleDraft).mockResolvedValue({
 			ok: true,
 			draft: MOCK_DRAFT,
@@ -237,7 +245,11 @@ describe("POST /api/v1/drafts/generate-article 路由边界", () => {
 	});
 
 	it("qualityWarnings 为空数组时 → 200 ok:true，qualityWarnings=[]", async () => {
-		topicStore.set("t1", { facts: GOSSIP_FACTS, domain: "gossip", status: "approved" });
+		topicStore.set("t1", {
+			facts: GOSSIP_FACTS,
+			domain: "gossip",
+			status: "approved",
+		});
 		vi.mocked(generateArticleDraft).mockResolvedValue({
 			ok: true,
 			draft: MOCK_DRAFT,
@@ -253,5 +265,4 @@ describe("POST /api/v1/drafts/generate-article 路由边界", () => {
 		const body = res.json();
 		expect(body.ok).toBe(true);
 	});
-
 });

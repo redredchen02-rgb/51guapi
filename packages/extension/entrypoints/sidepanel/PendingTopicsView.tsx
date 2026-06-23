@@ -83,7 +83,11 @@ export function PendingTopicsView({ onBack, onDraftReady, onError }: Props) {
 				onError("选题 facts 不是有效的 GossipFactsBlock，无法生成文章。");
 				return;
 			}
-			onDraftReady({ draft: result.draft, facts, qualityWarnings: result.qualityWarnings });
+			onDraftReady({
+				draft: result.draft,
+				facts,
+				qualityWarnings: result.qualityWarnings,
+			});
 		} catch (err) {
 			onError(`文章生成失败：${err instanceof Error ? err.message : "请重试"}`);
 		} finally {

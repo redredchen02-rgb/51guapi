@@ -338,4 +338,3 @@ export async function generateArticle(
 		clearTimeout(timer);
 	}
 }
-
