@@ -1,0 +1,34 @@
+<!--
+  E4 fixture — 合成脱敏详情页（无真实 token/cookie/PII，全部为虚构占位）。
+  来源：手工合成，模拟「有真正文容器 + 巢状 div + nav/header/footer/script 噪声」的真实站点结构。
+  目的：驱动真 extractContainerText（括号配平抓全巢状内容）+ 真 fetchContent 门面。
+  日期：2026-06-22（合成）。
+-->
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="utf-8" />
+  <meta property="og:title" content="明星A工作室深夜回应解约风波" />
+  <meta property="og:description" content="一句营销用的简短摘要不应成为正文。" />
+  <meta property="og:image" content="https://cdn.example.com/cover-a.jpg" />
+  <meta property="article:published_time" content="2026-06-21T08:30:00+08:00" />
+  <title>明星A解约风波 - 示例吃瓜站</title>
+  <script>window.__TRACK__ = "noise-script-should-not-leak-into-body";</script>
+</head>
+<body>
+  <nav class="site-nav"><a href="/">首页</a><a href="/about">关于</a><span>导航噪声不应入正文</span></nav>
+  <header class="page-header"><h2>页眉栏目名噪声</h2></header>
+  <article class="article-content">
+    <div class="lead">
+      <p>明星A工作室在凌晨发出三点声明，逐条回应近日的解约传闻。</p>
+    </div>
+    <div class="paragraphs">
+      <p>第一点，双方合约已于上月到期，属正常不续约。</p>
+      <p>第二点，网传的违约金数字纯属虚构，工作室保留追究权利。</p>
+      <p>第三点，明星A后续行程一切照旧，请大家理性吃瓜。</p>
+    </div>
+  </article>
+  <footer class="site-footer"><span>页脚版权噪声不应入正文</span></footer>
+  <script>console.log("more-noise");</script>
+</body>
+</html>

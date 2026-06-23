@@ -1,0 +1,21 @@
+<!--
+  E4 fixture — 合成脱敏详情页（无真实 token/cookie/PII，全部为虚构占位）。
+  来源：手工合成，模拟「无正文容器 class、无 og:description」的站点，强制走文本密度兜底。
+  目的：驱动真 extractByDensity（剥 nav/footer 噪声后聚合 <p>）+ 真 fetchContent 门面。
+  日期：2026-06-22（合成）。
+-->
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="utf-8" />
+  <meta property="og:title" content="艺人B新瓜：机场同框疑云" />
+  <title>艺人B机场同框 - 示例吃瓜站</title>
+</head>
+<body>
+  <nav class="top-nav"><p>导航区的段落噪声，不应进入正文。</p></nav>
+  <p>艺人B昨晚被拍到与神秘人同框现身机场，引发吃瓜群众热议。</p>
+  <p>知情人士透露，两人只是恰好同班机，并无传闻中的关系。</p>
+  <p>截至发稿，双方经纪公司均未对此事作出正式回应。</p>
+  <footer class="bottom"><p>页脚区的段落噪声，不应进入正文。</p></footer>
+</body>
+</html>
