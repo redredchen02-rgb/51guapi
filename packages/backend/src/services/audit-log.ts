@@ -5,9 +5,9 @@ import { dataDirEnv } from "../config/data-dir.js";
 
 // Append-only authentication audit log. Records ONLY time / ip / result —
 // never the submitted password or any token, so there is nothing to redact.
-// Lives outside data/ (which tests wipe); tests redirect via GUAPI_DATA_DIR
-// (legacy PUBLISHER_DATA_DIR still honored). Retention: single-operator localhost
-// keeps all records; operator archives manually if the file grows large.
+// Lives outside data/ (which tests wipe); tests redirect via GUAPI_DATA_DIR.
+// Retention: single-operator localhost keeps all records; operator archives
+// manually if the file grows large.
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const dataDir = dataDirEnv();
 const LOG_DIR = dataDir ? join(dataDir, "logs") : join(__dirname, "..", "logs");

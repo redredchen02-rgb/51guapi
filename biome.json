@@ -15,9 +15,32 @@
 			"!!**/.omo",
 			"!!**/.kilo",
 			"!!**/.wxt",
-			"!!**/.claude"
+			"!!**/.claude",
+			"!!**/routeTree.gen.ts"
 		]
 	},
+	"overrides": [
+		{
+			"includes": ["packages/webui/src/index.css"],
+			"linter": {
+				"rules": {
+					"suspicious": {
+						"noUnknownAtRules": "off"
+					}
+				}
+			},
+			"css": {
+				"parser": {
+					"allowWrongLineComments": true,
+					"cssModules": false,
+					"tailwindDirectives": true
+				},
+				"formatter": {
+					"enabled": false
+				}
+			}
+		}
+	],
 	"formatter": {
 		"enabled": true,
 		"indentStyle": "tab"

@@ -1,0 +1,203 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+	/* === Background & Surface === */
+	--bg-gradient: linear-gradient(135deg, #f6f8fd 0%, #f1f5f9 100%);
+	--surface: rgba(255, 255, 255, 0.7);
+	--surface-border: rgba(255, 255, 255, 0.5);
+
+	/* === Brand === */
+	--color-primary: #4f46e5;
+	--color-primary-hover: #4338ca;
+	--color-primary-light: rgba(99, 102, 241, 0.15);
+
+	/* === Semantic === */
+	--color-success: #389e0d;
+	--color-success-light: #f6ffed;
+	--color-success-border: #b7eb8f;
+	--color-warning: #d48806;
+	--color-warning-light: #fffbe6;
+	--color-warning-border: #ffe58f;
+	--color-warning-deep: #874d00;
+	--color-error: #cf1322;
+	--color-error-light: #fff1f0;
+	--color-error-border: #ffa39e;
+	--color-danger: #ff4d4f;
+	--color-info: #1677ff;
+	--color-info-light: #e6f7ff;
+	--color-info-border: #91d5ff;
+	--color-info-hover: #4096ff;
+
+	/* === Neutral === */
+	--color-text: #1e293b;
+	--color-text-secondary: #555555;
+	--color-text-muted: #888888;
+	--color-text-disabled: #bbbbbb;
+	--color-text-close: #666666;
+	--color-bg-page: #ffffff;
+	--color-bg-surface: #fafafa;
+	--color-bg-muted: #f5f5f5;
+	--color-border: #d9d9d9;
+	--color-border-light: #e8e8e8;
+	--color-border-lighter: #f0f0f0;
+
+	/* === Spacing === */
+	--space-xs: 2px;
+	--space-sm: 4px;
+	--space-md: 8px;
+	--space-lg: 12px;
+	--space-xl: 16px;
+	--space-2xl: 24px;
+
+	/* === Font === */
+	--font-xs: 11px;
+	--font-sm: 12px;
+	--font-base: 13px;
+	--font-md: 14px;
+	--font-lg: 15px;
+	--font-xl: 16px;
+
+	/* === Radius === */
+	--radius-sm: 3px;
+	--radius-md: 4px;
+	--radius-lg: 6px;
+	--radius-xl: 8px;
+	--radius: 0.5rem;
+
+	/* === Shadow === */
+	--shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+	--shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+	--shadow-glass: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+
+	/* === Transition === */
+	--transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+	--transition-normal: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+
+	/* === HSL companion vars for shadcn/Tailwind integration === */
+	/* #4f46e5 → hsl(243, 75%, 59%) */
+	--color-primary-hsl: 243 75% 59%;
+
+	/* === shadcn/ui required CSS vars (HSL channel format) === */
+	--background: 0 0% 100%;
+	--foreground: 215 38% 17%;
+	--card: 0 0% 100%;
+	--card-foreground: 215 38% 17%;
+	--popover: 0 0% 100%;
+	--popover-foreground: 215 38% 17%;
+	--primary: 243 75% 59%;
+	--primary-foreground: 0 0% 100%;
+	--secondary: 210 40% 96%;
+	--secondary-foreground: 215 38% 17%;
+	--muted: 210 40% 96%;
+	--muted-foreground: 215 16% 47%;
+	--accent: 210 40% 96%;
+	--accent-foreground: 215 38% 17%;
+	--destructive: 353 85% 44%;
+	--destructive-foreground: 0 0% 100%;
+	--border: 214 32% 91%;
+	--input: 214 32% 91%;
+	--ring: 243 75% 59%;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root {
+		--bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+		--surface: rgba(30, 41, 59, 0.7);
+		--surface-border: rgba(255, 255, 255, 0.1);
+
+		--color-primary: #818cf8;
+		--color-primary-hover: #a5b4fc;
+		--color-primary-light: rgba(129, 140, 248, 0.15);
+
+		--color-success: #73d13d;
+		--color-success-light: #162312;
+		--color-success-border: #274916;
+		--color-warning: #d89614;
+		--color-warning-light: #2b2111;
+		--color-warning-border: #614e1a;
+		--color-warning-deep: #d89614;
+		--color-error: #ff7875;
+		--color-error-light: #2c1618;
+		--color-error-border: #58181c;
+		--color-danger: #ff7875;
+		--color-info: #69b1ff;
+		--color-info-light: #111d2e;
+		--color-info-border: #15395b;
+		--color-info-hover: #91caff;
+
+		--color-text: #f8fafc;
+		--color-text-secondary: #cbd5e1;
+		--color-text-muted: #94a3b8;
+		--color-text-disabled: #475569;
+		--color-text-close: #94a3b8;
+		--color-bg-page: #0f172a;
+		--color-bg-surface: rgba(30, 41, 59, 0.5);
+		--color-bg-muted: #1e293b;
+		--color-border: #334155;
+		--color-border-light: #1e293b;
+		--color-border-lighter: #1e293b;
+
+		/* #818cf8 → hsl(234, 89%, 74%) */
+		--color-primary-hsl: 234 89% 74%;
+
+		/* shadcn dark mode */
+		--background: 222 47% 11%;
+		--foreground: 210 40% 98%;
+		--card: 222 47% 11%;
+		--card-foreground: 210 40% 98%;
+		--popover: 222 47% 11%;
+		--popover-foreground: 210 40% 98%;
+		--primary: 234 89% 74%;
+		--primary-foreground: 222 47% 11%;
+		--secondary: 217 33% 17%;
+		--secondary-foreground: 210 40% 98%;
+		--muted: 217 33% 17%;
+		--muted-foreground: 215 20% 65%;
+		--accent: 217 33% 17%;
+		--accent-foreground: 210 40% 98%;
+		--destructive: 0 63% 55%;
+		--destructive-foreground: 210 40% 98%;
+		--border: 217 33% 17%;
+		--input: 217 33% 17%;
+		--ring: 234 89% 74%;
+	}
+}
+
+@layer base {
+	* {
+		@apply border-border;
+	}
+	body {
+		@apply bg-background text-foreground;
+		font-family:
+			system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+		background: var(--bg-gradient);
+		min-height: 100vh;
+		-webkit-font-smoothing: antialiased;
+		margin: 0;
+	}
+}
+
+/* === Animations === */
+@keyframes fade-in {
+	from {
+		opacity: 0;
+		transform: translateY(4px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+.fade-in {
+	animation: fade-in 0.2s ease-out;
+}
+
+@keyframes spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
