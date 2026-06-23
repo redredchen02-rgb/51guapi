@@ -1,9 +1,9 @@
-import type { GossipFactsBlock, Settings } from "@51guapi/shared";
-import cors from "@fastify/cors";
-import staticPlugin from "@fastify/static";
-import rateLimit from "@fastify/rate-limit";
 import { existsSync } from "node:fs";
 import path from "node:path";
+import type { GossipFactsBlock, Settings } from "@51guapi/shared";
+import cors from "@fastify/cors";
+import rateLimit from "@fastify/rate-limit";
+import staticPlugin from "@fastify/static";
 import type { FastifyInstance } from "fastify";
 import Fastify from "fastify";
 import { registerChannelRoutes } from "./routes/channel-routes.js";
