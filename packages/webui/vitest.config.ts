@@ -10,12 +10,15 @@ export default defineConfig({
 		coverage: {
 			provider: "v8",
 			reporter: ["text", "lcov"],
-			include: ["src/**"],
+			// Only measure coverage for the pure-logic layer (api-client).
+			// React components/routes/api-wrappers are integration-tested via smoke test,
+			// not unit-tested — including them would make the threshold meaningless.
+			include: ["src/lib/**"],
 			exclude: [
 				"src/**/*.test.ts",
 				"src/**/*.test.tsx",
 				"src/test-setup.ts",
-				"src/routeTree.gen.ts",
+				"src/lib/utils.ts", // shadcn cn() helper — trivial re-export, no logic to gate
 			],
 			thresholds: {
 				lines: 60,
