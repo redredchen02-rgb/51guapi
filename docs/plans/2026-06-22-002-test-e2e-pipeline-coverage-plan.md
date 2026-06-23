@@ -156,7 +156,7 @@ graph TB
 
 ### Phase 1 — 端到端覆盖补全（主）
 
-- [ ] **E1: e2e harness 固化 + 既有 e2e 稳定化**
+- [x] **E1: e2e harness 固化 + 既有 e2e 稳定化** ✅ 已实现（commit `6e6fc87a`）：`vi.useFakeTimers({toFake:["Date"]})` + `vi.setSystemTime(PINNED_NOW="2026-01-15T12:00:00Z")`（只 fake Date，不影响 Fastify 的 setTimeout/setImmediate，app.close() 不挂）；beforeEach 存 env、afterEach 先 useRealTimers() 再 close() 再还原 env；两处 `Date.now()` 改为 `PINNED_NOW.getTime()` 偏移；`packages/backend/package.json` 加 `test:e2e: vitest run --reporter=verbose e2e`。`pnpm test:e2e` 4 文件 14 测试全绿；全套 56 文件 639 测试零回归。
 
 **Goal:** 消除既有 e2e 的 flaky/污染隐患，建独立 `test:e2e` 入口与 CI 可见性；为 E2–E4 立稳定地基。**零生产代码改动**（纯测试加固 + 脚本/CI 配置）。
 **Requirements:** R4, R5, R7
@@ -178,7 +178,7 @@ graph TB
 - Anti-false-green：把某「窗内」用例的 `windowDays` 调到使其落窗外 → 期望 `skipped: "too-old"`（证窗口逻辑真在判）。
 **Verification:** `pnpm test:e2e` 独立可跑；既有用例全绿；env 不泄漏；窗口边界确定。
 
-- [ ] **E2: 生成 → grounding → 导出 安全脊樑 e2e（最高价值）**
+- [x] **E2: 生成 → grounding → 导出 安全脊樑 e2e（最高价值）** ✅ 已实现（commit `0dbe82fb`）：`draft-export-e2e.test.ts`，真 generateDraft + 真 shared assembler，经 LlmDeps.fetchFn 注入，4 测试绿。Finding：`titleSuffix` 绕过 sanitizeToPlainText（post-assembler.ts:107），模型可在标题后缀夹 URL 进导出物 verbatim——待独立修复。
 
 **Goal:** 端到端锁住「facts → `generateDraft` →（生成路径 assembler 中和）→ 导出 JSON/Markdown」，证 **facts verbatim 落入导出 + 模型在散文里夹的任何链接被 assembler 中和、绝不进导出物**（防幻觉真 sink = verbatim 导出）。
 **Requirements:** R1, R2, R5, R7
