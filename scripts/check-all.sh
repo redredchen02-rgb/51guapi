@@ -4,8 +4,8 @@ set -e
 echo "=> Running lint..."
 pnpm lint:ci
 
-echo "=> Running tests..."
-pnpm -r test
+echo "=> Running tests + coverage gate..."
+pnpm coverage
 
 echo "=> Building backend..."
 pnpm --filter 51guapi-backend build

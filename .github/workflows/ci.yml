@@ -43,8 +43,11 @@ jobs:
       - name: Lint
         run: pnpm lint:ci
 
-      - name: Test
-        run: pnpm -r test
+      # Test + 覆盖率门(A2 修复):`pnpm coverage` = 各包 `vitest run --coverage`,跑全部
+      # 测试并求值 vitest thresholds(shared 20 / backend 80);低于地板即红。此前 CI 只跑
+      # `pnpm -r test`(无 --coverage),thresholds 从不求值 = 装饰性假绿门。
+      - name: Test + coverage gate
+        run: pnpm coverage
 
       # 产物校验:build 双端并断言产物存在,消除「CI 绿但产物坏」。
       # 复用 scripts/check-all.sh 的产物校验尾段思路(不整段调它以免重复 lint/test)。
