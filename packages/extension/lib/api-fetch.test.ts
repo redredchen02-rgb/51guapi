@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { fakeBrowser } from "wxt/testing";
 import { apiFetch } from "./api-fetch";
-import { getToken, isAuthenticated, setToken } from "./auth-client";
 
 interface Captured {
 	url: string;
@@ -34,42 +33,18 @@ describe("apiFetch", () => {
 		expect(captured[0]?.url).toBe("http://127.0.0.1:3002/api/v1/ping");
 	});
 
-	it("注入 Content-Type;有 token 时注入 Authorization", async () => {
-		await setToken("tok-123");
+	it("注入默认 Content-Type,无 Authorization 头", async () => {
 		const { captured, fn } = mockFetch();
 		await apiFetch("/x", { fetchFn: fn });
 		expect(captured[0]?.headers["Content-Type"]).toBe("application/json");
-		expect(captured[0]?.headers.Authorization).toBe("Bearer tok-123");
-	});
-
-	it("无 token 时不注入 Authorization", async () => {
-		const { captured, fn } = mockFetch();
-		await apiFetch("/x", { fetchFn: fn });
 		expect(captured[0]?.headers.Authorization).toBeUndefined();
 	});
 
-	it("额外 headers 与鉴权头合并", async () => {
+	it("额外 headers 与默认头合并", async () => {
 		const { captured, fn } = mockFetch();
 		await apiFetch("/x", { fetchFn: fn, headers: { "X-Trace": "abc" } });
 		expect(captured[0]?.headers["X-Trace"]).toBe("abc");
 		expect(captured[0]?.headers["Content-Type"]).toBe("application/json");
-	});
-
-	it("401 → 清除本地 token(fail-closed 副作用)并返回原始 Response", async () => {
-		await setToken("tok-to-clear");
-		expect(await isAuthenticated()).toBe(true);
-		const { fn } = mockFetch(401);
-		const res = await apiFetch("/x", { fetchFn: fn });
-		expect(res.status).toBe(401);
-		expect(await getToken()).toBeNull();
-	});
-
-	it("非 401 → 保留 token,交回 Response 由调用方处理", async () => {
-		await setToken("keep");
-		const { fn } = mockFetch(500);
-		const res = await apiFetch("/x", { fetchFn: fn });
-		expect(res.status).toBe(500);
-		expect(await getToken()).toBe("keep");
 	});
 
 	it("网络错误向上抛出(不吞),让调用方决定本地 fallback", async () => {

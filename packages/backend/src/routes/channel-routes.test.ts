@@ -1,6 +1,5 @@
 import Fastify, { type FastifyInstance } from "fastify";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { PUBLIC_ROUTES } from "../middleware/auth-middleware.js";
 
 // channel-store 的 DNS 解析校验须 mock,避免测试依赖真实 DNS。
 vi.mock("node:dns/promises", () => ({ lookup: vi.fn() }));
@@ -31,8 +30,6 @@ async function buildApp(): Promise<FastifyInstance> {
 	return app;
 }
 
-// 自用模式:加渠道只需有效 JWT(测试里全局 preHandler 缺省 = 直达),
-// 不再需要 x-operator-confirm 头或 adminPassword/confirm body。
 const JSON_HEADERS = { "content-type": "application/json" };
 
 describe("channel-routes", () => {
@@ -48,10 +45,6 @@ describe("channel-routes", () => {
 	afterEach(async () => {
 		await app.close();
 		resetPendingDb();
-	});
-
-	it("不在 PUBLIC_ROUTES(保持 JWT 鉴权)", () => {
-		expect(PUBLIC_ROUTES.has("/api/v1/channels")).toBe(false);
 	});
 
 	it("Happy(自用模式):无手势无口令 + 公网解析 → 201,列表可见", async () => {
@@ -81,16 +74,9 @@ describe("channel-routes", () => {
 		expect(res.statusCode).toBe(201);
 	});
 
-	it("审计:created_by 反映 JWT sub(非恒 operator)", async () => {
+	it("审计:created_by 固定为 'operator'", async () => {
 		mockLookup.mockResolvedValue(resolved("1.1.1.1"));
-		const app2 = Fastify({ logger: false });
-		// 模拟全局 JWT preHandler 把 sub 挂到 request.user。
-		app2.addHook("preHandler", async (req) => {
-			req.user = { authenticated: true, sub: "operator" };
-		});
-		registerChannelRoutes(app2);
-		await app2.ready();
-		const res = await app2.inject({
+		const res = await app.inject({
 			method: "POST",
 			url: "/api/v1/channels",
 			headers: JSON_HEADERS,
@@ -98,7 +84,6 @@ describe("channel-routes", () => {
 		});
 		expect(res.statusCode).toBe(201);
 		expect(res.json().channel.createdBy).toBe("operator");
-		await app2.close();
 	});
 
 	it("Security(入库解析):解析到 169.254.169.254 → 400 拒绝入库", async () => {

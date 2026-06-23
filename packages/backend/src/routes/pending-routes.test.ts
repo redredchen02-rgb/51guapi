@@ -1,7 +1,5 @@
-import { randomBytes } from "node:crypto";
 import Fastify, { type FastifyInstance } from "fastify";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { PUBLIC_ROUTES, requireAuth } from "../middleware/auth-middleware.js";
 import { getDb, initPendingDb } from "../scraper/pending-db.js";
 import {
 	type PendingTopic,
@@ -327,54 +325,6 @@ describe("GET /api/v1/pending-topics — sort_by + fold_threshold (U7)", () => {
 		}>;
 		expect(topic?.id).toBe("mode");
 		expect(topic?.extractionMode).toBe("fallback");
-	});
-});
-
-// ---- JWT 401 守護 ----
-
-const PENDING_SECRET = randomBytes(48).toString("hex");
-
-async function buildPendingAppWithAuth(): Promise<FastifyInstance> {
-	const app = Fastify({ logger: false });
-	app.addHook("preHandler", async (request, reply) => {
-		const url = request.url.split("?")[0];
-		if (PUBLIC_ROUTES.has(url)) return;
-		return requireAuth(request, reply);
-	});
-	await registerPendingRoutes(app);
-	await app.ready();
-	return app;
-}
-
-describe("pending-routes — JWT 守護", () => {
-	let app: FastifyInstance;
-
-	beforeEach(async () => {
-		process.env.JWT_SECRET = PENDING_SECRET;
-		initPendingDb();
-		app = await buildPendingAppWithAuth();
-	});
-
-	afterEach(async () => {
-		await app.close();
-		delete process.env.JWT_SECRET;
-	});
-
-	it("無 token → GET /api/v1/pending-topics 返回 401", async () => {
-		const res = await app.inject({
-			method: "GET",
-			url: "/api/v1/pending-topics",
-		});
-		expect(res.statusCode).toBe(401);
-	});
-
-	it("無 token → PATCH /api/v1/pending-topics/:id 返回 401", async () => {
-		const res = await app.inject({
-			method: "PATCH",
-			url: "/api/v1/pending-topics/nonexistent-id",
-			payload: { status: "approved" },
-		});
-		expect(res.statusCode).toBe(401);
 	});
 });
 

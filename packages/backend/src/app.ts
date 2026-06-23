@@ -3,8 +3,6 @@ import cors from "@fastify/cors";
 import rateLimit from "@fastify/rate-limit";
 import type { FastifyInstance } from "fastify";
 import Fastify from "fastify";
-import { PUBLIC_ROUTES, requireAuth } from "./middleware/auth-middleware.js";
-import { registerAuthRoutes } from "./routes/auth-routes.js";
 import { registerChannelRoutes } from "./routes/channel-routes.js";
 import { registerGossipRoutes } from "./routes/gossip-routes.js";
 import { registerPendingRoutes } from "./routes/pending-routes.js";
@@ -72,16 +70,6 @@ export function buildApp(): FastifyInstance {
 					description: "开发服务器",
 				},
 			],
-			components: {
-				securitySchemes: {
-					bearerAuth: {
-						type: "http",
-						scheme: "bearer",
-						bearerFormat: "JWT",
-					},
-				},
-			},
-			security: [{ bearerAuth: [] }],
 		},
 	});
 
@@ -169,12 +157,6 @@ export function buildApp(): FastifyInstance {
 		warn: (m) => server.log.warn(m),
 	}).catch((e) => server.log.error(e, "[seed] 种子任务异常"));
 
-	registerAuthRoutes(server);
-	server.addHook("preHandler", async (request, reply) => {
-		const url = request.url.split("?")[0];
-		if (PUBLIC_ROUTES.has(url)) return;
-		return requireAuth(request, reply);
-	});
 	registerPreflightRoutes(server);
 	registerScraperRoutes(server);
 	registerGossipRoutes(server);

@@ -1,13 +1,11 @@
 import type { ContentDraft, GossipFactsBlock } from "@51guapi/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { isAuthenticated } from "../../lib/auth-client";
 import { buildPrompt } from "../../lib/messaging";
 import {
 	clearCurrentDraft,
 	getCurrentDraft,
 	getSettings,
 } from "../../lib/storage";
-import { AuthView } from "./AuthView";
 import { ErrorDisplay } from "./components/ErrorDisplay";
 import { Toast } from "./components/Toast";
 import { DraftPreview } from "./DraftPreview";
@@ -19,7 +17,6 @@ import { useErrorLogger } from "./hooks/useErrorLogger";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useLoadingState } from "./hooks/useLoadingState";
 import { useOperationHistory } from "./hooks/useOperationHistory";
-import { Loading } from "./Loading";
 import { MetricsView } from "./MetricsView";
 import { DraftActionButtons } from "./main/DraftActionButtons";
 import { GenerationPanel } from "./main/GenerationPanel";
@@ -32,7 +29,7 @@ type Mode = "empty" | "generating" | "draft";
 
 export function App() {
 	const [view, setView] = useState<
-		"main" | "settings" | "pending" | "auth" | "gossip" | "metrics"
+		"main" | "settings" | "pending" | "gossip" | "metrics"
 	>("main");
 	const [mode, setMode] = useState<Mode>("empty");
 	const [topic, setTopic] = useState("");
@@ -47,8 +44,6 @@ export function App() {
 		message: string;
 		type: "success" | "error" | "info";
 	} | null>(null);
-	const [authenticated, setAuthenticated] = useState(false);
-	const [authChecking, setAuthChecking] = useState(true);
 	const loadingState = useLoadingState();
 	const { generate } = useDraftGeneration();
 	const { saveDraft } = useAutoSave();
@@ -72,10 +67,6 @@ export function App() {
 				setDraftFacts(saved.facts);
 				setMode("draft");
 			}
-			const authed = await isAuthenticated();
-			setAuthenticated(authed);
-			setView(authed ? "main" : "auth");
-			setAuthChecking(false);
 		})();
 	}, []);
 
@@ -193,23 +184,6 @@ export function App() {
 		},
 	});
 
-	if (authChecking) {
-		return <Loading />;
-	}
-
-	if (view === "auth") {
-		return (
-			<Wrap>
-				<AuthView
-					onLogin={() => {
-						setAuthenticated(true);
-						setView("main");
-					}}
-				/>
-			</Wrap>
-		);
-	}
-
 	if (view === "settings")
 		return (
 			<Wrap>
@@ -250,10 +224,6 @@ export function App() {
 	return (
 		<Wrap>
 			<MainHeader
-				authenticated={authenticated}
-				onAuthClick={() => {
-					if (!authenticated) setView("auth");
-				}}
 				onOpenSettings={() => setView("settings")}
 				onToggleLogs={() => {
 					setShowLogs(!showLogs);

@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeBrowser } from "wxt/testing";
-import { authHeader, mockFetch } from "./__test-utils__/mock-fetch";
-import { getToken, setToken } from "./auth-client";
+import { mockFetch } from "./__test-utils__/mock-fetch";
 import { createChannel, deleteChannel, fetchChannels } from "./channel-client";
 
 vi.mock("@51guapi/shared", async (importOriginal) => {
@@ -29,11 +28,10 @@ const CHANNEL = {
 describe("channel-client — fetchChannels", () => {
 	beforeEach(async () => {
 		fakeBrowser.reset();
-		await setToken("tok");
 	});
 
-	it("Happy: 2xx → 返回 channels,URL + Bearer 正确", async () => {
-		const { capturedUrls, capturedInits, fn } = mockFetch({
+	it("Happy: 2xx → 返回 channels,URL 正确", async () => {
+		const { capturedUrls, fn } = mockFetch({
 			ok: true,
 			channels: [CHANNEL],
 		});
@@ -41,7 +39,6 @@ describe("channel-client — fetchChannels", () => {
 		expect(result).toHaveLength(1);
 		expect(result[0]?.hostname).toBe("51cg1.com");
 		expect(capturedUrls[0]).toContain("/api/v1/channels");
-		expect(authHeader(capturedInits[0])).toBe("Bearer tok");
 	});
 
 	it("Edge: ok 无 channels → 空数组", async () => {
@@ -49,17 +46,15 @@ describe("channel-client — fetchChannels", () => {
 		expect(await fetchChannels(fn)).toEqual([]);
 	});
 
-	it("Error 401 → clearToken + 抛 Unauthorized", async () => {
+	it("Error 401 → 抛 Unauthorized", async () => {
 		const { fn } = mockFetch({}, 401);
 		await expect(fetchChannels(fn)).rejects.toThrow("Unauthorized");
-		expect(await getToken()).toBeNull();
 	});
 });
 
 describe("channel-client — createChannel", () => {
 	beforeEach(async () => {
 		fakeBrowser.reset();
-		await setToken("tok");
 	});
 
 	it("Happy(自用模式): POST 命中 URL,无手势头/无口令/无 confirm", async () => {
@@ -87,7 +82,7 @@ describe("channel-client — createChannel", () => {
 		await expect(createChannel("аpple.com", {}, fn)).rejects.toThrow(/同形/);
 	});
 
-	it("Error 401 → clearToken + 抛 Unauthorized", async () => {
+	it("Error 401 → 抛 Unauthorized", async () => {
 		const { fn } = mockFetch({}, 401);
 		await expect(createChannel("x.com", {}, fn)).rejects.toThrow(
 			"Unauthorized",
@@ -98,7 +93,6 @@ describe("channel-client — createChannel", () => {
 describe("channel-client — deleteChannel", () => {
 	beforeEach(async () => {
 		fakeBrowser.reset();
-		await setToken("tok");
 	});
 
 	it("Happy: DELETE 命中 URL", async () => {

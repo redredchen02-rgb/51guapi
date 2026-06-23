@@ -1,13 +1,10 @@
-import { randomBytes } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { checkEnv, validateEnv } from "./config/env-check.js";
 
-const strongSecret = randomBytes(48).toString("hex");
 const validCors = "chrome-extension://abcdefghijklmnop";
 
 function goodEnv(overrides: Record<string, string> = {}): NodeJS.ProcessEnv {
 	return {
-		JWT_SECRET: strongSecret,
 		CORS_ORIGIN: validCors,
 		...overrides,
 	};
@@ -16,33 +13,6 @@ function goodEnv(overrides: Record<string, string> = {}): NodeJS.ProcessEnv {
 describe("checkEnv", () => {
 	it("passes with all required fields valid", () => {
 		expect(checkEnv(goodEnv())).toEqual([]);
-	});
-
-	it("rejects known placeholder secrets", () => {
-		const errors = checkEnv(
-			goodEnv({ JWT_SECRET: "change-this-to-a-random-secret" }),
-		);
-		expect(errors.some((e) => e.includes("JWT_SECRET"))).toBe(true);
-	});
-
-	it("rejects the legacy dev secret", () => {
-		const errors = checkEnv(
-			goodEnv({ JWT_SECRET: "dev-secret-change-in-production" }),
-		);
-		expect(errors.some((e) => e.includes("JWT_SECRET"))).toBe(true);
-	});
-
-	it("rejects a too-short secret", () => {
-		const errors = checkEnv(goodEnv({ JWT_SECRET: "short" }));
-		expect(errors.some((e) => e.includes("JWT_SECRET"))).toBe(true);
-	});
-
-	// 自用模式(plan 2026-06-18-003):免密登入,JWT_ADMIN_PASSWORD_HASH 不再被校验。
-	it("does not require admin hash (passwordless mode)", () => {
-		expect(checkEnv(goodEnv({ JWT_ADMIN_PASSWORD_HASH: "" }))).toEqual([]);
-		expect(
-			checkEnv(goodEnv({ JWT_ADMIN_PASSWORD_HASH: "change-this" })),
-		).toEqual([]);
 	});
 
 	it("rejects missing CORS_ORIGIN", () => {
@@ -72,13 +42,7 @@ describe("checkEnv", () => {
 	});
 
 	it("validateEnv throws on bad env", () => {
-		expect(() =>
-			validateEnv({
-				JWT_SECRET: "",
-				JWT_ADMIN_PASSWORD_HASH: "",
-				CORS_ORIGIN: "",
-			}),
-		).toThrow(/Fail-closed/);
+		expect(() => validateEnv({ CORS_ORIGIN: "" })).toThrow(/Fail-closed/);
 	});
 
 	it("validateEnv does not throw on good env", () => {
@@ -86,8 +50,8 @@ describe("checkEnv", () => {
 	});
 });
 
-// R4:免密登入下,非环回 HOST 绑定须显式 opt-in,否则 fail-closed 拒启动。
-describe("non-loopback passwordless guard (R4)", () => {
+// R4:无鉴权模式下,非环回 HOST 绑定须显式 opt-in,否则 fail-closed 拒启动。
+describe("non-loopback guard (R4)", () => {
 	it("HOST 未设 → 不触发(index.ts 缺省回环)", () => {
 		expect(checkEnv(goodEnv())).toEqual([]);
 	});
@@ -98,7 +62,7 @@ describe("non-loopback passwordless guard (R4)", () => {
 		}
 	});
 
-	it("非环回 HOST 无 opt-in → fail-closed 报错(种坏输入确认红)", () => {
+	it("非环回 HOST 无 opt-in → fail-closed 报错", () => {
 		for (const h of [
 			"0.0.0.0",
 			"::",
@@ -117,11 +81,9 @@ describe("non-loopback passwordless guard (R4)", () => {
 	});
 
 	it('opt-in 严格布尔:仅 ALLOW_NONLOOPBACK_AUTH="true" 放行', () => {
-		// 严格 true → 放行
 		expect(
 			checkEnv(goodEnv({ HOST: "0.0.0.0", ALLOW_NONLOOPBACK_AUTH: "true" })),
 		).toEqual([]);
-		// 宽松真值/其他值 → 仍拒(不启用)
 		for (const v of ["1", "yes", "TRUE", "True", "false", "0", ""]) {
 			const errors = checkEnv(
 				goodEnv({ HOST: "0.0.0.0", ALLOW_NONLOOPBACK_AUTH: v }),

@@ -1,40 +1,13 @@
-import { randomBytes } from "node:crypto";
 import Fastify, { type FastifyInstance } from "fastify";
-import jwt from "jsonwebtoken";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { PUBLIC_ROUTES, requireAuth } from "../middleware/auth-middleware.js";
 import { getDb, initPendingDb } from "../scraper/pending-db.js";
 import { registerPromptRoutes } from "./prompt-routes.js";
 
-const SECRET = randomBytes(48).toString("hex");
-
-// 无 JWT 的纯路由 app（对应大部分测试）
 async function buildApp(): Promise<FastifyInstance> {
 	const app = Fastify({ logger: false });
 	await registerPromptRoutes(app);
 	await app.ready();
 	return app;
-}
-
-// 带 JWT preHandler 的 app（用于 401 测试）
-async function buildAppWithAuth(): Promise<FastifyInstance> {
-	const app = Fastify({ logger: false });
-	app.addHook("preHandler", async (request, reply) => {
-		const url = request.url.split("?")[0];
-		if (PUBLIC_ROUTES.has(url)) return;
-		return requireAuth(request, reply);
-	});
-	await registerPromptRoutes(app);
-	await app.ready();
-	return app;
-}
-
-function token(): string {
-	return jwt.sign({}, SECRET, { algorithm: "HS256", expiresIn: "1h" });
-}
-
-function auth() {
-	return { authorization: `Bearer ${token()}` };
 }
 
 // 数据已迁入 SQLite(migration 012);经清表实现跨测试隔离。
@@ -243,46 +216,5 @@ describe("prompt-routes", () => {
 		});
 		const prompts = listRes.json().prompts as { name: string }[];
 		expect(prompts.some((p) => p.name === "整合測試模板")).toBe(true);
-	});
-});
-
-// ---- JWT 401 測試（需要 auth preHandler）----
-
-describe("prompt-routes — JWT 守護", () => {
-	let app: FastifyInstance;
-
-	beforeEach(async () => {
-		process.env.JWT_SECRET = SECRET;
-		cleanPrompts();
-		app = await buildAppWithAuth();
-	});
-
-	afterEach(async () => {
-		await app.close();
-		cleanPrompts();
-		delete process.env.JWT_SECRET;
-	});
-
-	it("無 token → GET /api/v1/prompts 返回 401", async () => {
-		const res = await app.inject({ method: "GET", url: "/api/v1/prompts" });
-		expect(res.statusCode).toBe(401);
-	});
-
-	it("無 token → POST /api/v1/prompts 返回 401", async () => {
-		const res = await app.inject({
-			method: "POST",
-			url: "/api/v1/prompts",
-			payload: { name: "模板", template: "template" },
-		});
-		expect(res.statusCode).toBe(401);
-	});
-
-	it("有效 token → GET /api/v1/prompts 返回 200", async () => {
-		const res = await app.inject({
-			method: "GET",
-			url: "/api/v1/prompts",
-			headers: auth(),
-		});
-		expect(res.statusCode).toBe(200);
 	});
 });

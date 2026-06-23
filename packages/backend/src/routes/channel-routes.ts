@@ -65,7 +65,7 @@ export function registerChannelRoutes(app: FastifyInstance): void {
 		},
 	);
 
-	// POST /api/v1/channels — 新增渠道(带人手确认手势 + 入库解析校验)
+	// POST /api/v1/channels — 新增渠道(入库解析校验:归一 + DNS 公网)
 	app.post<{ Body: CreateBody }>(
 		"/api/v1/channels",
 		{
@@ -98,17 +98,13 @@ export function registerChannelRoutes(app: FastifyInstance): void {
 				return err(reply, 400, e instanceof Error ? e.message : String(e));
 			}
 
-			// 审计:created_by 取自 JWT(若中间件挂载),否则 'operator'。
-			const createdBy =
-				(request as { user?: { sub?: string } }).user?.sub ?? "operator";
-
 			const result = insertChannel({
 				hostname: norm.hostname,
 				displayName: displayName ?? norm.hostname,
 				pathPrefix,
 				maxDepth,
 				maxBytes,
-				createdBy,
+				createdBy: "operator",
 				reason: reason ?? "",
 			});
 			if (result.error || !result.channel) {

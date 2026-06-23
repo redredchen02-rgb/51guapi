@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeBrowser } from "wxt/testing";
-import { authHeader, mockFetch } from "./__test-utils__/mock-fetch";
-import { getToken, setToken } from "./auth-client";
+import { mockFetch } from "./__test-utils__/mock-fetch";
 import {
 	createGossipSite,
 	deleteGossipSite,
@@ -36,11 +35,10 @@ const SITE = {
 describe("gossip-client — fetchGossipSites", () => {
 	beforeEach(async () => {
 		fakeBrowser.reset();
-		await setToken("tok-g");
 	});
 
-	it("Happy: 2xx → 返回 sites，URL + Bearer 正确", async () => {
-		const { capturedUrls, capturedInits, fn } = mockFetch({
+	it("Happy: 2xx → 返回 sites，URL 正确", async () => {
+		const { capturedUrls, fn } = mockFetch({
 			ok: true,
 			sites: [SITE],
 		});
@@ -48,7 +46,6 @@ describe("gossip-client — fetchGossipSites", () => {
 		expect(result).toHaveLength(1);
 		expect(result[0]?.id).toBe("s1");
 		expect(capturedUrls[0]).toContain("/api/v1/gossip/sites");
-		expect(authHeader(capturedInits[0])).toBe("Bearer tok-g");
 	});
 
 	it("Edge: ok:true 无 sites → 空数组", async () => {
@@ -56,10 +53,9 @@ describe("gossip-client — fetchGossipSites", () => {
 		expect(await fetchGossipSites(fn)).toEqual([]);
 	});
 
-	it("Error 401 → clearToken() 且抛 Unauthorized", async () => {
+	it("Error 401 → 抛 Unauthorized", async () => {
 		const { fn } = mockFetch({}, 401);
 		await expect(fetchGossipSites(fn)).rejects.toThrow("Unauthorized");
-		expect(await getToken()).toBeNull();
 	});
 
 	it("Error 500 → 抛出后端 error 消息（不静默吞）", async () => {
@@ -79,7 +75,6 @@ describe("gossip-client — fetchGossipSites", () => {
 describe("gossip-client — createGossipSite", () => {
 	beforeEach(async () => {
 		fakeBrowser.reset();
-		await setToken("tok-g");
 	});
 
 	it("Happy: 2xx → 返回 site，POST 命中 URL", async () => {
@@ -93,12 +88,11 @@ describe("gossip-client — createGossipSite", () => {
 		expect(capturedInits[0]?.method).toBe("POST");
 	});
 
-	it("Error 401 → clearToken() 且抛 Unauthorized", async () => {
+	it("Error 401 → 抛 Unauthorized", async () => {
 		const { fn } = mockFetch({}, 401);
 		await expect(createGossipSite("n", "u", fn)).rejects.toThrow(
 			"Unauthorized",
 		);
-		expect(await getToken()).toBeNull();
 	});
 
 	it("Error 500 → 抛出错误", async () => {
@@ -110,7 +104,6 @@ describe("gossip-client — createGossipSite", () => {
 describe("gossip-client — deleteGossipSite", () => {
 	beforeEach(async () => {
 		fakeBrowser.reset();
-		await setToken("tok-g");
 	});
 
 	it("Happy: 2xx → DELETE 命中 URL，无抛", async () => {
@@ -120,17 +113,15 @@ describe("gossip-client — deleteGossipSite", () => {
 		expect(capturedInits[0]?.method).toBe("DELETE");
 	});
 
-	it("Error 401 → clearToken() 且抛 Unauthorized", async () => {
+	it("Error 401 → 抛 Unauthorized", async () => {
 		const { fn } = mockFetch({}, 401);
 		await expect(deleteGossipSite("s1", fn)).rejects.toThrow("Unauthorized");
-		expect(await getToken()).toBeNull();
 	});
 });
 
 describe("gossip-client — discoverGossipSite", () => {
 	beforeEach(async () => {
 		fakeBrowser.reset();
-		await setToken("tok-g");
 	});
 
 	it("Happy: 2xx → 返回 discovered 数组", async () => {
@@ -143,10 +134,9 @@ describe("gossip-client — discoverGossipSite", () => {
 		expect(capturedUrls[0]).toContain("/api/v1/gossip/sites/s1/discover");
 	});
 
-	it("Error 401 → clearToken() 且抛 Unauthorized", async () => {
+	it("Error 401 → 抛 Unauthorized", async () => {
 		const { fn } = mockFetch({}, 401);
 		await expect(discoverGossipSite("s1", fn)).rejects.toThrow("Unauthorized");
-		expect(await getToken()).toBeNull();
 	});
 
 	it("Error 500 → 抛出错误", async () => {
@@ -158,7 +148,6 @@ describe("gossip-client — discoverGossipSite", () => {
 describe("gossip-client — fetchGossipTopicFromUrl", () => {
 	beforeEach(async () => {
 		fakeBrowser.reset();
-		await setToken("tok-g");
 	});
 
 	it("Happy: 2xx → 返回 topic", async () => {
@@ -175,12 +164,11 @@ describe("gossip-client — fetchGossipTopicFromUrl", () => {
 		expect(capturedUrls[0]).toContain("/api/v1/gossip/topics/from-url");
 	});
 
-	it("Error 401 → clearToken() 且抛 Unauthorized", async () => {
+	it("Error 401 → 抛 Unauthorized", async () => {
 		const { fn } = mockFetch({}, 401);
 		await expect(
 			fetchGossipTopicFromUrl("https://x.test/1", "site", fn),
 		).rejects.toThrow("Unauthorized");
-		expect(await getToken()).toBeNull();
 	});
 
 	it("Error 409 → 抛 DUPLICATE_URL", async () => {
@@ -203,7 +191,6 @@ describe("gossip-client — 生产默认路径 (省略 fetchFn → fetchWithTime
 
 	beforeEach(async () => {
 		fakeBrowser.reset();
-		await setToken("tok-g");
 		mocked.mockClear();
 	});
 

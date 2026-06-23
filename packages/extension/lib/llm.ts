@@ -6,7 +6,6 @@ import type {
 	ReviewResult,
 	Settings,
 } from "@51guapi/shared";
-import { clearToken, getToken } from "./auth-client";
 import { getBackendUrl } from "./backend-url";
 
 export interface LlmDeps {
@@ -35,22 +34,11 @@ export async function listModels(
 	const controller = new AbortController();
 	const timer = setTimeout(() => controller.abort(), timeoutMs);
 	try {
-		const token = await getToken();
-		const headers: Record<string, string> = {
-			"Content-Type": "application/json",
-		};
-		if (token) headers.Authorization = `Bearer ${token}`;
-
 		const backendUrl = await getBackendUrl();
 		const res = await fetchFn(`${backendUrl}/api/v1/models`, {
-			headers,
+			headers: { "Content-Type": "application/json" },
 			signal: controller.signal,
 		});
-
-		if (res.status === 401) {
-			await clearToken();
-			return { ok: false, error: "登录已过期，请重新登录。" };
-		}
 
 		if (!res.ok) {
 			const errText = await res.text().catch(() => "");
@@ -92,28 +80,13 @@ export async function generateDraft(
 	const timer = setTimeout(() => controller.abort(), timeoutMs);
 
 	try {
-		const token = await getToken();
-		const headers: Record<string, string> = {
-			"Content-Type": "application/json",
-		};
-		if (token) headers.Authorization = `Bearer ${token}`;
-
 		const backendUrl = await getBackendUrl();
 		const res = await fetchFn(`${backendUrl}/api/v1/drafts/generate`, {
 			method: "POST",
-			headers,
-			body: JSON.stringify({
-				prompt,
-				settings,
-				facts,
-			}),
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ prompt, settings, facts }),
 			signal: controller.signal,
 		});
-
-		if (res.status === 401) {
-			await clearToken();
-			return { ok: false, kind: "network", error: "登录已过期，请重新登录。" };
-		}
 
 		if (!res.ok) {
 			const errText = await res.text().catch(() => "");
@@ -172,22 +145,13 @@ export async function reviewDraft(
 	const controller = new AbortController();
 	const timer = setTimeout(() => controller.abort(), timeoutMs);
 	try {
-		const token = await getToken();
-		const headers: Record<string, string> = {
-			"Content-Type": "application/json",
-		};
-		if (token) headers.Authorization = `Bearer ${token}`;
 		const backendUrl = await getBackendUrl();
 		const res = await fetchFn(`${backendUrl}/api/v1/drafts/review`, {
 			method: "POST",
-			headers,
+			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({ draft, criteriaPrompt, settings: deps.settings }),
 			signal: controller.signal,
 		});
-		if (res.status === 401) {
-			await clearToken();
-			return { ok: false, kind: "network", error: "登录已过期，请重新登录。" };
-		}
 		if (!res.ok)
 			return {
 				ok: false,
@@ -218,26 +182,13 @@ export async function rewriteDraft(
 	const controller = new AbortController();
 	const timer = setTimeout(() => controller.abort(), timeoutMs);
 	try {
-		const token = await getToken();
-		const headers: Record<string, string> = {
-			"Content-Type": "application/json",
-		};
-		if (token) headers.Authorization = `Bearer ${token}`;
 		const backendUrl = await getBackendUrl();
 		const res = await fetchFn(`${backendUrl}/api/v1/drafts/rewrite`, {
 			method: "POST",
-			headers,
-			body: JSON.stringify({
-				draft,
-				failedDims,
-				settings: deps.settings,
-			}),
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ draft, failedDims, settings: deps.settings }),
 			signal: controller.signal,
 		});
-		if (res.status === 401) {
-			await clearToken();
-			return { ok: false, kind: "network", error: "登录已过期，请重新登录。" };
-		}
 		if (!res.ok)
 			return {
 				ok: false,
