@@ -191,6 +191,23 @@ export async function pendingTopicExistsBySourceUrl(
 	);
 }
 
+/**
+ * 批量存在性查询：返回 urls 中已在 pending_topics 的 source_url 集合。
+ * 单次 WHERE IN (...) 代替 discover 端点 O(n) 逐 URL .get()，最多 200 条仍一次 roundtrip。
+ * 空 urls 返回空 Set（不发 SQL 以避免 IN() 语法错误）。
+ */
+export function pendingTopicsExistingBySourceUrls(urls: string[]): Set<string> {
+	if (urls.length === 0) return new Set();
+	const db = getDb();
+	const placeholders = urls.map(() => "?").join(", ");
+	const rows = db
+		.prepare(
+			`SELECT source_url FROM pending_topics WHERE source_url IN (${placeholders})`,
+		)
+		.all(...urls) as { source_url: string }[];
+	return new Set(rows.map((r) => r.source_url));
+}
+
 /** 内容指纹是否已存在（跨 URL 去重；命中视为「疑似重复」，由调用方软标处理）。 */
 export async function pendingTopicExistsByFingerprint(
 	fingerprint: string,

@@ -23,7 +23,7 @@ import {
 import type { PendingTopic } from "../scraper/pending-store.js";
 import {
 	pendingTopicExistsByFingerprint,
-	pendingTopicExistsBySourceUrl,
+	pendingTopicsExistingBySourceUrls,
 	savePendingTopic,
 } from "../scraper/pending-store.js";
 import { recordGossipVerify, recordScraperRun } from "../services/metrics.js";
@@ -158,13 +158,11 @@ export async function registerGossipRoutes(
 				return err(reply, 500, "Failed to fetch list");
 			}
 
-			// 去重：已存在 pending_topics 的 URL 過濾掉
-			const fresh: typeof discovered = [];
-			for (const item of discovered) {
-				if (!(await pendingTopicExistsBySourceUrl(item.url))) {
-					fresh.push(item);
-				}
-			}
+			// 去重：单次批量 IN(...) 查询代替逐 URL .get()，O(n)→O(1) DB roundtrip。
+			const existingUrls = pendingTopicsExistingBySourceUrls(
+				discovered.map((i) => i.url),
+			);
+			const fresh = discovered.filter((i) => !existingUrls.has(i.url));
 
 			// 回全部 fresh:fetchListPaged 内部已有 MAX_PAGED_URLS=200 硬上限兜底。
 			// 不再 slice(0,20)——旧实现把第 21+ 条发现静默丢弃且无游标可续取

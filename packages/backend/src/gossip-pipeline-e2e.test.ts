@@ -101,7 +101,9 @@ async function fromUrl(url: string, windowDays?: number) {
 
 describe("U6 端到端:发现→窗口→验证→核对→题材", () => {
 	it("完整闭环:有效新瓜入池 → 旧瓜跳过 → 无效拒绝 → 核对进题材池 → 题材过滤命中", async () => {
-		const recent = new Date(PINNED_NOW.getTime() - 2 * 86_400_000).toISOString();
+		const recent = new Date(
+			PINNED_NOW.getTime() - 2 * 86_400_000,
+		).toISOString();
 
 		// 1) 有效窗内瓜 → 入池(带 verification + 指纹)
 		mockFetchContent.mockResolvedValueOnce({

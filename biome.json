@@ -14,7 +14,8 @@
 			"!!**/.context",
 			"!!**/.omo",
 			"!!**/.kilo",
-			"!!**/.wxt"
+			"!!**/.wxt",
+			"!!**/.claude"
 		]
 	},
 	"formatter": {
