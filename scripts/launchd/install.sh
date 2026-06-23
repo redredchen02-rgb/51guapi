@@ -16,6 +16,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 NODE_MAIN="$REPO_ROOT/packages/backend/dist/index.js"
+NODE_BIN="$(command -v node 2>/dev/null || echo node)"
 DEST_DIR="$HOME/.51guapi"
 START_SCRIPT="$DEST_DIR/start-backend.sh"
 PLIST_TEMPLATE="$SCRIPT_DIR/com.51guapi.backend.plist"
@@ -38,8 +39,10 @@ fi
 mkdir -p "$DEST_DIR"
 mkdir -p "$HOME/Library/LaunchAgents"
 
-# Generate start-backend.sh from template, substituting the real node entry point.
-sed "s|__NODE_MAIN__|$(realpath "$NODE_MAIN")|g" \
+# Generate start-backend.sh from template, substituting node binary and entry point.
+sed \
+  -e "s|__NODE_BIN__|$NODE_BIN|g" \
+  -e "s|__NODE_MAIN__|$(realpath "$NODE_MAIN")|g" \
   "$SCRIPT_DIR/start-backend.sh" > "$START_SCRIPT"
 chmod 755 "$START_SCRIPT"
 echo "✓ Written  $START_SCRIPT"

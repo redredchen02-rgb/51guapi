@@ -27,4 +27,4 @@ set -a
 source "$ENV_FILE"
 set +a
 
-exec node __NODE_MAIN__
+exec "__NODE_BIN__" "__NODE_MAIN__"

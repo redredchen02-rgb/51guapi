@@ -103,34 +103,19 @@ describe("auditLogin", () => {
 
 describe("AUDIT_LOG_PATH derivation (frozen at import)", () => {
 	const ORIGINAL_GUAPI = process.env.GUAPI_DATA_DIR;
-	const ORIGINAL_PUBLISHER = process.env.PUBLISHER_DATA_DIR;
 
 	afterEach(() => {
-		// Restore env exactly so the shared test process is unaffected.
 		if (ORIGINAL_GUAPI === undefined) delete process.env.GUAPI_DATA_DIR;
 		else process.env.GUAPI_DATA_DIR = ORIGINAL_GUAPI;
-		if (ORIGINAL_PUBLISHER === undefined) delete process.env.PUBLISHER_DATA_DIR;
-		else process.env.PUBLISHER_DATA_DIR = ORIGINAL_PUBLISHER;
 		vi.resetModules();
 	});
 
 	it("derives the path under GUAPI_DATA_DIR/logs/auth-audit.log", async () => {
 		process.env.GUAPI_DATA_DIR = "/tmp/guapi-audit-derive";
-		delete process.env.PUBLISHER_DATA_DIR;
 		vi.resetModules();
 		const mod = await import("./audit-log.js");
 		expect(mod.AUDIT_LOG_PATH).toBe(
 			"/tmp/guapi-audit-derive/logs/auth-audit.log",
-		);
-	});
-
-	it("falls back to legacy PUBLISHER_DATA_DIR when GUAPI_DATA_DIR is unset", async () => {
-		delete process.env.GUAPI_DATA_DIR;
-		process.env.PUBLISHER_DATA_DIR = "/tmp/legacy-publisher-audit";
-		vi.resetModules();
-		const mod = await import("./audit-log.js");
-		expect(mod.AUDIT_LOG_PATH).toBe(
-			"/tmp/legacy-publisher-audit/logs/auth-audit.log",
 		);
 	});
 });
