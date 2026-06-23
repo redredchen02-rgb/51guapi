@@ -1,4 +1,8 @@
-import type { GossipFactsBlock, Settings } from "@51guapi/shared";
+import {
+	type GossipFactsBlock,
+	isGossipFactsBlock,
+	type Settings,
+} from "@51guapi/shared";
 import cors from "@fastify/cors";
 import rateLimit from "@fastify/rate-limit";
 import type { FastifyInstance } from "fastify";
@@ -13,9 +17,11 @@ import { registerPromptRoutes } from "./routes/prompt-routes.js";
 import { registerScraperRoutes } from "./routes/scraper-routes.js";
 import { demoAdapter } from "./scraper/adapters/demo-adapter.js";
 import { getDb, initPendingDb } from "./scraper/pending-db.js";
+import { loadPendingTopic } from "./scraper/pending-store.js";
 import { jobs, startScheduler } from "./scraper/scheduler.js";
 import { scraperConfig } from "./scraper/scraper-config.js";
 import { seedChannelsFromEnv } from "./scraper/seed-channels.js";
+import { generateArticleDraft } from "./services/draft-article-gen.js";
 import {
 	generateDraft,
 	listModels,
@@ -26,6 +32,8 @@ import { getMetrics, recordDraft } from "./services/metrics.js";
 import { err } from "./utils/error-response.js";
 import { getLlmConfig, validateLlmConfig } from "./utils/llm-config.js";
 import {
+	GenerateArticleBody as GenerateArticleBodySchema,
+	GenerateArticleResponse,
 	GenerateDraftBody as GenerateDraftBodySchema,
 	GenerateDraftResponse,
 	HealthzResponse,
@@ -337,6 +345,59 @@ export function registerDraftRoutes(app: FastifyInstance): void {
 			} catch (e) {
 				const msg = e instanceof Error ? e.message : String(e);
 				return err(reply, 500, `Rewrite failed: ${msg}`);
+			}
+		},
+	);
+
+	// POST /api/v1/drafts/generate-article
+	// 从已审核的 gossip 选题生成规范七/八 九段落文章草稿。
+	// 安全：topicId 从 DB 读取（不信任请求体 facts），settings 从服务端 env 读取（防 SSRF）。
+	app.post<{
+		Body: import("@sinclair/typebox").Static<typeof GenerateArticleBodySchema>;
+	}>(
+		"/api/v1/drafts/generate-article",
+		{
+			config: { rateLimit: { max: 20, timeWindow: "1 minute" } },
+			schema: {
+				body: GenerateArticleBodySchema,
+				response: { 200: GenerateArticleResponse },
+			},
+		},
+		async (request, reply) => {
+			const { topicId } = request.body;
+			const topic = await loadPendingTopic(topicId);
+			if (!topic) return err(reply, 404, `Topic ${topicId} not found.`);
+			// domain 守卫：允许未设 domain 的旧选题；明确为 acg 的拒绝（不属于 gossip 管线）。
+			if (topic.domain && topic.domain !== "gossip")
+				return err(reply, 400, "该选题不属于 gossip 管线，无法生成吃瓜文章。");
+			// 类型守卫：确认 facts 为 GossipFactsBlock（含 當事人 key）。
+			if (!isGossipFactsBlock(topic.facts))
+				return err(reply, 400, "选题 facts 不是有效的 GossipFactsBlock。");
+
+			const config = getLlmConfig();
+			const validation = validateLlmConfig(config);
+			if (!validation.valid)
+				return err(reply, 500, validation.error ?? "Unknown error", "no-key");
+
+			try {
+				const result = await generateArticleDraft(topic.facts, {
+					settings: {
+						endpoint: config.endpoint,
+						model: config.model,
+						promptTemplate: "",
+					},
+					apiKey: config.apiKey,
+				});
+				if (!result.ok) return err(reply, 422, result.error, result.kind);
+				return result;
+			} catch (e) {
+				request.log.error(e, "Failed to generate article draft via LLM");
+				return err(
+					reply,
+					500,
+					"Internal server error during article generation.",
+					"network",
+				);
 			}
 		},
 	);

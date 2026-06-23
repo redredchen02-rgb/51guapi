@@ -1,5 +1,8 @@
 import type { ContentDraft, GossipFactsBlock } from "@51guapi/shared";
+import { isGossipFactsBlock } from "@51guapi/shared";
+import { useState } from "react";
 import { downloadFile, exportTopicsAsCSV } from "../../lib/export";
+import { requestGenerateArticle } from "../../lib/messaging";
 import { useDraftActions } from "./hooks/useDraftActions";
 import { useDraftGeneration } from "./hooks/useDraftGeneration";
 import { useThemes } from "./hooks/useThemes";
@@ -60,6 +63,32 @@ export function PendingTopicsView({ onBack, onDraftReady, onError }: Props) {
 		onDraftReady,
 		onError,
 	});
+
+	const [generatingArticleId, setGeneratingArticleId] = useState<string | null>(
+		null,
+	);
+
+	async function handleGenerateArticle(topicId: string) {
+		setGeneratingArticleId(topicId);
+		try {
+			const result = await requestGenerateArticle(topicId);
+			if (!result.ok) {
+				onError(`文章生成失败：${result.error}`);
+				return;
+			}
+			const topic = topics.find((t) => t.id === topicId);
+			const facts = topic?.facts;
+			if (!isGossipFactsBlock(facts)) {
+				onError("选题 facts 不是有效的 GossipFactsBlock，无法生成文章。");
+				return;
+			}
+			onDraftReady({ draft: result.draft, facts });
+		} catch (err) {
+			onError(`文章生成失败：${err instanceof Error ? err.message : "请重试"}`);
+		} finally {
+			setGeneratingArticleId(null);
+		}
+	}
 
 	function handleExportCsv() {
 		if (topics.length === 0) return;
@@ -194,6 +223,12 @@ export function PendingTopicsView({ onBack, onDraftReady, onError }: Props) {
 									onFactChange={(key, value) => setFactField(t.id, key, value)}
 									onVerify={() => handleVerify(t.id)}
 									verifying={verifyingId === t.id}
+									onGenerateArticle={
+										isGossipFactsBlock(t.facts)
+											? () => void handleGenerateArticle(t.id)
+											: undefined
+									}
+									generatingArticle={generatingArticleId === t.id}
 								/>
 							))}
 					</ul>

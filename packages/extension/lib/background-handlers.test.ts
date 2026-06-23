@@ -31,6 +31,11 @@ function makeDeps(
 				llmCostTokens: { prompt: 5, completion: 5 },
 			}),
 		),
+		generateArticleFn: vi.fn(async () => ({
+			ok: false as const,
+			kind: "not-impl",
+			error: "not implemented in test stub",
+		})),
 		...overrides,
 	};
 }

@@ -15,6 +15,9 @@ interface Props {
 	/** 人工二次核对回调（U4）;传入则展开区显示「确认核对」。 */
 	onVerify?: () => void;
 	verifying?: boolean;
+	/** 生成九段落文章回调（规范七/八）;传入则展开区显示「生成文章」按钮。 */
+	onGenerateArticle?: () => void;
+	generatingArticle?: boolean;
 }
 
 // 受控展示组件:单条选题卡(checkbox + 标题/评分徽章 + 详情按钮 + 内嵌事实编辑表单)。
@@ -31,6 +34,8 @@ export function TopicListItem({
 	onFactChange,
 	onVerify,
 	verifying,
+	onGenerateArticle,
+	generatingArticle,
 }: Props) {
 	const score = topic.score ?? topic.confidence;
 	const isHigh = score >= 0.7;
@@ -130,14 +135,28 @@ export function TopicListItem({
 			</div>
 
 			{expanded && (
-				<FactsEditorModal
-					topic={topic}
-					editedFacts={editedFacts}
-					busy={busy}
-					onFactChange={onFactChange}
-					onVerify={onVerify}
-					verifying={verifying}
-				/>
+				<>
+					<FactsEditorModal
+						topic={topic}
+						editedFacts={editedFacts}
+						busy={busy}
+						onFactChange={onFactChange}
+						onVerify={onVerify}
+						verifying={verifying}
+					/>
+					{onGenerateArticle && (
+						<div style={{ padding: "0 var(--space-md) var(--space-md)" }}>
+							<button
+								type="button"
+								onClick={onGenerateArticle}
+								disabled={busy || generatingArticle}
+								className="btn btn-secondary btn-sm"
+							>
+								{generatingArticle ? "生成中…" : "生成文章"}
+							</button>
+						</div>
+					)}
+				</>
 			)}
 		</li>
 	);

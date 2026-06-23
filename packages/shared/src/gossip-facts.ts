@@ -45,6 +45,11 @@ export const GOSSIP_FACT_KEYS: GossipFactKey[] = [
 	"熱度標籤",
 ];
 
+/** 运行时类型守卫：检查对象是否为 GossipFactsBlock（以 當事人 key 为判据）。 */
+export function isGossipFactsBlock(v: unknown): v is GossipFactsBlock {
+	return v !== null && typeof v === "object" && "當事人" in v;
+}
+
 /** json_schema 定義，供 gossip-fact-extractor structured output 使用。 */
 export const GOSSIP_FACTS_SCHEMA = {
 	type: "object",

@@ -184,6 +184,34 @@ export const HealthzResponse = Type.Object({
 	}),
 });
 
+// ── Article Generation ───────────────────────────────
+// topicId 约束：只允许 URL-safe 字符，防路径注入；maxLength=128 防超大 ID。
+export const GenerateArticleBody = Type.Object({
+	topicId: Type.String({
+		minLength: 1,
+		maxLength: 128,
+		pattern: "^[a-zA-Z0-9_-]+$",
+	}),
+});
+
+export const GenerateArticleResponse = Type.Object({
+	ok: OkStatus,
+	draft: Type.Object({
+		id: Type.String(),
+		title: Type.String(),
+		subtitle: Type.String(),
+		category: Type.String(),
+		coverImageUrl: Type.String(),
+		body: Type.String(),
+		tags: Type.Array(Type.String()),
+		description: Type.String(),
+		status: Type.String(),
+		createdAt: Type.String(),
+	}),
+	// 必须声明，否则 Fastify+TypeBox 会剥除此字段（同 GenerateDraftResponse 的注意点）。
+	qualityWarnings: Type.Optional(Type.Array(Type.String())),
+});
+
 // ── Scraper Auto-Generate ────────────────────────────
 export const AutoGenerateBody = Type.Object({
 	minConfidence: Type.Optional(Type.Number({ minimum: 0, maximum: 1 })),

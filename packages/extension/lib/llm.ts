@@ -282,6 +282,63 @@ export function mergeRewriteResult(
 	return merged;
 }
 
+export type GenerateArticleResponse =
+	| { ok: true; draft: ContentDraft; qualityWarnings: string[] }
+	| { ok: false; kind?: string; error: string };
+
+/** POST /api/v1/drafts/generate-article — 薄代理，不 throw，失败返回 ok:false。 */
+export async function generateArticle(
+	topicId: string,
+	fetchFn: typeof fetch = fetch,
+	timeoutMs = 65_000,
+): Promise<GenerateArticleResponse> {
+	const controller = new AbortController();
+	const timer = setTimeout(() => controller.abort(), timeoutMs);
+	try {
+		const token = await getToken();
+		const headers: Record<string, string> = {
+			"Content-Type": "application/json",
+		};
+		if (token) headers.Authorization = `Bearer ${token}`;
+
+		const backendUrl = await getBackendUrl();
+		const res = await fetchFn(`${backendUrl}/api/v1/drafts/generate-article`, {
+			method: "POST",
+			headers,
+			body: JSON.stringify({ topicId }),
+			signal: controller.signal,
+		});
+
+		if (res.status === 401) {
+			await clearToken();
+			return { ok: false, kind: "network", error: "登录已过期，请重新登录。" };
+		}
+
+		if (!res.ok) {
+			const errText = await res.text().catch(() => "");
+			let errorDetail = `后端服务返回错误 (${res.status})`;
+			try {
+				const parsedErr = JSON.parse(errText);
+				if (parsedErr.error) errorDetail = parsedErr.error;
+			} catch {}
+			return { ok: false, kind: "network", error: errorDetail };
+		}
+
+		return (await res.json()) as GenerateArticleResponse;
+	} catch (err) {
+		const aborted = err instanceof Error && err.name === "AbortError";
+		return {
+			ok: false,
+			kind: "network",
+			error: aborted
+				? "后端请求超时，请检查服务状态。"
+				: "无法连接到后端服务，请确认后端已在 127.0.0.1:3002 启动。",
+		};
+	} finally {
+		clearTimeout(timer);
+	}
+}
+
 import { toDraft } from "@51guapi/shared";
 
 export { toDraft };
