@@ -132,7 +132,7 @@ describe("quality-metrics", () => {
 		execSpy.mockRestore();
 	});
 
-	it("__resetForTest 在新 db 上重新启用懒建表", () => {
+	it("__resetForTest 对相同 db 实例重置 DDL 记忆，下次调用重新执行 DDL", () => {
 		const db = getDb();
 		// 第一次：记忆已在 beforeEach 置位，再调用不触发 exec。
 		const firstSpy = vi.spyOn(db, "exec");
@@ -140,7 +140,7 @@ describe("quality-metrics", () => {
 		expect(firstSpy).not.toHaveBeenCalled();
 		firstSpy.mockRestore();
 
-		// 复位后：模拟新 db，懒建表应重新执行一次 DDL。
+		// 复位后：db 实例从 WeakSet 移除，同一实例再次调用应重新执行一次 DDL。
 		__resetForTest();
 		const secondSpy = vi.spyOn(db, "exec");
 		initQualityMetricsTable(db);

@@ -36,12 +36,12 @@ function _rowToMetric(row: QualityMetricRow): QualityMetric {
 	};
 }
 
-// DDL 只需跑一次；记忆化避免每次 recordQuality/getQualityStats 都重发 CREATE。
-let _ddlReady = false;
+// DDL 只需跑一次；以 db 实例为键，新连接自动重建表，无需全局 bool。
+const _ddlReady = new WeakSet<BetterSqlite3DB>();
 
-/** 初始化质量指标表（记忆化：进程内仅首次真正执行 DDL）。 */
+/** 初始化质量指标表（记忆化：同一 db 实例仅首次真正执行 DDL）。 */
 export function initQualityMetricsTable(db: BetterSqlite3DB): void {
-	if (_ddlReady) return;
+	if (_ddlReady.has(db)) return;
 	db.exec(`
 		CREATE TABLE IF NOT EXISTS quality_metrics (
 			id TEXT PRIMARY KEY,
@@ -52,12 +52,16 @@ export function initQualityMetricsTable(db: BetterSqlite3DB): void {
 		);
 		CREATE INDEX IF NOT EXISTS idx_quality_created ON quality_metrics(created_at DESC);
 	`);
-	_ddlReady = true;
+	_ddlReady.add(db);
 }
 
-/** 测试隔离：清除 DDL 记忆，让下次调用对新 db 重新建表。 */
+/** 测试隔离：从记忆集合移除当前 db，让下次调用重新执行 DDL。 */
 export function __resetForTest(): void {
-	_ddlReady = false;
+	try {
+		_ddlReady.delete(getDb());
+	} catch {
+		// db 尚未初始化时 getDb() 会抛，此处忽略（WeakSet 中本就没有该键）。
+	}
 }
 
 /** 记录一条质量指标。 */
