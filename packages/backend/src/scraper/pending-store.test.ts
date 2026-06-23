@@ -7,6 +7,7 @@ import {
 	loadPendingTopic,
 	type PendingTopic,
 	pendingTopicExistsByFingerprint,
+	pendingTopicsExistingBySourceUrls,
 	savePendingTopic,
 	updatePendingTopicStatus,
 } from "./pending-store.js";
@@ -541,5 +542,67 @@ describe("pending-store (SQLite)", () => {
 		expect(inserted).toBe(true);
 		const loaded = await loadPendingTopic(topic.id);
 		expect(loaded?.domain).toBe("gossip");
+	});
+});
+
+describe("pendingTopicsExistingBySourceUrls — O5 批量存在性查询", () => {
+	beforeEach(() => resetDb());
+
+	async function seed(url: string): Promise<void> {
+		await savePendingTopic(makeTopic({ sourceUrl: url }));
+	}
+
+	it("空 urls → 空 Set（不发 SQL）", () => {
+		const result = pendingTopicsExistingBySourceUrls([]);
+		expect(result.size).toBe(0);
+	});
+
+	it("全部不存在 → 空 Set", async () => {
+		const result = pendingTopicsExistingBySourceUrls([
+			"https://new.example.com/1",
+			"https://new.example.com/2",
+		]);
+		expect(result.size).toBe(0);
+	});
+
+	it("全部存在 → 返回完整集合", async () => {
+		await seed("https://exist.com/a");
+		await seed("https://exist.com/b");
+		const result = pendingTopicsExistingBySourceUrls([
+			"https://exist.com/a",
+			"https://exist.com/b",
+		]);
+		expect(result).toEqual(
+			new Set(["https://exist.com/a", "https://exist.com/b"]),
+		);
+	});
+
+	it("混合（已存在 + 未存在）→ 只返回已存在集合", async () => {
+		await seed("https://exist.com/x");
+		const result = pendingTopicsExistingBySourceUrls([
+			"https://exist.com/x",
+			"https://new.com/y",
+		]);
+		expect(result).toEqual(new Set(["https://exist.com/x"]));
+		expect(result.has("https://new.com/y")).toBe(false);
+	});
+
+	it("与 discover 过滤等价：filter(!existingUrls.has) 结果与逐个查询语义一致", async () => {
+		await seed("https://exist.com/1");
+		await seed("https://exist.com/2");
+		const all = [
+			{ url: "https://exist.com/1" },
+			{ url: "https://new.com/3" },
+			{ url: "https://exist.com/2" },
+			{ url: "https://new.com/4" },
+		];
+		const existingUrls = pendingTopicsExistingBySourceUrls(
+			all.map((i) => i.url),
+		);
+		const fresh = all.filter((i) => !existingUrls.has(i.url));
+		expect(fresh.map((i) => i.url)).toEqual([
+			"https://new.com/3",
+			"https://new.com/4",
+		]);
 	});
 });
