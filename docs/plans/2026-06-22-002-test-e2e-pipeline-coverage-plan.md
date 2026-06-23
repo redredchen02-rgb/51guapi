@@ -220,7 +220,7 @@ graph TB
 - Anti-false-green：移除中和（模拟回退）→ 用例变红（证中和真在生效）。
 **Verification:** rewrite 三形态链接零进导出；客户端无法自我放行；A5 不变量端到端可证伪。
 
-- [ ] **E4: 真 adapter HTML 提取 e2e（上游缺口）**
+- [x] **E4: 真 adapter HTML 提取 e2e（上游缺口）** ✅ 已实现（commit 待标）：`adapter-extraction-e2e.test.ts` + 4 个合成 fixture，端到端覆盖 extractContainerText 配平 / extractByDensity / 流式 CJK 重组 / enforcePathPrefix；4 测试绿、anti-false-green 验过。**勘误**：`check-fixture-secrets.sh` 闸路径硬锚 extension/，**不扫** backend `__fixtures__/`，脱敏靠合成内容本身保证。
 
 **Goal:** 覆盖当前被 mock 掉的真实提取层——`fetchContent`/`fetchListPaged` 的 `extractBody`/og-meta/列表翻页，外加 `enforcePathPrefix`（路径前缀）+ `readBodyCapped`（字节上限），在 fetch 出口注入 fixture HTML（绕真网络）。
 **Requirements:** R3, R5, R7
@@ -243,7 +243,7 @@ graph TB
 - Anti-false-green：改坏 fixture 关键容器 → body 提取断言变红。
 **Verification:** 真提取层 + `enforcePathPrefix` + `readBodyCapped` 端到端覆盖；**allowlist-per-hop / IP-pinning 明确不在本单元**（留单测，避免假声称）；fixture 脱敏过闸。
 
-- [ ] **E5: scheduler（cron）自动爬取路径 e2e**
+- [x] **E5: scheduler（cron）自动爬取路径 e2e** ✅ 已实现（commit 待标）：`scheduler-pipeline-e2e.test.ts`，cron-spy 捕获 callback + **真 pending-store（临时 DB）**，4 测试绿、anti-false-green 验过。**P0 勘误（计划原声称不成立，已按实改正）**：scheduler 经通用 `extractFacts`、build topic **不设 domain** → 入池 `domain='acg'`（**非** from-url 的 `'gossip'`），facts 亦是 ACG 形状 `FactsBlock`。故「与 from-url 产出一致 / domain='gossip'」**为假**；本单元改为**特征化当前 'acg' 行为**并断言之。**新 finding（待定）**：cron 自动爬取的选题永不进吃瓜池（pending 视图过滤 `domain='gossip'`）——ACG 时代排程管线未随吃瓜化迁移，修复属生产改动、留作独立单元。
 
 **Goal:** 覆盖第二条活爬取入口——`scheduler` 的自动爬取 → `crawl → 提炼 → pending-store`，证其与 from-url 同样守 no-publish、入池正确。当前仅 `scheduler.test.ts` 单测，无端到端。
 **Requirements:** R3, R5, R7
