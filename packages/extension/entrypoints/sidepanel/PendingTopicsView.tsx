@@ -1,25 +1,17 @@
 import type { ContentDraft, GossipFactsBlock } from "@51guapi/shared";
-import { GOSSIP_FACT_KEYS } from "@51guapi/shared";
-import { useCallback, useEffect, useState } from "react";
 import { downloadFile, exportTopicsAsCSV } from "../../lib/export";
-import {
-	fetchPendingTopics,
-	fetchThemeCounts,
-	type PendingTopic,
-	patchPendingTopic,
-	setPendingVerified,
-	type ThemeCount,
-	updatePendingStatus,
-} from "../../lib/pending-client";
+import { useDraftActions } from "./hooks/useDraftActions";
 import { useDraftGeneration } from "./hooks/useDraftGeneration";
+import { useThemes } from "./hooks/useThemes";
+import { useTopicEditing } from "./hooks/useTopicEditing";
+import { useTopicSelection } from "./hooks/useTopicSelection";
+import { useTopics } from "./hooks/useTopics";
 import { Loading } from "./Loading";
+import { BulkActionBar } from "./pending/BulkActionBar";
 import { GenerateConfirmDialog } from "./pending/GenerateConfirmDialog";
 import { ThemePicker } from "./pending/ThemePicker";
 import { TopicListItem } from "./pending/TopicListItem";
-
-interface QuickDraftConfirm {
-	topics: PendingTopic[];
-}
+import { TopicsToolbar } from "./pending/TopicsToolbar";
 
 interface Props {
 	onBack: () => void;
@@ -31,262 +23,49 @@ interface Props {
 }
 
 export function PendingTopicsView({ onBack, onDraftReady, onError }: Props) {
-	const [topics, setTopics] = useState<PendingTopic[]>([]);
-	const [selected, setSelected] = useState<Set<string>>(new Set());
-	const [expanded, setExpanded] = useState<Set<string>>(new Set());
-	const [localFacts, setLocalFacts] = useState<
-		Record<string, Record<string, string>>
-	>({});
-	const [busy, setBusy] = useState(false);
-	const [loading, setLoading] = useState(true);
-	const [hideLowScore, setHideLowScore] = useState(false);
-	const [approveError, setApproveError] = useState<string | null>(null);
-	const [quickDraftConfirm, setQuickDraftConfirm] =
-		useState<QuickDraftConfirm | null>(null);
-	const [quickDraftStatus, setQuickDraftStatus] = useState("");
-	// U5 题材选择 + U4 人工核对状态。
-	const [themes, setThemes] = useState<ThemeCount[]>([]);
-	const [themesLoading, setThemesLoading] = useState(true);
-	const [selectedTheme, setSelectedTheme] = useState<string | null>(null);
-	const [verifyingId, setVerifyingId] = useState<string | null>(null);
+	const {
+		themes,
+		themesLoading,
+		selectedTheme,
+		setSelectedTheme,
+		refreshThemes,
+	} = useThemes();
+	const { topics, loading, hideLowScore, setHideLowScore, refresh } =
+		useTopics(selectedTheme);
+	const { selected, setSelected, toggleSelect } = useTopicSelection();
+	const { expanded, localFacts, toggleExpand, setFactField } =
+		useTopicEditing();
 	const { generate } = useDraftGeneration();
-
-	const refresh = useCallback(async () => {
-		setLoading(true);
-		// 选中题材 → 题材池视图（仅已核对 + 该题材）；否则 → 全部待审（供逐条核对）。
-		const list = selectedTheme
-			? await fetchPendingTopics({
-					status: "pending",
-					domain: "gossip",
-					sort_by: "score",
-					theme: selectedTheme,
-					verified: true,
-				})
-			: await fetchPendingTopics({
-					status: "pending",
-					sort_by: "score",
-					domain: "gossip",
-				});
-		setTopics(list);
-		setLoading(false);
-	}, [selectedTheme]);
-
-	const refreshThemes = useCallback(async () => {
-		setThemesLoading(true);
-		setThemes(await fetchThemeCounts());
-		setThemesLoading(false);
-	}, []);
-
-	useEffect(() => {
-		void refresh();
-	}, [refresh]);
-
-	useEffect(() => {
-		void refreshThemes();
-	}, [refreshThemes]);
-
-	async function handleVerify(id: string) {
-		setVerifyingId(id);
-		try {
-			const edited = localFacts[id];
-			if (edited) await patchPendingTopic(id, { facts: edited });
-			const ok = await setPendingVerified(id, true);
-			if (ok) {
-				await refresh();
-				await refreshThemes();
-			}
-		} catch {
-			onError("核对失败,请重试。");
-		} finally {
-			setVerifyingId(null);
-		}
-	}
-
-	function toggleSelect(id: string) {
-		setSelected((prev) => {
-			const next = new Set(prev);
-			next.has(id) ? next.delete(id) : next.add(id);
-			return next;
-		});
-	}
-
-	function initLocalFacts(id: string, facts: Record<string, string>) {
-		setLocalFacts((prev) => {
-			if (prev[id] !== undefined) return prev;
-			return { ...prev, [id]: { ...facts } };
-		});
-	}
-
-	function toggleExpand(id: string, facts: Record<string, string>) {
-		setExpanded((prev) => {
-			const next = new Set(prev);
-			next.has(id) ? next.delete(id) : next.add(id);
-			return next;
-		});
-		initLocalFacts(id, facts);
-	}
-
-	function setFactField(id: string, key: string, value: string) {
-		setLocalFacts((prev) => ({
-			...prev,
-			[id]: { ...(prev[id] ?? {}), [key]: value },
-		}));
-	}
-
-	function buildGossipPrompt(
-		topic: PendingTopic,
-		editedFacts?: Record<string, string>,
-	): string {
-		const facts = editedFacts ?? topic.facts;
-		const lines = GOSSIP_FACT_KEYS.filter(
-			(k) => facts[k] != null && facts[k] !== "",
-		).map((k) => `- ${k}：${facts[k]}`);
-		const factsBlock =
-			lines.length > 0
-				? `\n\n【吃瓜事实】（只能使用以下事实，严禁编造）：\n${lines.join("\n")}`
-				: "";
-		return `${topic.title || topic.sourceUrl}${factsBlock}`;
-	}
-
-	function toGossipFacts(facts: Record<string, string>): GossipFactsBlock {
-		const out = {} as GossipFactsBlock;
-		for (const key of GOSSIP_FACT_KEYS) {
-			const value = facts[key];
-			out[key] = value == null || value === "" ? null : value;
-		}
-		return out;
-	}
-
-	async function handleApproveSelected() {
-		if (selected.size === 0) return;
-		const t = topics.find((t) => selected.has(t.id));
-		if (!t) return;
-		setBusy(true);
-		setApproveError(null);
-		try {
-			const edited = localFacts[t.id];
-			if (edited) await patchPendingTopic(t.id, { facts: edited });
-			const approvedFacts = toGossipFacts(edited ?? t.facts);
-			const prompt = buildGossipPrompt(t, edited);
-			const result = await generate(prompt, {
-				facts: approvedFacts,
-			});
-			// exception 等同原 requestGenerate 抛错:rethrow 落入下方 catch,
-			// 保住与 catch 完全一致的错误文案。
-			if (result.status === "exception") throw result.error;
-			if (result.status === "ok") {
-				await updatePendingStatus(t.id, "approved");
-				// 每次只批准並生成一條草稿；從選中集合移除已處理的，其餘保留
-				setSelected((prev) => {
-					const next = new Set(prev);
-					next.delete(t.id);
-					return next;
-				});
-				onDraftReady({ draft: result.draft, facts: approvedFacts });
-			} else {
-				const isKeyError = result.status === "no-key";
-				setApproveError(
-					isKeyError
-						? "后端缺少 LLM_API_KEY,请在 packages/backend/.env 中配置后重启服务"
-						: `生成草稿失败：${result.error}`,
-				);
-			}
-		} catch (err) {
-			setApproveError(
-				`生成草稿失败：${err instanceof Error ? err.message : "请重试"}`,
-			);
-		} finally {
-			setBusy(false);
-		}
-	}
-
-	async function handleRejectSelected() {
-		if (selected.size === 0) return;
-		setBusy(true);
-		try {
-			const selectedTopics = topics.filter((t) => selected.has(t.id));
-			await Promise.all(
-				selectedTopics.map((t) =>
-					updatePendingStatus(t.id, "rejected", "other"),
-				),
-			);
-			setSelected(new Set());
-			await refresh();
-		} catch {
-			onError("操作失败,请重试。");
-		} finally {
-			setBusy(false);
-		}
-	}
+	const {
+		busy,
+		approveError,
+		verifyingId,
+		quickDraftConfirm,
+		setQuickDraftConfirm,
+		quickDraftStatus,
+		setQuickDraftStatus,
+		handleVerify,
+		handleApproveSelected,
+		handleRejectSelected,
+		handleQuickDraft,
+		handleQuickDraftConfirm,
+	} = useDraftActions({
+		topics,
+		localFacts,
+		selected,
+		setSelected,
+		generate,
+		refresh,
+		refreshThemes,
+		onDraftReady,
+		onError,
+	});
 
 	function handleExportCsv() {
 		if (topics.length === 0) return;
 		const csv = exportTopicsAsCSV(topics);
 		const date = new Date().toISOString().slice(0, 10);
 		downloadFile(`topics-${date}.csv`, csv, "text/csv");
-	}
-
-	async function handleQuickDraft() {
-		setQuickDraftStatus("备稿中…");
-		setQuickDraftConfirm(null);
-		try {
-			const sorted = await fetchPendingTopics({
-				status: "pending",
-				sort_by: "score",
-				domain: "gossip",
-			});
-			if (sorted.length === 0) {
-				setQuickDraftStatus("待审池暂无选题，请先抓取");
-				return;
-			}
-			// 每次只生成一篇草稿(取最高分选题)
-			const top = sorted[0];
-			if (!top) {
-				setQuickDraftStatus("待审池暂无选题，请先抓取");
-				return;
-			}
-			setQuickDraftStatus("");
-			setQuickDraftConfirm({ topics: [top] });
-		} catch {
-			setQuickDraftStatus("获取选题失败，请重试");
-		}
-	}
-
-	async function handleQuickDraftConfirm() {
-		if (!quickDraftConfirm) return;
-		const [t] = quickDraftConfirm.topics;
-		if (!t) return;
-		setQuickDraftConfirm(null);
-		setQuickDraftStatus("");
-		setBusy(true);
-		setApproveError(null);
-		try {
-			const edited = localFacts[t.id];
-			if (edited) await patchPendingTopic(t.id, { facts: edited });
-			const approvedFacts = toGossipFacts(edited ?? t.facts);
-			const prompt = buildGossipPrompt(t, edited);
-			const result = await generate(prompt, {
-				facts: approvedFacts,
-			});
-			// exception 等同原 requestGenerate 抛错:rethrow 落入下方 catch(走 onError)。
-			if (result.status === "exception") throw result.error;
-			if (result.status === "ok") {
-				await updatePendingStatus(t.id, "approved");
-				setSelected(new Set());
-				onDraftReady({ draft: result.draft, facts: approvedFacts });
-			} else {
-				const isKeyError = result.status === "no-key";
-				setApproveError(
-					isKeyError
-						? "后端缺少 LLM_API_KEY,请在 packages/backend/.env 中配置后重启服务"
-						: `生成草稿失败：${result.error}`,
-				);
-			}
-		} catch (err) {
-			onError(`操作失败：${err instanceof Error ? err.message : "请重试"}`);
-		} finally {
-			setBusy(false);
-		}
 	}
 
 	return (
@@ -298,41 +77,15 @@ export function PendingTopicsView({ onBack, onDraftReady, onError }: Props) {
 				fontSize: "var(--font-md)",
 			}}
 		>
-			<nav className="flex-between mb-md">
-				<h1 style={{ fontSize: "var(--font-xl)", margin: 0 }}>待审核选题</h1>
-				<div className="flex gap-sm" style={{ alignItems: "center" }}>
-					<button
-						type="button"
-						disabled={busy}
-						onClick={() => void handleQuickDraft()}
-						className="btn btn-primary btn-sm"
-					>
-						{quickDraftStatus === "备稿中…" ? "备稿中…" : "今日一键备稿"}
-					</button>
-					<button
-						type="button"
-						disabled={topics.length === 0}
-						onClick={handleExportCsv}
-						className="btn btn-plain btn-sm"
-					>
-						导出 CSV
-					</button>
-					<button
-						type="button"
-						onClick={() => void refresh()}
-						className="btn btn-plain btn-sm"
-					>
-						↻ 刷新
-					</button>
-					<button
-						type="button"
-						onClick={onBack}
-						className="btn btn-plain btn-sm"
-					>
-						← 返回
-					</button>
-				</div>
-			</nav>
+			<TopicsToolbar
+				busy={busy}
+				topicsEmpty={topics.length === 0}
+				quickDraftStatus={quickDraftStatus}
+				onQuickDraft={() => void handleQuickDraft()}
+				onExportCsv={handleExportCsv}
+				onRefresh={() => void refresh()}
+				onBack={onBack}
+			/>
 
 			{quickDraftStatus && !quickDraftConfirm && (
 				<div
@@ -445,65 +198,14 @@ export function PendingTopicsView({ onBack, onDraftReady, onError }: Props) {
 							))}
 					</ul>
 
-					{approveError && (
-						<div
-							role="alert"
-							style={{
-								marginTop: "var(--space-md)",
-								padding: "var(--space-md) var(--space-lg)",
-								background: "var(--color-error-bg, #fff2f0)",
-								border: "1px solid var(--color-error, #cf1322)",
-								borderRadius: "var(--radius-md)",
-								fontSize: "var(--font-sm)",
-								color: "var(--color-error, #cf1322)",
-								display: "flex",
-								alignItems: "center",
-								gap: "var(--space-md)",
-							}}
-						>
-							<span style={{ flex: 1 }}>{approveError}</span>
-							<button
-								type="button"
-								className="btn btn-plain btn-sm"
-								onClick={() => void handleApproveSelected()}
-								disabled={busy || selected.size === 0}
-								style={{ whiteSpace: "nowrap", flexShrink: 0 }}
-							>
-								重试生成草稿
-							</button>
-						</div>
-					)}
-					<div
-						style={{
-							display: "flex",
-							gap: "var(--space-md)",
-							marginTop: "var(--space-xl)",
-						}}
-					>
-						<button
-							type="button"
-							onClick={() => void handleApproveSelected()}
-							disabled={selected.size === 0 || busy}
-							className="btn btn-primary"
-						>
-							{busy ? "生成中…" : `批准并生成草稿 (${selected.size})`}
-						</button>
-						<button
-							type="button"
-							onClick={() => void handleRejectSelected()}
-							disabled={selected.size === 0 || busy}
-							className="btn btn-plain"
-							style={{
-								borderColor: "var(--color-border)",
-								color:
-									selected.size > 0 && !busy
-										? "var(--color-error)"
-										: "var(--color-text-disabled)",
-							}}
-						>
-							拒绝
-						</button>
-					</div>
+					<BulkActionBar
+						selectedCount={selected.size}
+						busy={busy}
+						approveError={approveError}
+						onApprove={() => void handleApproveSelected()}
+						onReject={() => void handleRejectSelected()}
+						onRetryApprove={() => void handleApproveSelected()}
+					/>
 				</>
 			)}
 		</main>
