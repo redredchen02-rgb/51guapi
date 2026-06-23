@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.5] - 2026-06-23
+
+### Removed
+
+- **JWT 鉴权层完全移除**：个人自用工具，撤除所有权限限制。删除 `auth-middleware.ts`、`auth-routes.ts`、`auth-client.ts`、`AuthView.tsx` 共 8 个文件（含测试），合计净减 ~1 500 行代码
+- **extension**：`apiFetch()` 不再携带 `Authorization: Bearer` 头；`llm.ts` 移除 token 获取与 401 刷新逻辑；`App.tsx` 移除登录态、`AuthView`、`Loading` 组件
+- **backend**：`app.ts` 移除 `requireAuth` preHandler 与 swagger bearerAuth；`/login` 路由整组删除；`PUBLIC_ROUTES` Set 不再存在
+- **preflight**：移除永远 false 的 `jwt-secret` 检查项（JWT 已删，该项无意义）
+- **env-check**：移除 `JWT_SECRET` / `JWT_ADMIN_PASSWORD_HASH` 校验；后端启动仅需 `CORS_ORIGIN` 非通配
+
 ## [0.2.4] - 2026-06-23
 
 ### Fixed

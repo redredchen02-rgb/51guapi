@@ -1,8 +1,7 @@
 import { apiFetch } from "./api-fetch";
 
 // 渠道客户端 — 管理可爬取渠道域名(动态进后端 SSRF allowlist)。
-// 自用模式(plan 2026-06-18-003):写入两道闸(确认手势 + 管理员口令)已移除,
-// 加渠道只需有效 JWT(经 apiFetch 自动带 Authorization)。
+// 自用模式(plan 2026-06-18-003 + JWT 移除):无鉴权,直接请求后端。
 
 export interface Channel {
 	id: string;

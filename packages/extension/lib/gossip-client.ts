@@ -16,7 +16,6 @@ export interface DiscoveredItem {
 
 // 收敛 5 个 gossip 请求重复的错误样板:401 → Unauthorized、非 2xx → 后端 error
 // 消息回退。成功时**不消费** body(res.json 只能读一次),交由调用方按各自形状解析。
-// 注:401→clearToken 副作用已在 apiFetch 内完成,此处仅负责把状态翻成错误。
 async function handleGossipResponse(res: Response): Promise<void> {
 	if (res.status === 401) {
 		throw new Error("Unauthorized");

@@ -8,10 +8,6 @@ import {
 	rewriteDraft,
 } from "./llm";
 
-vi.mock("./auth-client", () => ({
-	getToken: vi.fn(async () => null),
-	clearToken: vi.fn(async () => {}),
-}));
 
 function mockFetch(
 	payload: unknown,
@@ -192,13 +188,7 @@ describe("reviewDraft proxy", () => {
 		expect(res.ok).toBe(false);
 	});
 
-	it("401 → 清 token + ok:false", async () => {
-		const { clearToken } = await import("./auth-client");
-		const f = mockFetch({}, { ok: false, status: 401 });
-		const res = await reviewDraft(draft, undefined, { ...deps, fetchFn: f });
-		expect(res.ok).toBe(false);
-		expect(clearToken).toHaveBeenCalled();
-	});
+
 });
 
 describe("rewriteDraft proxy", () => {

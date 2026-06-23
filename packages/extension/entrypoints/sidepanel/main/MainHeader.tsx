@@ -1,8 +1,6 @@
 import { KeyboardShortcutsHelp } from "../components/KeyboardShortcutsHelp";
 
 interface Props {
-	authenticated: boolean;
-	onAuthClick: () => void;
 	onOpenSettings: () => void;
 	onToggleLogs: () => void;
 	onOpenGossip: () => void;
@@ -10,11 +8,8 @@ interface Props {
 	onOpenMetrics: () => void;
 }
 
-// 受控展示组件:主视图头部(标题 + 登录状态 + 设置/快捷键/日志按钮 + 工作流导航卡片)。
-// state(authenticated/showLogs)与 view 路由全在 App 主组件。inline style/文案/aria 逐字保留。
+// 受控展示组件:主视图头部(标题 + 设置/快捷键/日志按钮 + 工作流导航卡片)。
 export function MainHeader({
-	authenticated,
-	onAuthClick,
 	onOpenSettings,
 	onToggleLogs,
 	onOpenGossip,
@@ -31,17 +26,6 @@ export function MainHeader({
 					</div>
 				</div>
 				<div className="app-actions">
-					<button
-						type="button"
-						onClick={onAuthClick}
-						className={`status-pill ${authenticated ? "success" : "error"}`}
-						style={{
-							cursor: authenticated ? "default" : "pointer",
-							userSelect: "none",
-						}}
-					>
-						{authenticated ? "已登录" : "未登录"}
-					</button>
 					<button
 						type="button"
 						onClick={onOpenSettings}

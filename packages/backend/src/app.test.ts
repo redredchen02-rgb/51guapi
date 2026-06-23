@@ -1,6 +1,4 @@
-import { randomBytes } from "node:crypto";
 import Fastify, { type FastifyInstance } from "fastify";
-import jwt from "jsonwebtoken";
 import {
 	afterAll,
 	afterEach,
@@ -11,6 +9,7 @@ import {
 	it,
 	vi,
 } from "vitest";
+
 
 // LLM 服务被 mock，使 draft 路由的 happy/error 路径可控（不发真请求）。
 vi.mock("./services/llm.js", () => ({
@@ -77,27 +76,18 @@ afterAll(() => {
 
 describe("buildApp", () => {
 	let app: FastifyInstance;
-	const SECRET = randomBytes(48).toString("hex");
-	const prevSecret = process.env.JWT_SECRET;
-
-	function validToken(): string {
-		return jwt.sign({}, SECRET, { algorithm: "HS256", expiresIn: "1h" });
-	}
 
 	beforeAll(async () => {
-		process.env.JWT_SECRET = SECRET;
 		app = buildApp();
 		await app.ready();
 	});
 
 	afterAll(async () => {
 		await app.close();
-		resetPendingDb(); // 关闭 buildApp 打开的 SQLite 句柄(app.ts 无 onClose hook)
-		if (prevSecret === undefined) delete process.env.JWT_SECRET;
-		else process.env.JWT_SECRET = prevSecret;
+		resetPendingDb();
 	});
 
-	it("GET /api/v1/healthz（公开路由）→ 200，返回健康结构", async () => {
+	it("GET /api/v1/healthz → 200，返回健康结构", async () => {
 		const res = await app.inject({ method: "GET", url: "/api/v1/healthz" });
 		expect(res.statusCode).toBe(200);
 		const body = res.json();
@@ -109,44 +99,20 @@ describe("buildApp", () => {
 		expect(body.quality).toBeDefined();
 	});
 
-	it("GET /api/v1/metrics 无 token → 401（preHandler 全局生效，metrics 不在白名单）", async () => {
+	it("GET /api/v1/metrics → 200，Prometheus 文本", async () => {
 		const res = await app.inject({ method: "GET", url: "/api/v1/metrics" });
-		expect(res.statusCode).toBe(401);
-	});
-
-	it("GET /api/v1/metrics 带合法 token → 200，Prometheus 文本", async () => {
-		const res = await app.inject({
-			method: "GET",
-			url: "/api/v1/metrics",
-			headers: { authorization: `Bearer ${validToken()}` },
-		});
 		expect(res.statusCode).toBe(200);
 		expect(res.headers["content-type"]).toContain("text/plain");
 		expect(res.body).toContain("guapi_drafts_total");
 	});
 
-	it("受保护路由无 token → 401", async () => {
+	it("GET /api/v1/prompts → 非 401（无鉴权闸）", async () => {
 		const res = await app.inject({ method: "GET", url: "/api/v1/prompts" });
-		expect(res.statusCode).toBe(401);
-	});
-
-	it("受保护路由带合法 token → 非 401（通过鉴权 hook）", async () => {
-		const res = await app.inject({
-			method: "GET",
-			url: "/api/v1/prompts",
-			headers: { authorization: `Bearer ${validToken()}` },
-		});
 		expect(res.statusCode).not.toBe(401);
 	});
 
-	it("OpenAPI 文档已注册（带 token → 200 且返回 spec）", async () => {
-		// /docs/json 在全局鉴权闸后(不在 PUBLIC_ROUTES):无 token=401、带 token=200。
-		// 断言 200+spec body,才能在 swagger 注册回归(404)时真正失败。
-		const res = await app.inject({
-			method: "GET",
-			url: "/docs/json",
-			headers: { authorization: `Bearer ${validToken()}` },
-		});
+	it("OpenAPI 文档已注册 → 200 且返回 spec", async () => {
+		const res = await app.inject({ method: "GET", url: "/docs/json" });
 		expect(res.statusCode).toBe(200);
 		expect(res.json().info).toBeTruthy();
 	});
