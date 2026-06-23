@@ -64,6 +64,9 @@ jobs:
   # 是 fail-open。fetch-depth:0 拉全史,既扫本次 tag 也覆盖历史。失败即阻断 Release。
   gitleaks:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
         with:
