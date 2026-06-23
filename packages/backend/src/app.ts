@@ -1,6 +1,9 @@
 import type { GossipFactsBlock, Settings } from "@51guapi/shared";
 import cors from "@fastify/cors";
+import staticPlugin from "@fastify/static";
 import rateLimit from "@fastify/rate-limit";
+import { existsSync } from "node:fs";
+import path from "node:path";
 import type { FastifyInstance } from "fastify";
 import Fastify from "fastify";
 import { registerChannelRoutes } from "./routes/channel-routes.js";
@@ -171,6 +174,27 @@ export function buildApp(): FastifyInstance {
 		url: "https://example.com",
 		enabled: false,
 	});
+
+	// Serve webui SPA in production when dist exists alongside this package.
+	// Guard: only register if the dist directory is present — dev mode keeps serving from Vite.
+	const webuiDist = path.resolve(
+		new URL(import.meta.url).pathname,
+		"../../../../webui/dist",
+	);
+	if (existsSync(webuiDist)) {
+		server.register(staticPlugin, {
+			root: webuiDist,
+			prefix: "/",
+		});
+		// SPA fallback: all non-/api/* paths serve index.html (client-side routing).
+		server.setNotFoundHandler((req, reply) => {
+			if (req.url.startsWith("/api/")) {
+				reply.status(404).send({ ok: false, error: "Not found" });
+				return;
+			}
+			reply.sendFile("index.html");
+		});
+	}
 
 	return server;
 }
