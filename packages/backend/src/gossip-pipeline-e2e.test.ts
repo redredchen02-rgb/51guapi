@@ -1,9 +1,19 @@
 // U6 — 端到端回归锁定:from-url 时间窗/验证关/拒绝 → 人工 verified → 题材过滤。
 // 真 verifyCrawledTopic（no-mock gate，learning #12）+ 真 pending-store（临时 DB）;
 // 只 mock 外部网络(fetchContent)与 LLM(gossipExtractFacts)。守护「不发布/不写回」。
+//
+// E1 稳定化：
+//   - vi.useFakeTimers({ toFake:["Date"] })：只伪造 Date，不碰 setTimeout/setImmediate，
+//     避免 Fastify 关闭时 app.close() 因 setImmediate 被 fake 而挂起。
+//   - vi.setSystemTime(PINNED_NOW)：让测试代码与生产窗口检查（gossip-routes.ts Date.now()）
+//     看同一个固定时刻，消除跨日边界 flaky。
+//   - env save/restore：beforeEach 存 LLM_* 原值，afterEach 无条件还原，防跨测试污染。
 import Fastify, { type FastifyInstance } from "fastify";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getDb, initPendingDb, resetPendingDb } from "./scraper/pending-db.js";
+
+// 固定「现在」：选离任何月末/跨年边界足够远的时刻，消除窗口 flaky。
+const PINNED_NOW = new Date("2026-01-15T12:00:00Z");
 
 vi.mock("./scraper/adapters/generic-adapter.js", () => ({
 	fetchListPaged: vi.fn(),
@@ -51,8 +61,17 @@ async function buildApp(): Promise<FastifyInstance> {
 }
 
 let app: FastifyInstance;
+let savedEnv: Record<string, string | undefined>;
 
 beforeEach(async () => {
+	// E1: 存原值，设置固定时钟（只 fake Date），固定「现在」。
+	savedEnv = {
+		LLM_ENDPOINT: process.env.LLM_ENDPOINT,
+		LLM_API_KEY: process.env.LLM_API_KEY,
+	};
+	vi.useFakeTimers({ toFake: ["Date"] });
+	vi.setSystemTime(PINNED_NOW);
+
 	resetPendingDb();
 	initPendingDb();
 	getDb().exec("DELETE FROM pending_topics");
@@ -63,7 +82,13 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
+	// E1: 先还原真实 Date（Fastify close 内部依赖真实计时），再关 app，再还原 env。
+	vi.useRealTimers();
 	await app.close();
+	for (const [k, v] of Object.entries(savedEnv)) {
+		if (v === undefined) delete process.env[k];
+		else process.env[k] = v;
+	}
 });
 
 async function fromUrl(url: string, windowDays?: number) {
@@ -76,7 +101,7 @@ async function fromUrl(url: string, windowDays?: number) {
 
 describe("U6 端到端:发现→窗口→验证→核对→题材", () => {
 	it("完整闭环:有效新瓜入池 → 旧瓜跳过 → 无效拒绝 → 核对进题材池 → 题材过滤命中", async () => {
-		const recent = new Date(Date.now() - 2 * 86_400_000).toISOString();
+		const recent = new Date(PINNED_NOW.getTime() - 2 * 86_400_000).toISOString();
 
 		// 1) 有效窗内瓜 → 入池(带 verification + 指纹)
 		mockFetchContent.mockResolvedValueOnce({
@@ -160,7 +185,7 @@ describe("U6 端到端:发现→窗口→验证→核对→题材", () => {
 	});
 
 	it("内容指纹跨 URL:同 facts 不同 URL → 第二条软标 suspectedDuplicate 入池(非静默丢)", async () => {
-		const recent = new Date(Date.now() - 86_400_000).toISOString();
+		const recent = new Date(PINNED_NOW.getTime() - 86_400_000).toISOString();
 		for (const u of ["https://gossip.com/d1", "https://gossip.com/d2"]) {
 			mockFetchContent.mockResolvedValueOnce({
 				title: "同瓜",
