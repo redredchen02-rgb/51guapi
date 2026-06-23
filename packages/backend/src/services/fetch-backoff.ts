@@ -11,14 +11,19 @@ export interface LlmDeps {
 	/** 429/5xx 退避重试参数(可注入便于测试快进)。 */
 	maxRetries?: number;
 	retryBaseMs?: number;
-	/** 单次退避时长上限(亦作总等待的近似上限,防上游 Retry-After 拉爆)。 */
+	/** 单次退避时长上限(亦作每轮等待的近似上限,防上游 Retry-After 拉爆)。 */
 	retryCapMs?: number;
+	/** 累计睡眠墙钟预算上限(ms)：跨所有重试轮次的总睡眠时长 ≥ 此值即停止重试。
+	 * 防 maxRetries 调高时总等待失控；默认 = DEFAULT_MAX_RETRIES × DEFAULT_RETRY_CAP_MS。 */
+	wallClockBudgetMs?: number;
 	sleep?: (ms: number) => Promise<void>;
 }
 
 const DEFAULT_MAX_RETRIES = 2;
 const DEFAULT_RETRY_BASE_MS = 500;
 const DEFAULT_RETRY_CAP_MS = 8_000;
+/** 墙钟总预算上限：累计睡眠 ≥ 此值即停止重试，防上游 Retry-After 或 maxRetries 过大时无限等待。 */
+const DEFAULT_WALL_CLOCK_BUDGET_MS = DEFAULT_MAX_RETRIES * DEFAULT_RETRY_CAP_MS; // 16 s
 
 export const defaultSleep = (ms: number): Promise<void> =>
 	new Promise((r) => setTimeout(r, ms));
@@ -49,8 +54,10 @@ export async function fetchWithBackoff(
 	const maxRetries = deps.maxRetries ?? DEFAULT_MAX_RETRIES;
 	const baseMs = deps.retryBaseMs ?? DEFAULT_RETRY_BASE_MS;
 	const capMs = deps.retryCapMs ?? DEFAULT_RETRY_CAP_MS;
+	const budget = deps.wallClockBudgetMs ?? DEFAULT_WALL_CLOCK_BUDGET_MS;
 	const sleep = deps.sleep ?? defaultSleep;
 
+	let totalSleepMs = 0;
 	for (let attempt = 0; ; attempt++) {
 		const controller = new AbortController();
 		const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -71,10 +78,13 @@ export async function fetchWithBackoff(
 		const retryAfter = parseRetryAfter(res, Date.now());
 		const expo = Math.min(capMs, baseMs * 2 ** attempt);
 		const delay = Math.min(capMs, retryAfter ?? expo);
+		// 墙钟预算守：累计睡眠 + 本轮 delay ≥ 预算 → 停止重试。
+		if (totalSleepMs + delay >= budget) return { res };
 		// 日志只记 status/attempt/delay,不记 body/headers/url/key。
 		console.warn(
 			`[llm] retry status=${res.status} attempt=${attempt + 1} delay=${delay}ms`,
 		);
 		await sleep(delay);
+		totalSleepMs += delay;
 	}
 }

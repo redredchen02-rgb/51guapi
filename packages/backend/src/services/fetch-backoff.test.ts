@@ -3,6 +3,7 @@
 import type { Settings } from "@51guapi/shared";
 import { describe, expect, it, vi } from "vitest";
 import { generateDraft } from "./draft-gen.js";
+import { fetchWithBackoff } from "./fetch-backoff.js";
 
 const settings: Settings = {
 	endpoint: "https://api.example.com/v1/chat/completions",
@@ -44,6 +45,95 @@ function seqFetch(steps: Array<{ status: number; payload?: unknown }>) {
 }
 
 const noSleep = async () => {};
+
+// ---- O4 墙钟预算直测 ----
+
+const FAKE_SETTINGS: Settings = {
+	endpoint: "https://api.example.com/v1",
+	model: "test-model",
+	fallbackModel: "",
+	promptTemplate: "",
+	fewShotPairs: [],
+};
+
+function mk429(): Response {
+	return {
+		ok: false,
+		status: 429,
+		headers: { get: () => null },
+	} as unknown as Response;
+}
+
+describe("fetchWithBackoff — O4 墙钟预算守", () => {
+	it("budget 止停：累计睡眠 ≥ 预算即停，sleep 调用次数 < maxRetries", async () => {
+		// delay 序列: 1000ms, 2000ms, 4000ms ...
+		// budget=3000: 0+1000=1000<3000 → sleep(1000)；1000+2000=3000>=3000 → 停
+		// 预期: sleep 只调用一次(1000ms)
+		const sleepArgs: number[] = [];
+		const sleep = vi.fn(async (ms: number) => {
+			sleepArgs.push(ms);
+		});
+		const fetchFn = vi.fn(async () => mk429());
+
+		await fetchWithBackoff(fetchFn, "https://api.example.com", {}, 5_000, {
+			settings: FAKE_SETTINGS,
+			apiKey: "k",
+			maxRetries: 10,
+			retryBaseMs: 1_000,
+			retryCapMs: 5_000,
+			wallClockBudgetMs: 3_000,
+			sleep,
+		});
+
+		expect(sleep).toHaveBeenCalledTimes(1);
+		expect(sleepArgs[0]).toBe(1_000);
+		// 总睡眠时长 < 预算
+		const total = sleepArgs.reduce((a, b) => a + b, 0);
+		expect(total).toBeLessThan(3_000);
+	});
+
+	it("budget=0：第一轮 429 后立即停止，不调用 sleep", async () => {
+		const sleep = vi.fn(noSleep);
+		const fetchFn = vi.fn(async () => mk429());
+
+		const { res } = await fetchWithBackoff(
+			fetchFn,
+			"https://api.example.com",
+			{},
+			5_000,
+			{
+				settings: FAKE_SETTINGS,
+				apiKey: "k",
+				maxRetries: 3,
+				retryBaseMs: 500,
+				retryCapMs: 1_000,
+				wallClockBudgetMs: 0,
+				sleep,
+			},
+		);
+
+		expect(sleep).not.toHaveBeenCalled();
+		expect(res?.status).toBe(429);
+	});
+
+	it("budget 充足：正常两轮重试均睡眠，结果返回最终 429", async () => {
+		const sleep = vi.fn(noSleep);
+		const fetchFn = vi.fn(async () => mk429());
+
+		await fetchWithBackoff(fetchFn, "https://api.example.com", {}, 5_000, {
+			settings: FAKE_SETTINGS,
+			apiKey: "k",
+			maxRetries: 2,
+			retryBaseMs: 100,
+			retryCapMs: 500,
+			wallClockBudgetMs: 60_000, // 远高于 2×500=1000
+			sleep,
+		});
+
+		// maxRetries=2: sleep 被调用两次后 attempt>=maxRetries 退出
+		expect(sleep).toHaveBeenCalledTimes(2);
+	});
+});
 
 describe("generateDraft 429/5xx 退避重试", () => {
 	it("Happy:429 一次后 200 → 重试成功,sleep 被调用一次", async () => {

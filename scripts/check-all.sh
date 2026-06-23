@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -e
 
+echo "=> Building shared (required by coverage + backend/extension)..."
+pnpm --filter @51guapi/shared build
+
 echo "=> Running lint..."
 pnpm lint:ci
 

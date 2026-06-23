@@ -34,9 +34,8 @@ jobs:
       - name: Dependency audit (dev warning)
         run: pnpm audit --audit-level=high || echo "::warning::dev 依赖存在高/严重漏洞，请关注"
 
-      - name: Build shared
-        run: pnpm --filter @51guapi/shared build
-
+      # pnpm -r compile 拓撲序：先 shared(tsc → 產出 dist/)，再 backend/extension(tsc --noEmit)。
+      # 無需獨立 Build shared 步驟，消除重複 tsc（O4b）。
       - name: Type check
         run: pnpm -r compile
 
