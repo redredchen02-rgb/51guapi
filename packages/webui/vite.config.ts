@@ -14,4 +14,8 @@ export default defineConfig({
 			"@": path.resolve(__dirname, "./src"),
 		},
 	},
+	build: {
+		// Personal-use tool: only targets the local Chrome/Safari; skip old-browser transpilation.
+		target: "esnext",
+	},
 });
