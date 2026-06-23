@@ -4,6 +4,14 @@
 //
 // 不自动改写/剥除连结,只返回判定结果,由审核区渲染给人决定。
 
+/**
+ * HTTP(S) URL 提取用正則字串（不含旗標）。
+ * 排除 `|`（常見於管道分隔文字欄位）；各呼叫方 new RegExp(HTTP_URL_PATTERN, flags)
+ * 建立自有實例以避免全局 lastIndex 副作用。
+ * 統一三處散落的 URL 提取正規式（O3）：gossip-facts / post-assembler×2 各自有微差版本。
+ */
+export const HTTP_URL_PATTERN = "https?://[^\\s|]+";
+
 export interface LinkCheck {
 	url: string;
 	/** 该连结能否在输入事实里找到来源。false = 疑似 AI 自造。 */

@@ -54,6 +54,7 @@ export {
 export type { LinkCheck } from "./link-source.js";
 export {
 	extractLinks,
+	HTTP_URL_PATTERN,
 	hasUnsourcedLink,
 	normalizeUrl,
 	verifyLinks,
