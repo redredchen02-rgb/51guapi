@@ -15,6 +15,7 @@ import { demoAdapter } from "./scraper/adapters/demo-adapter.js";
 import { getDb, initPendingDb } from "./scraper/pending-db.js";
 import { jobs, startScheduler } from "./scraper/scheduler.js";
 import { scraperConfig } from "./scraper/scraper-config.js";
+import { seedChannelsFromEnv } from "./scraper/seed-channels.js";
 import {
 	generateDraft,
 	listModels,
@@ -159,6 +160,14 @@ export function buildApp(): FastifyInstance {
 		reply.header("Content-Type", "text/plain; version=0.0.4");
 		return getMetrics();
 	});
+
+	// B1-U1: 运行时 env 种子渠道(默认空;DNS 异步,故 fire-and-forget 不阻塞同步 buildApp)。
+	// 种子内部已逐项 try/catch warn+skip;此处 .catch() 兜底,确保任何遗漏 rejection 不冒泡成
+	// unhandled rejection(Node 22 默认会因此终止进程)。
+	void seedChannelsFromEnv({
+		info: (m) => server.log.info(m),
+		warn: (m) => server.log.warn(m),
+	}).catch((e) => server.log.error(e, "[seed] 种子任务异常"));
 
 	registerAuthRoutes(server);
 	server.addHook("preHandler", async (request, reply) => {
