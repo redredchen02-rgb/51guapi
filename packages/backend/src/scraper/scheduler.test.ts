@@ -155,6 +155,20 @@ describe("startScheduler — cron 任务的 coverImageUrl 透传", () => {
 		});
 	});
 
+	it("BUG防守：cron path 写入 domain='gossip'（防止默认 acg 导致吃瓜视图不可见）", async () => {
+		vi.mocked(extractFacts).mockResolvedValue({
+			facts: { 作品名: "测试作品" },
+			confidence: 0.85,
+			coverImageUrl: undefined,
+			extractionMode: "strict",
+		});
+
+		const job = startAndGetJob();
+		await job();
+
+		expect(savedTopic().domain).toBe("gossip");
+	});
+
 	it("extractFacts reject → 不调用 savePendingTopic，错误被吞不外抛", async () => {
 		vi.mocked(extractFacts).mockRejectedValue(new Error("LLM down"));
 
@@ -242,6 +256,15 @@ describe("startScheduler — list-discovery mode (U4)", () => {
 		await job();
 
 		expect(vi.mocked(savePendingTopic).mock.calls).toHaveLength(3);
+	});
+
+	it("BUG防守：list-discovery path 写入 domain='gossip'（防止默认 acg 导致吃瓜视图不可见）", async () => {
+		const job = startListJob(["https://test-site.example.com/gossip/1"]);
+		await job();
+
+		const calls = vi.mocked(savePendingTopic).mock.calls;
+		expect(calls).toHaveLength(1);
+		expect(calls[0][0].domain).toBe("gossip");
 	});
 
 	it("budget cap: 5 个 URL，budget=3 → 只处理 3 条", async () => {
