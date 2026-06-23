@@ -203,4 +203,12 @@ describe("generateArticleDraft", () => {
 		if (!result.ok) throw new Error("Expected ok:true");
 		expect(result.draft.body).toContain("<!-- section:faq -->");
 	});
+
+	it("fetch 抛出 TypeError（网络中断）→ ok:false", async () => {
+		const failFetch: typeof fetch = async () => {
+			throw new TypeError("fetch failed");
+		};
+		const result = await generateArticleDraft(FACTS, makeDeps(failFetch));
+		expect(result.ok).toBe(false);
+	});
 });
