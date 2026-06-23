@@ -1,5 +1,5 @@
-import { assembleDraftJSON, assembleDraftMarkdown } from "@51guapi/shared";
 import type { ContentDraft } from "@51guapi/shared";
+import { assembleDraftJSON, assembleDraftMarkdown } from "@51guapi/shared";
 import { Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -29,7 +29,11 @@ export function ExportPanel({ draft }: ExportPanelProps) {
 
 	const exportJSON = () => {
 		const exported = assembleDraftJSON(draft);
-		downloadFile(`${base}.json`, JSON.stringify(exported, null, 2), "application/json");
+		downloadFile(
+			`${base}.json`,
+			JSON.stringify(exported, null, 2),
+			"application/json",
+		);
 	};
 
 	const exportMarkdown = () => {

@@ -7,7 +7,10 @@ export interface Channel {
 	createdAt: string;
 }
 
-export async function listChannels(): Promise<{ ok: boolean; channels: Channel[] }> {
+export async function listChannels(): Promise<{
+	ok: boolean;
+	channels: Channel[];
+}> {
 	return apiFetch<{ ok: boolean; channels: Channel[] }>("/api/v1/channels");
 }
 
@@ -24,5 +27,7 @@ export async function addChannel(body: {
 }
 
 export async function deleteChannel(id: string): Promise<{ ok: boolean }> {
-	return apiFetch<{ ok: boolean }>(`/api/v1/channels/${id}`, { method: "DELETE" });
+	return apiFetch<{ ok: boolean }>(`/api/v1/channels/${id}`, {
+		method: "DELETE",
+	});
 }

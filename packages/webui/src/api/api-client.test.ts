@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ApiError, NetworkError, apiFetch, getBaseUrl, setBaseUrl } from "@/lib/api-client";
+import {
+	ApiError,
+	apiFetch,
+	getBaseUrl,
+	NetworkError,
+	setBaseUrl,
+} from "@/lib/api-client";
 
 describe("getBaseUrl", () => {
 	beforeEach(() => {
@@ -28,7 +34,9 @@ describe("getBaseUrl", () => {
 		localStorage.setItem("guapi_backend_url", "http://evil.example.com");
 		const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 		expect(getBaseUrl()).toBe("http://localhost:3002");
-		expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("Invalid backendUrl"));
+		expect(consoleSpy).toHaveBeenCalledWith(
+			expect.stringContaining("Invalid backendUrl"),
+		);
 		consoleSpy.mockRestore();
 	});
 
@@ -65,7 +73,9 @@ describe("apiFetch", () => {
 		expect(mockFetch).toHaveBeenCalledWith(
 			"http://localhost:3002/api/v1/pending-topics",
 			expect.objectContaining({
-				headers: expect.objectContaining({ "Content-Type": "application/json" }),
+				headers: expect.objectContaining({
+					"Content-Type": "application/json",
+				}),
 			}),
 		);
 		expect(result).toEqual({ ok: true, topics: [] });

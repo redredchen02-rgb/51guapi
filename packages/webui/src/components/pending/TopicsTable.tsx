@@ -5,8 +5,19 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useApproveTopic, useDeleteTopic, useRejectTopic } from "@/hooks/usePendingTopics";
+import {
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from "@/components/ui/table";
+import {
+	useApproveTopic,
+	useDeleteTopic,
+	useRejectTopic,
+} from "@/hooks/usePendingTopics";
 import { cn } from "@/lib/utils";
 import { RejectDialog } from "./RejectDialog";
 import { TopicDetailSheet } from "./TopicDetailSheet";
@@ -103,8 +114,12 @@ export function TopicsTable({ topics, isLoading }: TopicsTableProps) {
 							onClick={() => setSelected(topic)}
 						>
 							<TableCell className="max-w-0">
-								<div className="truncate font-medium text-foreground">{topic.title}</div>
-								<div className="truncate text-xs text-muted-foreground">{topic.siteName}</div>
+								<div className="truncate font-medium text-foreground">
+									{topic.title}
+								</div>
+								<div className="truncate text-xs text-muted-foreground">
+									{topic.siteName}
+								</div>
 							</TableCell>
 							<TableCell className="text-center text-sm tabular-nums">
 								{Math.round((topic.score ?? topic.confidence) * 100)}
@@ -121,7 +136,10 @@ export function TopicsTable({ topics, isLoading }: TopicsTableProps) {
 												variant="ghost"
 												className="h-7 w-7 text-green-600 hover:text-green-700"
 												title="核准"
-												onClick={(e) => { e.stopPropagation(); handleApprove(topic.id); }}
+												onClick={(e) => {
+													e.stopPropagation();
+													handleApprove(topic.id);
+												}}
 												disabled={isActing}
 											>
 												<CheckCircle size={15} />
@@ -131,7 +149,10 @@ export function TopicsTable({ topics, isLoading }: TopicsTableProps) {
 												variant="ghost"
 												className="h-7 w-7 text-destructive hover:text-destructive/80"
 												title="拒絕"
-												onClick={(e) => { e.stopPropagation(); setRejectTarget(topic.id); }}
+												onClick={(e) => {
+													e.stopPropagation();
+													setRejectTarget(topic.id);
+												}}
 												disabled={isActing}
 											>
 												<XCircle size={15} />
@@ -175,7 +196,9 @@ export function TopicsTable({ topics, isLoading }: TopicsTableProps) {
 
 			<RejectDialog
 				open={!!rejectTarget}
-				onOpenChange={(open) => { if (!open) setRejectTarget(null); }}
+				onOpenChange={(open) => {
+					if (!open) setRejectTarget(null);
+				}}
 				onConfirm={handleRejectConfirm}
 				isPending={reject.isPending}
 			/>
@@ -185,10 +208,16 @@ export function TopicsTable({ topics, isLoading }: TopicsTableProps) {
 
 function StatusChip({ status }: { status: PendingTopic["status"] }) {
 	const cls = {
-		pending: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
-		approved: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
+		pending:
+			"bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
+		approved:
+			"bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
 		rejected: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
 	}[status];
 	const label = { pending: "待審", approved: "核准", rejected: "拒絕" }[status];
-	return <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium", cls)}>{label}</span>;
+	return (
+		<span className={cn("rounded-full px-2 py-0.5 text-xs font-medium", cls)}>
+			{label}
+		</span>
+	);
 }

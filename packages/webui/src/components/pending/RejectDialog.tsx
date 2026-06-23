@@ -8,7 +8,13 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 
 const REJECTION_REASONS: { value: RejectionReason; label: string }[] = [
 	{ value: "duplicate", label: "重複選題" },
@@ -25,7 +31,12 @@ interface RejectDialogProps {
 	isPending?: boolean;
 }
 
-export function RejectDialog({ open, onOpenChange, onConfirm, isPending }: RejectDialogProps) {
+export function RejectDialog({
+	open,
+	onOpenChange,
+	onConfirm,
+	isPending,
+}: RejectDialogProps) {
 	const [reason, setReason] = useState<RejectionReason>("quality");
 
 	const handleConfirm = () => {
@@ -38,7 +49,10 @@ export function RejectDialog({ open, onOpenChange, onConfirm, isPending }: Rejec
 				<DialogHeader>
 					<DialogTitle>拒絕原因</DialogTitle>
 				</DialogHeader>
-				<Select value={reason} onValueChange={(v) => setReason(v as RejectionReason)}>
+				<Select
+					value={reason}
+					onValueChange={(v) => setReason(v as RejectionReason)}
+				>
 					<SelectTrigger>
 						<SelectValue />
 					</SelectTrigger>
@@ -51,10 +65,18 @@ export function RejectDialog({ open, onOpenChange, onConfirm, isPending }: Rejec
 					</SelectContent>
 				</Select>
 				<DialogFooter>
-					<Button variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>
+					<Button
+						variant="outline"
+						onClick={() => onOpenChange(false)}
+						disabled={isPending}
+					>
 						取消
 					</Button>
-					<Button variant="destructive" onClick={handleConfirm} disabled={isPending}>
+					<Button
+						variant="destructive"
+						onClick={handleConfirm}
+						disabled={isPending}
+					>
 						{isPending ? "處理中…" : "確認拒絕"}
 					</Button>
 				</DialogFooter>

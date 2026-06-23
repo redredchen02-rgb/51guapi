@@ -1,6 +1,11 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { RejectionReason } from "@51guapi/shared";
-import { type ListPendingTopicsParams, deletePendingTopic, listPendingTopics, patchPendingTopic } from "@/api/pending";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+	deletePendingTopic,
+	type ListPendingTopicsParams,
+	listPendingTopics,
+	patchPendingTopic,
+} from "@/api/pending";
 
 export function usePendingTopics(params: ListPendingTopicsParams = {}) {
 	return useQuery({

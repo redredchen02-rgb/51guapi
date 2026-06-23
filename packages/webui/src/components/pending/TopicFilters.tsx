@@ -3,7 +3,9 @@ import { cn } from "@/lib/utils";
 
 interface TopicFiltersProps {
 	currentStatus: "pending" | "approved" | "rejected" | undefined;
-	onStatusChange: (status: "pending" | "approved" | "rejected" | undefined) => void;
+	onStatusChange: (
+		status: "pending" | "approved" | "rejected" | undefined,
+	) => void;
 }
 
 const STATUS_OPTIONS = [
@@ -13,7 +15,10 @@ const STATUS_OPTIONS = [
 	{ value: "rejected" as const, label: "已拒絕" },
 ];
 
-export function TopicFilters({ currentStatus, onStatusChange }: TopicFiltersProps) {
+export function TopicFilters({
+	currentStatus,
+	onStatusChange,
+}: TopicFiltersProps) {
 	return (
 		<div className="flex items-center gap-2">
 			{STATUS_OPTIONS.map((opt) => (
@@ -35,7 +40,11 @@ export function TopicFilters({ currentStatus, onStatusChange }: TopicFiltersProp
 	);
 }
 
-export function StatusBadge({ status }: { status: "pending" | "approved" | "rejected" }) {
+export function StatusBadge({
+	status,
+}: {
+	status: "pending" | "approved" | "rejected";
+}) {
 	const variants = {
 		pending: "secondary",
 		approved: "default",

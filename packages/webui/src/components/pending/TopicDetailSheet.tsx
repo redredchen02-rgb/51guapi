@@ -12,7 +12,13 @@ interface TopicDetailSheetProps {
 	isActing?: boolean;
 }
 
-export function TopicDetailSheet({ topic, onClose, onApprove, onReject, isActing }: TopicDetailSheetProps) {
+export function TopicDetailSheet({
+	topic,
+	onClose,
+	onApprove,
+	onReject,
+	isActing,
+}: TopicDetailSheetProps) {
 	if (!topic) return null;
 
 	const factEntries = Object.entries(topic.facts).filter(([, v]) => v);
@@ -21,7 +27,11 @@ export function TopicDetailSheet({ topic, onClose, onApprove, onReject, isActing
 		<div className="fixed inset-y-0 right-0 z-50 flex w-[28rem] flex-col border-l border-border bg-background shadow-xl">
 			<div className="flex items-center justify-between border-b border-border px-5 py-4">
 				<h3 className="font-semibold text-foreground">選題詳情</h3>
-				<button type="button" onClick={onClose} className="rounded-sm text-muted-foreground hover:text-foreground">
+				<button
+					type="button"
+					onClick={onClose}
+					className="rounded-sm text-muted-foreground hover:text-foreground"
+				>
 					<X size={18} />
 				</button>
 			</div>
@@ -30,9 +40,15 @@ export function TopicDetailSheet({ topic, onClose, onApprove, onReject, isActing
 				<div className="space-y-1.5">
 					<div className="flex items-center gap-2">
 						<StatusBadge status={topic.status} />
-						{topic.domain && <Badge variant="outline" className="text-xs">{topic.domain}</Badge>}
+						{topic.domain && (
+							<Badge variant="outline" className="text-xs">
+								{topic.domain}
+							</Badge>
+						)}
 					</div>
-					<h4 className="text-lg font-medium leading-snug text-foreground">{topic.title}</h4>
+					<h4 className="text-lg font-medium leading-snug text-foreground">
+						{topic.title}
+					</h4>
 					<a
 						href={topic.sourceUrl}
 						target="_blank"
@@ -46,11 +62,18 @@ export function TopicDetailSheet({ topic, onClose, onApprove, onReject, isActing
 
 				{factEntries.length > 0 && (
 					<div className="space-y-2">
-						<p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">提取事實</p>
+						<p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+							提取事實
+						</p>
 						<dl className="space-y-1.5">
 							{factEntries.map(([k, v]) => (
-								<div key={k} className="grid grid-cols-[7rem_1fr] gap-x-3 text-sm">
-									<dt className="font-medium text-muted-foreground truncate">{k}</dt>
+								<div
+									key={k}
+									className="grid grid-cols-[7rem_1fr] gap-x-3 text-sm"
+								>
+									<dt className="font-medium text-muted-foreground truncate">
+										{k}
+									</dt>
 									<dd className="text-foreground break-words">{v}</dd>
 								</div>
 							))}
@@ -59,8 +82,12 @@ export function TopicDetailSheet({ topic, onClose, onApprove, onReject, isActing
 				)}
 
 				<div className="space-y-1">
-					<p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">品質分數</p>
-					<p className="text-2xl font-bold text-foreground">{Math.round((topic.score ?? topic.confidence) * 100)}</p>
+					<p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+						品質分數
+					</p>
+					<p className="text-2xl font-bold text-foreground">
+						{Math.round((topic.score ?? topic.confidence) * 100)}
+					</p>
 				</div>
 			</div>
 

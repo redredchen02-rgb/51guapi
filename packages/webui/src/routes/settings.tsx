@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { getBaseUrl, setBaseUrl } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { getBaseUrl, setBaseUrl } from "@/lib/api-client";
 
 export const Route = createFileRoute("/settings")({
 	component: SettingsPage,
@@ -36,7 +36,8 @@ function SettingsPage() {
 				<div>
 					<h3 className="text-sm font-semibold text-foreground">後端連線</h3>
 					<p className="text-xs text-muted-foreground mt-0.5">
-						WebUI 連接的後端地址。只允許 localhost / 127.0.0.1，保存後重新整理生效。
+						WebUI 連接的後端地址。只允許 localhost /
+						127.0.0.1，保存後重新整理生效。
 					</p>
 				</div>
 				<div className="flex gap-2">
@@ -53,9 +54,18 @@ function SettingsPage() {
 			<section className="space-y-2">
 				<h3 className="text-sm font-semibold text-foreground">說明</h3>
 				<ul className="text-xs text-muted-foreground space-y-1 list-disc list-inside">
-					<li>LLM 設定（API Key、模型、Prompt）在 Chrome 擴充功能的設定頁管理</li>
+					<li>
+						LLM 設定（API Key、模型、Prompt）在 Chrome 擴充功能的設定頁管理
+					</li>
 					<li>WebUI 只作查看、核准、導出用途，不負責 LLM 呼叫的金鑰儲存</li>
-					<li>CORS 設定需在後端 <code className="text-xs bg-muted rounded px-1">CORS_ORIGIN</code> 加入 <code className="text-xs bg-muted rounded px-1">http://localhost:5173</code></li>
+					<li>
+						CORS 設定需在後端{" "}
+						<code className="text-xs bg-muted rounded px-1">CORS_ORIGIN</code>{" "}
+						加入{" "}
+						<code className="text-xs bg-muted rounded px-1">
+							http://localhost:5173
+						</code>
+					</li>
 				</ul>
 			</section>
 		</div>

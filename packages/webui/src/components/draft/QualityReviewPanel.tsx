@@ -27,7 +27,12 @@ export function QualityReviewPanel({ draft }: QualityReviewPanelProps) {
 		<div className="space-y-3">
 			<div className="flex items-center justify-between">
 				<p className="text-sm font-medium text-foreground">品質審核</p>
-				<Button variant="outline" size="sm" onClick={handleReview} disabled={review.isPending}>
+				<Button
+					variant="outline"
+					size="sm"
+					onClick={handleReview}
+					disabled={review.isPending}
+				>
 					{review.isPending ? "審核中…" : "執行審核"}
 				</Button>
 			</div>
@@ -44,18 +49,34 @@ export function QualityReviewPanel({ draft }: QualityReviewPanelProps) {
 			{result?.dimensions && (
 				<ul className="space-y-1.5">
 					{result.dimensions.map((dim) => (
-						<li key={dim.name} className="flex items-start gap-2 rounded-md border border-border p-2.5 text-sm">
+						<li
+							key={dim.name}
+							className="flex items-start gap-2 rounded-md border border-border p-2.5 text-sm"
+						>
 							{dim.pass ? (
-								<CheckCircle size={14} className="mt-0.5 shrink-0 text-green-500" />
+								<CheckCircle
+									size={14}
+									className="mt-0.5 shrink-0 text-green-500"
+								/>
 							) : (
-								<XCircle size={14} className="mt-0.5 shrink-0 text-destructive" />
+								<XCircle
+									size={14}
+									className="mt-0.5 shrink-0 text-destructive"
+								/>
 							)}
 							<div className="min-w-0">
-								<span className={cn("font-medium", dim.pass ? "text-foreground" : "text-destructive")}>
+								<span
+									className={cn(
+										"font-medium",
+										dim.pass ? "text-foreground" : "text-destructive",
+									)}
+								>
 									{dim.name}
 								</span>
 								{dim.reason && (
-									<p className="mt-0.5 text-xs text-muted-foreground">{dim.reason}</p>
+									<p className="mt-0.5 text-xs text-muted-foreground">
+										{dim.reason}
+									</p>
 								)}
 							</div>
 						</li>

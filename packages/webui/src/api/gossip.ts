@@ -7,7 +7,10 @@ export interface GossipSite {
 	createdAt: string;
 }
 
-export async function listGossipSites(): Promise<{ ok: boolean; sites: GossipSite[] }> {
+export async function listGossipSites(): Promise<{
+	ok: boolean;
+	sites: GossipSite[];
+}> {
 	return apiFetch<{ ok: boolean; sites: GossipSite[] }>("/api/v1/gossip/sites");
 }
 
@@ -22,13 +25,20 @@ export async function addGossipSite(body: {
 }
 
 export async function deleteGossipSite(id: string): Promise<{ ok: boolean }> {
-	return apiFetch<{ ok: boolean }>(`/api/v1/gossip/sites/${id}`, { method: "DELETE" });
+	return apiFetch<{ ok: boolean }>(`/api/v1/gossip/sites/${id}`, {
+		method: "DELETE",
+	});
 }
 
-export async function discoverGossipSite(id: string): Promise<{ ok: boolean; discovered?: number }> {
-	return apiFetch<{ ok: boolean; discovered?: number }>(`/api/v1/gossip/sites/${id}/discover`, {
-		method: "POST",
-	});
+export async function discoverGossipSite(
+	id: string,
+): Promise<{ ok: boolean; discovered?: number }> {
+	return apiFetch<{ ok: boolean; discovered?: number }>(
+		`/api/v1/gossip/sites/${id}/discover`,
+		{
+			method: "POST",
+		},
+	);
 }
 
 export async function addTopicFromUrl(body: {

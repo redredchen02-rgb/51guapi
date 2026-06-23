@@ -5,7 +5,10 @@ const STORAGE_KEY = "guapi_backend_url";
 // use relative paths to avoid broken calls from non-localhost hosts.
 function isDevMode(): boolean {
 	try {
-		return window.location.hostname === "localhost" && window.location.port === "5173";
+		return (
+			window.location.hostname === "localhost" &&
+			window.location.port === "5173"
+		);
 	} catch {
 		return false;
 	}
@@ -24,7 +27,9 @@ export function getBaseUrl(): string {
 			if (url.hostname === "localhost" || url.hostname === "127.0.0.1") {
 				return stored.replace(/\/$/, "");
 			}
-			console.warn("[api-client] Invalid backendUrl in localStorage (non-localhost), using default");
+			console.warn(
+				"[api-client] Invalid backendUrl in localStorage (non-localhost), using default",
+			);
 		}
 	} catch {
 		// localStorage unavailable (SSR/test contexts) or invalid URL

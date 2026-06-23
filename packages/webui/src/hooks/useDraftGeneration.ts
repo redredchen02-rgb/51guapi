@@ -1,5 +1,5 @@
+import type { ContentDraft, GossipFactsBlock, Settings } from "@51guapi/shared";
 import { useMutation } from "@tanstack/react-query";
-import { type ContentDraft, type GossipFactsBlock, type Settings } from "@51guapi/shared";
 import { generateDraft, reviewDraft } from "@/api/draft";
 
 export function useGenerateDraft() {

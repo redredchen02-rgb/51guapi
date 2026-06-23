@@ -1,14 +1,33 @@
-import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { createFileRoute } from "@tanstack/react-router";
 import { Globe, Plus, Trash2, Zap } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { type GossipSite, addGossipSite, deleteGossipSite, discoverGossipSite, listGossipSites } from "@/api/gossip";
+import {
+	addGossipSite,
+	deleteGossipSite,
+	discoverGossipSite,
+	type GossipSite,
+	listGossipSites,
+} from "@/api/gossip";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+	Dialog,
+	DialogContent,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from "@/components/ui/table";
 
 export const Route = createFileRoute("/sites")({
 	component: SitesPage,
@@ -26,7 +45,10 @@ function SitesPage() {
 
 	const del = useMutation({
 		mutationFn: deleteGossipSite,
-		onSuccess: () => { qc.invalidateQueries({ queryKey: ["gossip-sites"] }); toast.success("已刪除"); },
+		onSuccess: () => {
+			qc.invalidateQueries({ queryKey: ["gossip-sites"] });
+			toast.success("已刪除");
+		},
 		onError: () => toast.error("刪除失敗"),
 	});
 
@@ -58,7 +80,9 @@ function SitesPage() {
 						))}
 					</div>
 				) : !data?.length ? (
-					<div className="flex h-36 items-center justify-center text-muted-foreground">尚未加入站點</div>
+					<div className="flex h-36 items-center justify-center text-muted-foreground">
+						尚未加入站點
+					</div>
 				) : (
 					<Table>
 						<TableHeader>
@@ -110,7 +134,9 @@ function SiteRow({
 					{site.name}
 				</div>
 			</TableCell>
-			<TableCell className="max-w-xs truncate text-sm text-muted-foreground">{site.listUrl}</TableCell>
+			<TableCell className="max-w-xs truncate text-sm text-muted-foreground">
+				{site.listUrl}
+			</TableCell>
 			<TableCell>
 				<div className="flex items-center justify-center gap-1">
 					<Button
@@ -139,7 +165,13 @@ function SiteRow({
 	);
 }
 
-function AddSiteDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+function AddSiteDialog({
+	open,
+	onOpenChange,
+}: {
+	open: boolean;
+	onOpenChange: (v: boolean) => void;
+}) {
 	const qc = useQueryClient();
 	const [name, setName] = useState("");
 	const [url, setUrl] = useState("");
@@ -149,7 +181,8 @@ function AddSiteDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v
 		onSuccess: () => {
 			qc.invalidateQueries({ queryKey: ["gossip-sites"] });
 			toast.success("站點已加入");
-			setName(""); setUrl("");
+			setName("");
+			setUrl("");
 			onOpenChange(false);
 		},
 		onError: () => toast.error("新增失敗"),
@@ -158,13 +191,25 @@ function AddSiteDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="sm:max-w-md">
-				<DialogHeader><DialogTitle>新增站點</DialogTitle></DialogHeader>
+				<DialogHeader>
+					<DialogTitle>新增站點</DialogTitle>
+				</DialogHeader>
 				<div className="space-y-3">
-					<Input placeholder="站點名稱" value={name} onChange={(e) => setName(e.target.value)} />
-					<Input placeholder="列表頁 URL" value={url} onChange={(e) => setUrl(e.target.value)} />
+					<Input
+						placeholder="站點名稱"
+						value={name}
+						onChange={(e) => setName(e.target.value)}
+					/>
+					<Input
+						placeholder="列表頁 URL"
+						value={url}
+						onChange={(e) => setUrl(e.target.value)}
+					/>
 				</div>
 				<DialogFooter>
-					<Button variant="outline" onClick={() => onOpenChange(false)}>取消</Button>
+					<Button variant="outline" onClick={() => onOpenChange(false)}>
+						取消
+					</Button>
 					<Button
 						onClick={() => add.mutate({ name, listUrl: url })}
 						disabled={add.isPending || !name.trim() || !url.trim()}

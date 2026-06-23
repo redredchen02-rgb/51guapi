@@ -9,7 +9,8 @@ import { DraftPreview } from "./DraftPreview";
 import { ExportPanel } from "./ExportPanel";
 import { QualityReviewPanel } from "./QualityReviewPanel";
 
-const DEFAULT_PROMPT = "請根據以上事實，以輕鬆幽默的口吻撰寫一篇吃瓜文章，字數約 600-800 字。";
+const DEFAULT_PROMPT =
+	"請根據以上事實，以輕鬆幽默的口吻撰寫一篇吃瓜文章，字數約 600-800 字。";
 
 export function DraftEditor() {
 	const [prompt, setPrompt] = useState(DEFAULT_PROMPT);
