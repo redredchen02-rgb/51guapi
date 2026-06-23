@@ -18,6 +18,8 @@ interface Props {
 	/** 生成九段落文章回调（规范七/八）;传入则展开区显示「生成文章」按钮。 */
 	onGenerateArticle?: () => void;
 	generatingArticle?: boolean;
+	/** 任意选题正在生成时为 true，用于禁用其他选题的「生成文章」按钮防止并发扣费。 */
+	generatingAnyArticle?: boolean;
 }
 
 // 受控展示组件:单条选题卡(checkbox + 标题/评分徽章 + 详情按钮 + 内嵌事实编辑表单)。
@@ -36,6 +38,7 @@ export function TopicListItem({
 	verifying,
 	onGenerateArticle,
 	generatingArticle,
+	generatingAnyArticle,
 }: Props) {
 	const score = topic.score ?? topic.confidence;
 	const isHigh = score >= 0.7;
@@ -62,6 +65,7 @@ export function TopicListItem({
 					onChange={onToggleSelect}
 					style={{ marginRight: "var(--space-md)" }}
 					disabled={busy}
+					aria-label={topic.title || topic.sourceUrl}
 				/>
 				<div style={{ flex: 1, minWidth: 0 }}>
 					<div
@@ -149,7 +153,7 @@ export function TopicListItem({
 							<button
 								type="button"
 								onClick={onGenerateArticle}
-								disabled={busy || generatingArticle}
+								disabled={busy || generatingArticle || generatingAnyArticle}
 								className="btn btn-secondary btn-sm"
 							>
 								{generatingArticle ? "生成中…" : "生成文章"}

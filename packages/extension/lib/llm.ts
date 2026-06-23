@@ -339,6 +339,3 @@ export async function generateArticle(
 	}
 }
 
-import { toDraft } from "@51guapi/shared";
-
-export { toDraft };

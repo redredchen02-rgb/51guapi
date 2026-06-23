@@ -21,6 +21,7 @@ interface Props {
 	onDraftReady: (payload: {
 		draft: ContentDraft;
 		facts: GossipFactsBlock;
+		qualityWarnings?: string[];
 	}) => void;
 	onError: (msg: string) => void;
 }
@@ -82,7 +83,7 @@ export function PendingTopicsView({ onBack, onDraftReady, onError }: Props) {
 				onError("选题 facts 不是有效的 GossipFactsBlock，无法生成文章。");
 				return;
 			}
-			onDraftReady({ draft: result.draft, facts });
+			onDraftReady({ draft: result.draft, facts, qualityWarnings: result.qualityWarnings });
 		} catch (err) {
 			onError(`文章生成失败：${err instanceof Error ? err.message : "请重试"}`);
 		} finally {
@@ -229,6 +230,7 @@ export function PendingTopicsView({ onBack, onDraftReady, onError }: Props) {
 											: undefined
 									}
 									generatingArticle={generatingArticleId === t.id}
+									generatingAnyArticle={generatingArticleId !== null}
 								/>
 							))}
 					</ul>

@@ -223,6 +223,22 @@ button:disabled {
 	box-shadow: var(--shadow-sm);
 }
 
+.btn-secondary {
+	padding: 8px 16px;
+	font-size: var(--font-base);
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-xl);
+	cursor: pointer;
+	background: var(--color-bg-muted);
+	color: var(--color-text);
+	box-shadow: var(--shadow-sm);
+}
+
+.btn-secondary:hover:not(:disabled) {
+	background: var(--color-border-light);
+	box-shadow: var(--shadow-md);
+}
+
 .btn-sm {
 	padding: 2px 8px;
 	font-size: var(--font-xs);

@@ -367,8 +367,9 @@ export function registerDraftRoutes(app: FastifyInstance): void {
 			const { topicId } = request.body;
 			const topic = await loadPendingTopic(topicId);
 			if (!topic) return err(reply, 404, `Topic ${topicId} not found.`);
-			// domain 守卫：允许未设 domain 的旧选题；明确为 acg 的拒绝（不属于 gossip 管线）。
-			if (topic.domain && topic.domain !== "gossip")
+			if (topic.status !== "approved")
+				return err(reply, 400, "该选题尚未审核通过，无法生成文章。");
+			if (topic.domain !== "gossip")
 				return err(reply, 400, "该选题不属于 gossip 管线，无法生成吃瓜文章。");
 			// 类型守卫：确认 facts 为 GossipFactsBlock（含 當事人 key）。
 			if (!isGossipFactsBlock(topic.facts))

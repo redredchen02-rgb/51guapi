@@ -36,9 +36,11 @@ function sanitizeEscForComment(raw: string | undefined): string {
 	return esc(safeForHtmlComment(sanitizeToPlainText(raw)));
 }
 
+const FIRST_URL_RE = new RegExp(HTTP_URL_PATTERN, "i");
+
 /** 从 field 值里取第一个 URL，与 gossipFactUrls 同规则。 */
 function firstUrl(s: string): string | null {
-	const m = s.match(new RegExp(HTTP_URL_PATTERN, "i"));
+	const m = s.match(FIRST_URL_RE);
 	return m ? m[0] : null;
 }
 

@@ -59,13 +59,17 @@ async function buildTestApp(
 		async (request, reply) => {
 			const { topicId } = request.body;
 			const topic = topicStore.get(topicId) as
-				| { facts: unknown; domain?: string }
+				| { facts: unknown; domain?: string; status?: string }
 				| undefined;
 			if (!topic)
 				return reply
 					.status(404)
 					.send({ ok: false, error: `Topic ${topicId} not found.` });
-			if (topic.domain && topic.domain !== "gossip")
+			if (topic.status !== "approved")
+				return reply
+					.status(400)
+					.send({ ok: false, error: "该选题尚未审核通过，无法生成文章。" });
+			if (topic.domain !== "gossip")
 				return reply
 					.status(400)
 					.send({ ok: false, error: "该选题不属于 gossip 管线。" });
@@ -146,8 +150,24 @@ describe("POST /api/v1/drafts/generate-article 路由边界", () => {
 		expect(res.statusCode).toBe(404);
 	});
 
+	it("topic.status !== 'approved' → 400 含审核提示", async () => {
+		topicStore.set("t1", {
+			facts: GOSSIP_FACTS,
+			domain: "gossip",
+			status: "pending",
+		});
+		const res = await app.inject({
+			method: "POST",
+			url: "/api/v1/drafts/generate-article",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ topicId: "t1" }),
+		});
+		expect(res.statusCode).toBe(400);
+		expect(res.json().error).toContain("审核");
+	});
+
 	it("topic.domain = 'acg' → 400 含 gossip 提示", async () => {
-		topicStore.set("t1", { facts: GOSSIP_FACTS, domain: "acg" });
+		topicStore.set("t1", { facts: GOSSIP_FACTS, domain: "acg", status: "approved" });
 		const res = await app.inject({
 			method: "POST",
 			url: "/api/v1/drafts/generate-article",
@@ -162,6 +182,7 @@ describe("POST /api/v1/drafts/generate-article 路由边界", () => {
 		topicStore.set("t1", {
 			facts: { intro: "acg format", workTitle: "work" },
 			domain: "gossip",
+			status: "approved",
 		});
 		const res = await app.inject({
 			method: "POST",
@@ -172,8 +193,28 @@ describe("POST /api/v1/drafts/generate-article 路由边界", () => {
 		expect(res.statusCode).toBe(400);
 	});
 
+	it("generateArticleDraft ok:false → 422", async () => {
+		topicStore.set("t1", {
+			facts: GOSSIP_FACTS,
+			domain: "gossip",
+			status: "approved",
+		});
+		vi.mocked(generateArticleDraft).mockResolvedValue({
+			ok: false,
+			kind: "format",
+			error: "LLM 返回格式不合法。",
+		});
+		const res = await app.inject({
+			method: "POST",
+			url: "/api/v1/drafts/generate-article",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ topicId: "t1" }),
+		});
+		expect(res.statusCode).toBe(422);
+	});
+
 	it("正常路径：qualityWarnings 穿过 TypeBox schema 到达响应 body（不被剥除）", async () => {
-		topicStore.set("t1", { facts: GOSSIP_FACTS, domain: "gossip" });
+		topicStore.set("t1", { facts: GOSSIP_FACTS, domain: "gossip", status: "approved" });
 		vi.mocked(generateArticleDraft).mockResolvedValue({
 			ok: true,
 			draft: MOCK_DRAFT,
@@ -196,7 +237,7 @@ describe("POST /api/v1/drafts/generate-article 路由边界", () => {
 	});
 
 	it("qualityWarnings 为空数组时 → 200 ok:true，qualityWarnings=[]", async () => {
-		topicStore.set("t1", { facts: GOSSIP_FACTS, domain: "gossip" });
+		topicStore.set("t1", { facts: GOSSIP_FACTS, domain: "gossip", status: "approved" });
 		vi.mocked(generateArticleDraft).mockResolvedValue({
 			ok: true,
 			draft: MOCK_DRAFT,
@@ -213,19 +254,4 @@ describe("POST /api/v1/drafts/generate-article 路由边界", () => {
 		expect(body.ok).toBe(true);
 	});
 
-	it("domain 为 undefined（旧选题）→ 允许通过，不被 domain 守卫拒绝", async () => {
-		topicStore.set("t1", { facts: GOSSIP_FACTS, domain: undefined });
-		vi.mocked(generateArticleDraft).mockResolvedValue({
-			ok: true,
-			draft: MOCK_DRAFT,
-			qualityWarnings: [],
-		});
-		const res = await app.inject({
-			method: "POST",
-			url: "/api/v1/drafts/generate-article",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ topicId: "t1" }),
-		});
-		expect(res.statusCode).toBe(200);
-	});
 });
