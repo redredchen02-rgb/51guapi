@@ -1,9 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { fakeBrowser } from "wxt/testing";
-import { setToken } from "./auth-client";
 import { testConnection } from "./connection-test";
 
-// listModels 经 getToken/getBackendUrl + 注入 fetchFn 打 /api/v1/models。
+// listModels 经 getBackendUrl + 注入 fetchFn 打 /api/v1/models。
 // 这里注入 fetchFn 模拟各种后端响应,验证 testConnection 的固定态映射。
 
 function mockFetch(
@@ -15,7 +14,6 @@ function mockFetch(
 
 beforeEach(async () => {
 	fakeBrowser.reset();
-	await setToken("test-token");
 });
 
 describe("testConnection", () => {
@@ -41,10 +39,10 @@ describe("testConnection", () => {
 		expect(r.status).toBe("llm-error");
 	});
 
-	it("Error: 401 → unauthorized", async () => {
+	it("Error: 401 → llm-error(无鉴权层,401 作为通用非 ok 响应处理)", async () => {
 		const fn = mockFetch(() => new Response("", { status: 401 }));
 		const r = await testConnection(fn);
-		expect(r.status).toBe("unauthorized");
+		expect(r.status).toBe("llm-error");
 	});
 
 	it("Error: 连不上后端(fetch reject)→ backend-unreachable", async () => {

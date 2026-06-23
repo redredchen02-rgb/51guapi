@@ -8,8 +8,6 @@ afterEach(() => cleanup());
 function renderHeader() {
 	return render(
 		<MainHeader
-			authenticated={true}
-			onAuthClick={vi.fn()}
 			onOpenSettings={vi.fn()}
 			onToggleLogs={vi.fn()}
 			onOpenGossip={vi.fn()}

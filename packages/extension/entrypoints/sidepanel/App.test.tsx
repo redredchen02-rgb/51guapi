@@ -34,14 +34,6 @@ const getCurrentDraftMock = vi.hoisted(() =>
 const exportDraftAsJSONMock = vi.hoisted(() => vi.fn(() => '{"json":true}'));
 const downloadFileMock = vi.hoisted(() => vi.fn());
 
-vi.mock("../../lib/auth-client", () => ({
-	isAuthenticated: vi.fn(async () => true),
-	login: vi.fn(),
-	getToken: vi.fn(),
-	clearToken: vi.fn(),
-	setToken: vi.fn(),
-}));
-
 vi.mock("../../lib/messaging", () => ({
 	requestGenerate: (...a: unknown[]) => requestGenerate(...a),
 	buildPrompt: (template: string, topic: string) =>
@@ -92,7 +84,6 @@ vi.mock("./PendingTopicsView", () => ({
 	),
 }));
 
-import { isAuthenticated, login } from "../../lib/auth-client";
 import { App } from "./App";
 
 async function waitForAppReady() {
@@ -117,15 +108,6 @@ describe("App", () => {
 	afterEach(() => {
 		vi.useRealTimers();
 		cleanup();
-	});
-
-	it("自用模式:无 token 启动 → 自动免密登入 → 直达主界面,无密码输入", async () => {
-		vi.mocked(isAuthenticated).mockResolvedValueOnce(false);
-		vi.mocked(login).mockResolvedValueOnce({ ok: true, token: "t" });
-		const { container } = render(<App />);
-		await waitForAppReady();
-		expect(login).toHaveBeenCalled();
-		expect(container.querySelector('input[type="password"]')).toBeNull();
 	});
 
 	it("空主题点生成 → 提示输入主题", async () => {

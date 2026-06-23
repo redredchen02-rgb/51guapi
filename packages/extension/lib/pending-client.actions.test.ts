@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeBrowser } from "wxt/testing";
-import { getToken, setToken } from "./auth-client";
 import { patchPendingTopic, updatePendingStatus } from "./pending-client";
 
 // patch/updateStatus 不接受注入 fetchFn → 走默认 fetchWithTimeout。
@@ -32,7 +31,6 @@ function lastInit(): RequestInit {
 
 beforeEach(async () => {
 	fakeBrowser.reset();
-	await setToken("tok-p");
 	mocked.mockReset();
 });
 
@@ -48,10 +46,9 @@ describe("pending-client — patchPendingTopic", () => {
 		});
 	});
 
-	it("Error 401 → false 且 clearToken()", async () => {
+	it("Error 401 → false", async () => {
 		mocked.mockResolvedValueOnce(jsonResponse({}, 401));
 		expect(await patchPendingTopic("id1", {})).toBe(false);
-		expect(await getToken()).toBeNull();
 	});
 
 	it("Error 500 → false", async () => {
@@ -84,10 +81,9 @@ describe("pending-client — updatePendingStatus", () => {
 		});
 	});
 
-	it("Error 401 → false 且 clearToken()", async () => {
+	it("Error 401 → false", async () => {
 		mocked.mockResolvedValueOnce(jsonResponse({}, 401));
 		expect(await updatePendingStatus("id1", "approved")).toBe(false);
-		expect(await getToken()).toBeNull();
 	});
 
 	it("网络异常 → false", async () => {

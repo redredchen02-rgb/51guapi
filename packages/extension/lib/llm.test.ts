@@ -1,6 +1,5 @@
 import type { ContentDraft, Settings } from "@51guapi/shared";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { clearToken } from "./auth-client";
+import { describe, expect, it, vi } from "vitest";
 import {
 	generateArticle,
 	generateDraft,
@@ -9,11 +8,6 @@ import {
 	reviewDraft,
 	rewriteDraft,
 } from "./llm";
-
-vi.mock("./auth-client", () => ({
-	getToken: vi.fn(async () => null),
-	clearToken: vi.fn(async () => {}),
-}));
 
 vi.mock("./backend-url", () => ({
 	getBackendUrl: vi.fn(async () => "http://127.0.0.1:3002"),
@@ -198,14 +192,6 @@ describe("reviewDraft proxy", () => {
 		const res = await reviewDraft(draft, undefined, { ...deps, fetchFn: f });
 		expect(res.ok).toBe(false);
 	});
-
-	it("401 → 清 token + ok:false", async () => {
-		const { clearToken } = await import("./auth-client");
-		const f = mockFetch({}, { ok: false, status: 401 });
-		const res = await reviewDraft(draft, undefined, { ...deps, fetchFn: f });
-		expect(res.ok).toBe(false);
-		expect(clearToken).toHaveBeenCalled();
-	});
 });
 
 describe("rewriteDraft proxy", () => {
@@ -311,10 +297,6 @@ describe("generateArticle proxy", () => {
 		createdAt: "2026-06-23T00:00:00Z",
 	};
 
-	beforeEach(() => {
-		vi.mocked(clearToken).mockClear();
-	});
-
 	it("200 → ok:true, draft, qualityWarnings[]", async () => {
 		const payload = { ok: true, draft: MOCK_DRAFT, qualityWarnings: [] };
 		const f = mockFetch(payload);
@@ -329,11 +311,12 @@ describe("generateArticle proxy", () => {
 		);
 	});
 
-	it("401 → clearToken 被调用，ok:false kind:network", async () => {
+	it("401 → ok:false kind:network", async () => {
 		const f = mockFetch({}, { ok: false, status: 401 });
 		const result = await generateArticle("topic-401", f);
 		expect(result.ok).toBe(false);
-		expect(vi.mocked(clearToken)).toHaveBeenCalled();
+		if (result.ok) throw new Error("expected ok:false");
+		expect(result.kind).toBe("network");
 	});
 
 	it("422 → ok:false kind:network", async () => {

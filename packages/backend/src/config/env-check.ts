@@ -2,15 +2,6 @@
 // Refuses to start on weak/placeholder secrets so the running instance can
 // never authenticate with known defaults.
 
-const WEAK_SECRETS = new Set([
-	"",
-	"change-this-to-a-random-secret",
-	"dev-secret-change-in-production",
-	"secret",
-	"changeme",
-	"dev-secret",
-]);
-
 // 默认拒绝:仅 127.0.0.0/8、::1、localhost 视为环回;其余(0.0.0.0、::、::0、
 // 局域网/公网 IP、主机名)一律非环回。括号/zone-id 归一后比对,避免 "[::1]" 漏判。
 function isLoopbackHost(host: string): boolean {
@@ -28,16 +19,8 @@ function isLoopbackHost(host: string): boolean {
 export function checkEnv(env: NodeJS.ProcessEnv = process.env): string[] {
 	const errors: string[] = [];
 
-	const secret = env.JWT_SECRET ?? "";
-	if (WEAK_SECRETS.has(secret) || secret.length < 32) {
-		errors.push(
-			"JWT_SECRET is missing, a known placeholder, or shorter than 32 chars. " +
-				"Generate: node -e \"console.log(require('node:crypto').randomBytes(48).toString('hex'))\"",
-		);
-	}
-
-	// 自用模式(plan 2026-06-18-003):免密登入,不再要求 JWT_ADMIN_PASSWORD_HASH。
-	// JWT_SECRET(签发)与 CORS_ORIGIN(跨源边界)仍为 fail-closed 启动前提。
+	// 自用模式(plan 2026-06-18-003 + JWT 移除):无鉴权,JWT_SECRET 不再需要。
+	// CORS_ORIGIN(跨源边界)仍为 fail-closed 启动前提。
 
 	const corsOrigin = (env.CORS_ORIGIN ?? "").trim();
 	if (!corsOrigin || corsOrigin === "*") {
