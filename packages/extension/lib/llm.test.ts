@@ -8,7 +8,6 @@ import {
 	rewriteDraft,
 } from "./llm";
 
-
 function mockFetch(
 	payload: unknown,
 	init?: {
@@ -187,8 +186,6 @@ describe("reviewDraft proxy", () => {
 		const res = await reviewDraft(draft, undefined, { ...deps, fetchFn: f });
 		expect(res.ok).toBe(false);
 	});
-
-
 });
 
 describe("rewriteDraft proxy", () => {

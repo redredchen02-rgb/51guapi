@@ -10,7 +10,6 @@ import {
 	vi,
 } from "vitest";
 
-
 // LLM 服务被 mock，使 draft 路由的 happy/error 路径可控（不发真请求）。
 vi.mock("./services/llm.js", () => ({
 	generateDraft: vi.fn(),

@@ -336,4 +336,3 @@ describe("POST /api/v1/scraper/auto-generate — legacy gate", () => {
 		});
 	});
 });
-

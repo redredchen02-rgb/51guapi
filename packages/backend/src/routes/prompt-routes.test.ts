@@ -218,4 +218,3 @@ describe("prompt-routes", () => {
 		expect(prompts.some((p) => p.name === "整合測試模板")).toBe(true);
 	});
 });
-
