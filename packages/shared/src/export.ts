@@ -62,11 +62,13 @@ export interface TopicForCSV {
 	/** 質量分(可選);無則該欄輸出空。 */
 	qualityScore?: number;
 	domain?: string;
+	/** 審核狀態:pending / approved / rejected(可選,舊呼叫方留空相容)。 */
+	status?: string;
 	createdAt: string;
 	facts: Record<string, string | null | undefined>;
 }
 
-/** CSV 元資料欄(吃瓜事實 8 欄之前的列頭)。 */
+/** CSV 元資料欄(吃瓜事實欄之前的列頭)。 */
 const CSV_META_HEADERS = [
 	"id",
 	"title",
@@ -75,6 +77,7 @@ const CSV_META_HEADERS = [
 	"confidence",
 	"score",
 	"domain",
+	"status",
 	"createdAt",
 ] as const;
 
@@ -115,6 +118,7 @@ export function assembleTopicsCSV(topics: TopicForCSV[]): string {
 			t.confidence,
 			t.qualityScore,
 			t.domain,
+			t.status,
 			t.createdAt,
 			...GOSSIP_FACT_KEYS.map((k) => t.facts?.[k] ?? ""),
 		];
@@ -156,6 +160,11 @@ export function assembleDraftMarkdown(
 
 	lines.push(`# ${escMd(draft.title || "(无标题)")}`);
 	lines.push("");
+
+	if (draft.coverImageUrl.trim()) {
+		lines.push(`![封面](${draft.coverImageUrl.trim()})`);
+		lines.push("");
+	}
 
 	if (draft.subtitle.trim()) {
 		lines.push(`> ${escMd(draft.subtitle)}`);
