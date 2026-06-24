@@ -33,7 +33,31 @@ function detectNextPageUrl(html: string, base: URL): string | undefined {
 			best = { url: candidate, n };
 		}
 	}
-	return best?.url;
+	if (best?.url) return best.url;
+
+	// 3. 語義文本兜底：尋找標籤內容為「下一頁/下一页/next」等字樣的同 host 連結
+	const textNextRe =
+		/<a\s[^>]*href=["']([^"'#][^"']*)["'][^>]*>([\s\S]*?)<\/a>/gi;
+	for (let m = textNextRe.exec(html); m !== null; m = textNextRe.exec(html)) {
+		const href = m[1].trim();
+		const anchorHtml = m[2];
+		const anchorText = anchorHtml
+			.replace(/<[^>]*>/g, " ")
+			.replace(/\s+/g, " ")
+			.trim();
+		if (
+			/^(?:下一页|下一頁|下页|next\s*page|next|next\s*>|下一页\s*>|下一頁\s*>|>|»)$/i.test(
+				anchorText,
+			)
+		) {
+			const candidate = resolveSameHost(href, base);
+			if (candidate && candidate !== base.toString()) {
+				return candidate;
+			}
+		}
+	}
+
+	return undefined;
 }
 
 /** 解析 href 為絕對 URL 並要求同 host；否則回 undefined。 */

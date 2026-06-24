@@ -33,7 +33,7 @@ function extractH1(html: string): string {
 
 // 常見正文容器 class/id 關鍵詞。
 const CONTENT_CONTAINER_KEYWORDS =
-	"post-content|article-content|entry-content|content-detail|main-content|article-body|post-body|rich_media_content";
+	"post-content|post_content|article-content|article_content|entry-content|entry_content|content-detail|detail-content|main-content|main_content|article-body|article_body|post-body|post_body|rich_media_content|js_content|article-detail|article-text|news-content|cnt-article";
 
 /** 去除 script/style 後剝光標籤、歸一空白。 */
 function stripTagsToText(htmlFragment: string): string {

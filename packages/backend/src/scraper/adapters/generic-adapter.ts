@@ -24,9 +24,9 @@ import { detectNextPageUrl } from "./list-pagination.js";
 const UA =
 	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36";
 
-/** 詳情頁路徑模式：/段/數字ID(.html?可選) 或 /YYYY/MM/slug 或 /YYYYMMDD/slug 格式。 */
+/** 詳情頁路徑模式：支持標準目錄(/post, /archives, /article, /gossip, /detail, /show, /p 等)、數字ID、字母/數字slug，以及根目錄下直接數字ID */
 const DETAIL_PATH_RE =
-	/^\/[a-z0-9_-]+\/\d+(?:\.html?)?(?:[?#].*)?$|\/\d{4}\/\d{2}\/[^/]+|\/\d{8}\/[^/]+/i;
+	/^\/(?:post|archive|archives|article|gossip|news|detail|show|view|story|html|p|a)\/[\w-]+(?:\.html?)?(?:[?#].*)?$|^\/[a-z0-9_-]+\/\d+(?:\.html?)?(?:[?#].*)?$|\/\d{4}\/\d{2}\/[^/]+|\/\d{8}\/[^/]+|^\/\d+(?:\.html?)?(?:[?#].*)?$/i;
 
 export interface DiscoveredUrl {
 	url: string;

@@ -30,6 +30,13 @@ describe("list-pagination.detectNextPageUrl（happy-path 錨點）", () => {
 			detectNextPageUrl(html, new URL("https://example.com/latest")),
 		).toBeUndefined();
 	});
+
+	it("語義文本兜底：無 page 數字規律，但包含「下一頁」字樣的同 host 連結", () => {
+		const html = `<html><body><a href="/gossip/page-xyz.html">下一頁</a></body></html>`;
+		expect(detectNextPageUrl(html, new URL("https://example.com/latest"))).toBe(
+			"https://example.com/gossip/page-xyz.html",
+		);
+	});
 });
 
 describe("list-pagination.currentPageNumber（happy-path 錨點）", () => {
