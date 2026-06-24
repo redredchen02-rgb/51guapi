@@ -212,7 +212,62 @@ describe("generateArticleDraft", () => {
 		expect(result.ok).toBe(false);
 	});
 
-	// ── 缺少覆蓋的路徑 (lines 274-279, 296, 305, 340, 354-355) ───────────────
+	// ── 缺少覆蓋的路徑 (lines 204, 232, 274-279, 296, 305, 340, 354-355) ──────
+
+	it("endpoint 是無法解析的 URL → isHttps() catch 回傳 false → ok:false (line 204)", async () => {
+		const result = await generateArticleDraft(
+			FACTS,
+			makeDeps(makeFetchMock(), {
+				settings: {
+					endpoint: "not-a-valid-url-at-all",
+					model: "gpt-4o-mini",
+					promptTemplate: "",
+				},
+			}),
+		);
+		expect(result.ok).toBe(false);
+	});
+
+	it("fallbackModel 設定後進入第二輪 → callCount > 2 (line 232)", async () => {
+		let callCount = 0;
+		const fetchFn = vi.fn().mockImplementation(async () => {
+			callCount++;
+			if (callCount <= 2)
+				return new Response("{}", { status: 500, statusText: "Server Error" });
+			return new Response(
+				JSON.stringify({
+					choices: [
+						{
+							message: {
+								content: JSON.stringify({
+									titleSuffix: "fb",
+									intro: "i",
+									narrative: "n",
+									faqItems: [],
+									conclusion: "c",
+									tags: ["吃瓜", "出軌", "明星"],
+								}),
+							},
+						},
+					],
+				}),
+				{ status: 200, headers: { "Content-Type": "application/json" } },
+			);
+		}) as typeof fetch;
+		const result = await generateArticleDraft(
+			FACTS,
+			makeDeps(fetchFn, {
+				settings: {
+					endpoint: "https://api.example.com",
+					model: "gpt-4o-mini",
+					fallbackModel: "gpt-3.5-turbo",
+					promptTemplate: "",
+				},
+			}),
+		);
+		expect(callCount).toBeGreaterThan(2);
+		void result;
+	});
 
 	it("LLM 返回 429（rate limit）→ ok:false kind:network (lines 274-276 + 289)", async () => {
 		const fetchFn = vi
