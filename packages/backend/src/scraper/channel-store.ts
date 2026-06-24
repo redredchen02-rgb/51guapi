@@ -22,6 +22,7 @@ type LookupAllFn = (
 	options: { all: true; verbatim: boolean },
 ) => Promise<LookupAddress[]>;
 
+import { DEFAULT_MAX_BYTES } from "./adapters/guarded-fetch.js";
 import { getDb } from "./pending-db.js";
 import { isPublicUnicastIp } from "./ssrf-guard.js";
 
@@ -40,7 +41,6 @@ export interface Channel {
 }
 
 export const MAX_CHANNELS = 100;
-const DEFAULT_MAX_BYTES = 5 * 1024 * 1024;
 // maxDepth 写入硬上限（belt-and-suspenders）:与 generic-adapter 的 MAX_PAGES 一致。
 // 操作者写入的 maxDepth 即使超界,入库时也收敛到 [1, MAX_DEPTH];非法/缺省回落 1。
 export const MAX_DEPTH = 50;

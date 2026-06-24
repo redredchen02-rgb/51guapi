@@ -33,7 +33,7 @@ import {
 } from "./services/llm.js";
 import { getMetrics, recordDraft } from "./services/metrics.js";
 import { err } from "./utils/error-response.js";
-import { getLlmConfig, validateLlmConfig } from "./utils/llm-config.js";
+import { resolveLlmConfig } from "./utils/llm-config.js";
 import {
 	GenerateArticleBody as GenerateArticleBodySchema,
 	GenerateArticleResponse,
@@ -235,10 +235,9 @@ function resolveRequestSettings(
 
 export function registerDraftRoutes(app: FastifyInstance): void {
 	app.get("/api/v1/models", async (request, reply) => {
-		const config = getLlmConfig();
-		const validation = validateLlmConfig(config);
-		if (!validation.valid)
-			return err(reply, 500, validation.error ?? "Unknown error");
+		const config = resolveLlmConfig();
+		if (!config)
+			return err(reply, 500, "LLM is not configured. Check LLM_API_KEY and LLM_ENDPOINT in .env.");
 		try {
 			return await listModels(config.endpoint, config.apiKey);
 		} catch (e) {
@@ -258,10 +257,9 @@ export function registerDraftRoutes(app: FastifyInstance): void {
 		},
 		async (request, reply) => {
 			const { prompt, settings, facts } = request.body;
-			const config = getLlmConfig(settings);
-			const validation = validateLlmConfig(config);
-			if (!validation.valid)
-				return err(reply, 500, validation.error ?? "Unknown error", "no-key");
+			const config = resolveLlmConfig(settings);
+			if (!config)
+				return err(reply, 500, "LLM is not configured. Check LLM_API_KEY and LLM_ENDPOINT in .env.", "no-key");
 			const resolvedSettings = resolveRequestSettings(settings, config);
 			try {
 				const result = await generateDraft(prompt, {
@@ -303,10 +301,9 @@ export function registerDraftRoutes(app: FastifyInstance): void {
 		},
 		async (request, reply) => {
 			const { draft, criteriaPrompt, settings } = request.body;
-			const config = getLlmConfig(settings);
-			const validation = validateLlmConfig(config);
-			if (!validation.valid)
-				return err(reply, 500, validation.error ?? "Unknown error");
+			const config = resolveLlmConfig(settings);
+			if (!config)
+				return err(reply, 500, "LLM is not configured. Check LLM_API_KEY and LLM_ENDPOINT in .env.");
 			const resolvedSettings = resolveRequestSettings(settings, config);
 			try {
 				const result = await reviewDraftLlm(draft, criteriaPrompt, {
@@ -337,10 +334,9 @@ export function registerDraftRoutes(app: FastifyInstance): void {
 		},
 		async (request, reply) => {
 			const { draft, failedDims, settings } = request.body;
-			const config = getLlmConfig(settings);
-			const validation = validateLlmConfig(config);
-			if (!validation.valid)
-				return err(reply, 500, validation.error ?? "Unknown error");
+			const config = resolveLlmConfig(settings);
+			if (!config)
+				return err(reply, 500, "LLM is not configured. Check LLM_API_KEY and LLM_ENDPOINT in .env.");
 			if (failedDims.length === 0)
 				return err(reply, 400, "failedDims must be a non-empty array.");
 			const resolvedSettings = resolveRequestSettings(settings, config);
@@ -384,10 +380,9 @@ export function registerDraftRoutes(app: FastifyInstance): void {
 			if (!isGossipFactsBlock(topic.facts))
 				return err(reply, 400, "选题 facts 不是有效的 GossipFactsBlock。");
 
-			const config = getLlmConfig();
-			const validation = validateLlmConfig(config);
-			if (!validation.valid)
-				return err(reply, 500, validation.error ?? "Unknown error", "no-key");
+			const config = resolveLlmConfig();
+			if (!config)
+				return err(reply, 500, "LLM is not configured. Check LLM_API_KEY and LLM_ENDPOINT in .env.", "no-key");
 
 			try {
 				const result = await generateArticleDraft(topic.facts, {
