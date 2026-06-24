@@ -26,7 +26,7 @@
 	"devDependencies": {
 		"@biomejs/biome": "^2.4.16",
 		"@vitest/coverage-v8": "^4.1.8",
-		"jsdom": "^25.0.1",
+		"jsdom": "^29.1.1",
 		"tsx": "^4.19.2",
 		"vitest": "^4.1.8"
 	},
@@ -44,7 +44,7 @@
 	},
 	"version": "0.3.0.0",
 	"engines": {
-		"node": ">=20",
+		"node": ">=22",
 		"pnpm": ">=9"
 	}
 }
