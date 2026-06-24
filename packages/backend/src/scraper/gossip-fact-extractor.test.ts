@@ -184,6 +184,27 @@ describe("gossipExtractFacts", () => {
 		).rejects.toThrow(/timed out/i);
 	});
 
+	it("fetch 拋出 non-AbortError → 直接向上拋（不轉成 timed out）", async () => {
+		const netErr = new Error("ECONNREFUSED");
+		const fetchFn = vi.fn().mockRejectedValue(netErr);
+		await expect(
+			gossipExtractFacts(SAMPLE_CONTENT, { ...OPTS, fetchFn }),
+		).rejects.toThrow("ECONNREFUSED");
+	});
+
+	it("res.json() 解析失敗 → 拋出 not valid JSON", async () => {
+		const fetchFn = vi.fn().mockResolvedValue({
+			ok: true,
+			status: 200,
+			json: async () => {
+				throw new SyntaxError("Unexpected token");
+			},
+		});
+		await expect(
+			gossipExtractFacts(SAMPLE_CONTENT, { ...OPTS, fetchFn }),
+		).rejects.toThrow(/not valid JSON/i);
+	});
+
 	it("strict 422 → fallback to json_object", async () => {
 		const factsJson = JSON.stringify({
 			當事人: "B",
