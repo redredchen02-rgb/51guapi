@@ -1,6 +1,7 @@
 import dotenv from "dotenv";
 import { buildApp, registerDraftRoutes, startBackgroundJobs } from "./app.js";
 import { validateEnv } from "./config/env-check.js";
+import { getMutationPin } from "./services/mutation-pin.js";
 
 // Prefer ~/.51guapi/.env (outside repo, safe from accidental overwrites) over the in-repo .env
 const safeEnvPath = `${process.env.HOME}/.51guapi/.env`;
@@ -26,6 +27,14 @@ const start = async () => {
 		validateEnv();
 		const app = buildApp();
 		registerDraftRoutes(app);
+
+		const pin = getMutationPin();
+		if (!process.env.GUAPI_MUTATION_PIN) {
+			app.log.warn(
+				`[Security] No GUAPI_MUTATION_PIN set in env. A temporary PIN has been generated for channel modifications: ${pin}`,
+			);
+		}
+
 		const port = Number(process.env.PORT) || 3002;
 		const host = process.env.HOST || "127.0.0.1";
 		await app.listen({ port, host });

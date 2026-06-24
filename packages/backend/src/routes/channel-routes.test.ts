@@ -30,7 +30,10 @@ async function buildApp(): Promise<FastifyInstance> {
 	return app;
 }
 
-const JSON_HEADERS = { "content-type": "application/json" };
+const JSON_HEADERS = {
+	"content-type": "application/json",
+	"x-guapi-mutation-pin": "test-pin-123456",
+};
 
 describe("channel-routes", () => {
 	let app: FastifyInstance;
@@ -177,7 +180,11 @@ describe("channel-routes", () => {
 		expect(
 			isHostAllowed(new URL("https://del.com/"), loadSSRFAllowlist({})),
 		).toBe(true);
-		await app.inject({ method: "DELETE", url: `/api/v1/channels/${id}` });
+		await app.inject({
+			method: "DELETE",
+			url: `/api/v1/channels/${id}`,
+			headers: { "x-guapi-mutation-pin": "test-pin-123456" },
+		});
 		// 删除后即不在 allowlist
 		expect(
 			isHostAllowed(new URL("https://del.com/"), loadSSRFAllowlist({})),
@@ -248,5 +255,41 @@ describe("channel-routes", () => {
 		});
 		expect(res.statusCode).toBe(400);
 		expect(res.json().error).toMatch(/过长/);
+	});
+
+	// ── Mutation PIN 驗證安全加固測試 ──────────────────────────────
+
+	it("POST /channels: 缺少 Mutation PIN → 403 拒絕", async () => {
+		const res = await app.inject({
+			method: "POST",
+			url: "/api/v1/channels",
+			headers: { "content-type": "application/json" },
+			payload: { channel: "evil-pin.com" },
+		});
+		expect(res.statusCode).toBe(403);
+		expect(res.json().error).toMatch(/无效的 Mutation PIN/);
+	});
+
+	it("POST /channels: 錯誤的 Mutation PIN → 403 拒絕", async () => {
+		const res = await app.inject({
+			method: "POST",
+			url: "/api/v1/channels",
+			headers: {
+				"content-type": "application/json",
+				"x-guapi-mutation-pin": "wrong-pin",
+			},
+			payload: { channel: "evil-pin2.com" },
+		});
+		expect(res.statusCode).toBe(403);
+		expect(res.json().error).toMatch(/无效的 Mutation PIN/);
+	});
+
+	it("DELETE /channels/:id: 缺少 Mutation PIN → 403 拒絕", async () => {
+		const res = await app.inject({
+			method: "DELETE",
+			url: "/api/v1/channels/some-id",
+		});
+		expect(res.statusCode).toBe(403);
+		expect(res.json().error).toMatch(/无效的 Mutation PIN/);
 	});
 });

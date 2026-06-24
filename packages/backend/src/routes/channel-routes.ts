@@ -7,6 +7,7 @@ import {
 	listChannels,
 	normalizeChannelHost,
 } from "../scraper/channel-store.js";
+import { getMutationPin } from "../services/mutation-pin.js";
 import { err } from "../utils/error-response.js";
 import {
 	CreateChannelResponse,
@@ -21,12 +22,7 @@ import {
 // **有意撤除**(单操作者自用工具),**勿当 bug 加回**。本路由不入 PUBLIC_ROUTES → 仍受
 // 全局 JWT preHandler 保护。
 //
-// 保留的写入校验:
-// 1) 入库即解析校验:assertHostResolvesPublic 当场 DNS 解析 + 私网/元数据 IP 拒。
-// 2) 钉死 https/拒通配/IDN punycode + 拒同形:由 normalizeChannelHost 把关,记审计栏位。
-// 3) 单渠道路径前缀/体积上限随渠道存储,generic-adapter 抓取时强制(maxDepth 为翻页页数
-//    上限,预设 1=单页);fail-closed + 数量上限:insertChannel 内 MAX_CHANNELS 守。
-// 4) 读取时完整 SSRF 守卫(safeFetch/resolveAndPin)对每条渠道全程生效,不受本次改动影响。
+// 2026-06-24 安全加固: 引入 x-guapi-mutation-pin 验证，防范 automated script / XSS / Prompt Injection 越权修改 allowlist。
 
 interface CreateBody {
 	channel?: string; // URL 或裸域名
@@ -74,8 +70,12 @@ export function registerChannelRoutes(app: FastifyInstance): void {
 			},
 		},
 		async (request, reply) => {
-			// 自用模式:写入两道闸(确认手势 + 口令 step-up)已移除,加渠道只需有效 JWT。
-			// 仍保留下方的归一 + DNS 公网解析校验作为入库防线。
+			const clientPin = request.headers["x-guapi-mutation-pin"];
+			const expectedPin = getMutationPin();
+			if (clientPin !== expectedPin) {
+				return err(reply, 403, "无效的 Mutation PIN，请在扩展端重新输入");
+			}
+
 			const { channel, displayName, pathPrefix, maxDepth, maxBytes, reason } =
 				request.body ?? {};
 			if (!channel || typeof channel !== "string") {
@@ -125,6 +125,12 @@ export function registerChannelRoutes(app: FastifyInstance): void {
 		"/api/v1/channels/:id",
 		{ schema: { response: { 200: DeleteOkResponse } } },
 		async (request, reply) => {
+			const clientPin = request.headers["x-guapi-mutation-pin"];
+			const expectedPin = getMutationPin();
+			if (clientPin !== expectedPin) {
+				return err(reply, 403, "无效的 Mutation PIN，请在扩展端重新输入");
+			}
+
 			const ok = deleteChannel(request.params.id);
 			if (!ok) return err(reply, 404, "渠道不存在");
 			return { ok: true };
