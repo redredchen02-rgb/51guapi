@@ -95,22 +95,6 @@ export const RewriteDraftBody = Type.Object({
 	settings: SettingsSchema,
 });
 
-// ── Auth ──────────────────────────────────────────────
-export const LoginBody = Type.Object({
-	// 自用模式:免密登入,password 可选且被忽略。maxLength 仍作为通用体积上限。
-	password: Type.Optional(Type.String({ maxLength: 1024 })),
-});
-
-export const LoginResponse = Type.Object({
-	ok: OkStatus,
-	token: Type.String(),
-});
-
-export const AuthStatusResponse = Type.Object({
-	ok: OkStatus,
-	authenticated: Type.Boolean(),
-});
-
 // ── Models ────────────────────────────────────────────
 export const ModelsResponse = Type.Object({
 	ok: OkStatus,

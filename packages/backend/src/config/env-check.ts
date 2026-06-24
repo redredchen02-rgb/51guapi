@@ -39,8 +39,8 @@ export function checkEnv(env: NodeJS.ProcessEnv = process.env): string[] {
 	const host = (env.HOST ?? "").trim();
 	if (host && !isLoopbackHost(host) && env.ALLOW_NONLOOPBACK_AUTH !== "true") {
 		errors.push(
-			`HOST is set to a non-loopback address (${host}) while login is passwordless. ` +
-				"Anyone who can reach this host can obtain a token. Bind to 127.0.0.1 / ::1 / " +
+			`HOST is set to a non-loopback address (${host}) while the backend has no authentication. ` +
+				"Anyone who can reach this host can call any API without authentication. Bind to 127.0.0.1 / ::1 / " +
 				"localhost, or set ALLOW_NONLOOPBACK_AUTH=true to explicitly opt in.",
 		);
 	}
