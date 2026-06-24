@@ -434,4 +434,83 @@ describe("registerRankingRoutes", () => {
 			expect(res.json().kind).toBe("network");
 		});
 	});
+
+	// ── 缺少覆蓋的分支 (lines 38, 51, 87-88) ─────────────────────────────────
+
+	describe("POST /api/v1/ranking/scrape — 缺少覆蓋分支", () => {
+		it("listGossipSites 拋錯 → catch 回傳 [] → scrape 照常完成 (line 38)", async () => {
+			mockScrapeAll.mockResolvedValueOnce({
+				baidu: 0,
+				weibo: 0,
+				douyin: 0,
+				total: 0,
+				errors: [],
+			} as never);
+			mockListSites.mockRejectedValueOnce(new Error("DB error") as never);
+
+			const res = await app.inject({
+				method: "POST",
+				url: "/api/v1/ranking/scrape",
+			});
+			expect(res.statusCode).toBe(200);
+			expect(res.json().topicsDiscovered).toBe(0);
+		});
+
+		it("site.listUrl 非法 URL → maxPages=1 的 catch 分支 (line 51)", async () => {
+			mockScrapeAll.mockResolvedValueOnce({
+				baidu: 0,
+				weibo: 0,
+				douyin: 0,
+				total: 0,
+				errors: [],
+			} as never);
+			mockListSites.mockResolvedValueOnce([
+				{
+					id: "bad-url",
+					name: "bad-site",
+					listUrl: "not-a-valid-url",
+					enabled: true,
+				},
+			] as never);
+			mockFetchListPaged.mockResolvedValueOnce([] as never);
+			mockExistingUrls.mockReturnValueOnce(new Set());
+
+			const res = await app.inject({
+				method: "POST",
+				url: "/api/v1/ranking/scrape",
+			});
+			expect(res.statusCode).toBe(200);
+			expect(mockFetchListPaged).toHaveBeenCalledWith("not-a-valid-url", 1);
+		});
+
+		it("site discover 拋錯 → errors 含站點名稱，不崩潰 (lines 87-88)", async () => {
+			mockScrapeAll.mockResolvedValueOnce({
+				baidu: 0,
+				weibo: 0,
+				douyin: 0,
+				total: 0,
+				errors: [],
+			} as never);
+			mockListSites.mockResolvedValueOnce([
+				{
+					id: "err-site",
+					name: "err-site",
+					listUrl: "https://err.example.com/list",
+					enabled: true,
+				},
+			] as never);
+			mockFetchListPaged.mockRejectedValueOnce(
+				new Error("network timeout") as never,
+			);
+
+			const res = await app.inject({
+				method: "POST",
+				url: "/api/v1/ranking/scrape",
+			});
+			expect(res.statusCode).toBe(200);
+			expect(
+				res.json().errors.some((e: string) => e.includes("err-site")),
+			).toBe(true);
+		});
+	});
 });

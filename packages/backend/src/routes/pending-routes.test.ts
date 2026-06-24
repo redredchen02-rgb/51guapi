@@ -561,3 +561,29 @@ describe("DELETE /api/v1/pending-topics/:id (lines 306-309)", () => {
 		expect(res.statusCode).toBe(404);
 	});
 });
+
+// ================================================================
+// GET /api/v1/pending-topics/:id — 單筆查詢 (lines 172-174)
+// ================================================================
+
+describe("GET /api/v1/pending-topics/:id", () => {
+	it("存在的 topic → 200 ok=true，返回 topic", async () => {
+		const topic = makeTopic();
+		await savePendingTopic(topic);
+		const res = await app.inject({
+			method: "GET",
+			url: `/api/v1/pending-topics/${topic.id}`,
+		});
+		expect(res.statusCode).toBe(200);
+		expect(res.json().ok).toBe(true);
+		expect(res.json().topic.id).toBe(topic.id);
+	});
+
+	it("不存在的 topic → 404 (line 173)", async () => {
+		const res = await app.inject({
+			method: "GET",
+			url: "/api/v1/pending-topics/no-such-id",
+		});
+		expect(res.statusCode).toBe(404);
+	});
+});
