@@ -1,3 +1,4 @@
+import type { ContentDraft } from "@51guapi/shared";
 import { apiFetch } from "@/lib/api-client";
 
 export interface SourcePlatform {
@@ -55,10 +56,18 @@ export async function hideKeyword(keyword: string): Promise<{ ok: boolean }> {
 	});
 }
 
+export interface GenerateDraftResult {
+	ok: boolean;
+	draft?: ContentDraft;
+	qualityWarnings?: string[];
+	error?: string;
+	kind?: string;
+}
+
 export async function generateDraftFromRanking(
 	topicId: string,
-): Promise<{ ok: boolean; draft?: unknown; error?: string }> {
-	return apiFetch<{ ok: boolean; draft?: unknown; error?: string }>(
+): Promise<GenerateDraftResult> {
+	return apiFetch<GenerateDraftResult>(
 		`/api/v1/ranking/generate-draft/${topicId}`,
 		{ method: "POST" },
 	);

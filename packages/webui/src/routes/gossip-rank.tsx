@@ -1,3 +1,4 @@
+import type { ContentDraft } from "@51guapi/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import {
@@ -20,8 +21,15 @@ import {
 	type RankedTopic,
 	triggerScrape,
 } from "@/api/ranking";
+import { ExportPanel } from "@/components/draft/ExportPanel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
 	Table,
@@ -121,6 +129,9 @@ function GossipRankPage() {
 function SectionA({ topics }: { topics: RankedTopic[] }) {
 	const qc = useQueryClient();
 	const [collapsed, setCollapsed] = useState(false);
+	const [generatedDraft, setGeneratedDraft] = useState<ContentDraft | null>(
+		null,
+	);
 
 	const hide = useMutation({
 		mutationFn: (keyword: string) => hideKeyword(keyword),
@@ -133,9 +144,8 @@ function SectionA({ topics }: { topics: RankedTopic[] }) {
 	const gen = useMutation({
 		mutationFn: generateDraftFromRanking,
 		onSuccess: (res) => {
-			if (res.ok) {
-				qc.invalidateQueries({ queryKey: ["pending-topics"] });
-				toast.success("草稿已生成，請至待審選題查看");
+			if (res.ok && res.draft) {
+				setGeneratedDraft(res.draft);
 			} else {
 				toast.error(res.error ?? "生成失敗");
 			}
@@ -144,129 +154,162 @@ function SectionA({ topics }: { topics: RankedTopic[] }) {
 	});
 
 	return (
-		<section className="rounded-lg border border-border bg-background">
-			<button
-				type="button"
-				className="flex w-full items-center gap-2 p-4 text-left"
-				onClick={() => setCollapsed((v) => !v)}
-			>
-				<span className="font-medium text-sm">A 區 — 精選交集</span>
-				<Badge variant="secondary">{topics.length}</Badge>
-				<span className="ml-auto text-muted-foreground">
-					{collapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
-				</span>
-			</button>
+		<>
+			<section className="rounded-lg border border-border bg-background">
+				<button
+					type="button"
+					className="flex w-full items-center gap-2 p-4 text-left"
+					onClick={() => setCollapsed((v) => !v)}
+				>
+					<span className="font-medium text-sm">A 區 — 精選交集</span>
+					<Badge variant="secondary">{topics.length}</Badge>
+					<span className="ml-auto text-muted-foreground">
+						{collapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+					</span>
+				</button>
 
-			{!collapsed && (
-				<div className="border-t border-border">
-					{topics.length === 0 ? (
-						<div className="flex h-28 items-center justify-center text-sm text-muted-foreground">
-							無交集話題 — 請先用站點 Zap 鍵探索，再按「立即抓取」更新熱搜
-						</div>
-					) : (
-						<Table>
-							<TableHeader>
-								<TableRow>
-									<TableHead className="w-8">#</TableHead>
-									<TableHead>標題</TableHead>
-									<TableHead className="w-24 text-center">分數</TableHead>
-									<TableHead className="w-24 text-center">站點</TableHead>
-									<TableHead className="w-36">匹配關鍵詞</TableHead>
-									<TableHead className="w-28 text-center">操作</TableHead>
-								</TableRow>
-							</TableHeader>
-							<TableBody>
-								{topics.map((t, i) => (
-									<TableRow key={t.topicId}>
-										<TableCell className="text-muted-foreground text-xs">
-											{i + 1}
-										</TableCell>
-										<TableCell>
-											<a
-												href={t.sourceUrl}
-												target="_blank"
-												rel="noreferrer"
-												className="hover:text-primary hover:underline font-medium text-sm line-clamp-2"
-											>
-												{t.title}
-											</a>
-											<div className="flex items-center gap-1 mt-1">
-												<Globe size={11} className="text-muted-foreground" />
-												<span className="text-xs text-muted-foreground">
-													{t.siteName}
-												</span>
-												{t.sourcePlatforms.map((p) => (
-													<PlatformBadge
-														key={p.platform}
-														platform={p.platform}
-													/>
-												))}
-											</div>
-										</TableCell>
-										<TableCell className="text-center">
-											<span className="text-sm font-medium tabular-nums">
-												{t.score.toFixed(2)}
-											</span>
-										</TableCell>
-										<TableCell className="text-center text-xs text-muted-foreground">
-											{t.siteCount} / {t.platformCount} 平台
-										</TableCell>
-										<TableCell>
-											<div className="flex flex-wrap gap-1">
-												{t.matchedKeywords.slice(0, 3).map((kw) => (
-													<Badge
-														key={kw}
-														variant="outline"
-														className="text-xs px-1 py-0 cursor-pointer hover:bg-destructive/10"
-														onClick={() => hide.mutate(kw)}
-														title="隱藏此關鍵詞"
-													>
-														{kw}
-													</Badge>
-												))}
-												{t.matchedKeywords.length > 3 && (
-													<Badge
-														variant="outline"
-														className="text-xs px-1 py-0 text-muted-foreground"
-													>
-														+{t.matchedKeywords.length - 3}
-													</Badge>
-												)}
-											</div>
-										</TableCell>
-										<TableCell>
-											<div className="flex items-center justify-center gap-1">
-												<Button
-													size="icon"
-													variant="ghost"
-													className="h-7 w-7 text-primary"
-													title="一鍵生成草稿"
-													onClick={() => gen.mutate(t.topicId)}
-													disabled={
-														gen.isPending && gen.variables === t.topicId
-													}
-												>
-													<Sparkles size={13} />
-												</Button>
-												<Button
-													size="icon"
-													variant="ghost"
-													className="h-7 w-7 text-muted-foreground"
-													title="隱藏此話題"
-													onClick={() => hide.mutate(t.title)}
-												>
-													<EyeOff size={13} />
-												</Button>
-											</div>
-										</TableCell>
+				{!collapsed && (
+					<div className="border-t border-border">
+						{topics.length === 0 ? (
+							<div className="flex h-28 items-center justify-center text-sm text-muted-foreground">
+								無交集話題 — 請先用站點 Zap 鍵探索，再按「立即抓取」更新熱搜
+							</div>
+						) : (
+							<Table>
+								<TableHeader>
+									<TableRow>
+										<TableHead className="w-8">#</TableHead>
+										<TableHead>標題</TableHead>
+										<TableHead className="w-24 text-center">分數</TableHead>
+										<TableHead className="w-24 text-center">站點</TableHead>
+										<TableHead className="w-36">匹配關鍵詞</TableHead>
+										<TableHead className="w-28 text-center">操作</TableHead>
 									</TableRow>
-								))}
-							</TableBody>
-						</Table>
-					)}
-				</div>
+								</TableHeader>
+								<TableBody>
+									{topics.map((t, i) => (
+										<TableRow key={t.topicId}>
+											<TableCell className="text-muted-foreground text-xs">
+												{i + 1}
+											</TableCell>
+											<TableCell>
+												<a
+													href={t.sourceUrl}
+													target="_blank"
+													rel="noreferrer"
+													className="hover:text-primary hover:underline font-medium text-sm line-clamp-2"
+												>
+													{t.title}
+												</a>
+												<div className="flex items-center gap-1 mt-1">
+													<Globe size={11} className="text-muted-foreground" />
+													<span className="text-xs text-muted-foreground">
+														{t.siteName}
+													</span>
+													{t.sourcePlatforms.map((p) => (
+														<PlatformBadge
+															key={p.platform}
+															platform={p.platform}
+														/>
+													))}
+												</div>
+											</TableCell>
+											<TableCell className="text-center">
+												<span className="text-sm font-medium tabular-nums">
+													{t.score.toFixed(2)}
+												</span>
+											</TableCell>
+											<TableCell className="text-center text-xs text-muted-foreground">
+												{t.siteCount} / {t.platformCount} 平台
+											</TableCell>
+											<TableCell>
+												<div className="flex flex-wrap gap-1">
+													{t.matchedKeywords.slice(0, 3).map((kw) => (
+														<Badge
+															key={kw}
+															variant="outline"
+															className="text-xs px-1 py-0 cursor-pointer hover:bg-destructive/10"
+															onClick={() => hide.mutate(kw)}
+															title="隱藏此關鍵詞"
+														>
+															{kw}
+														</Badge>
+													))}
+													{t.matchedKeywords.length > 3 && (
+														<Badge
+															variant="outline"
+															className="text-xs px-1 py-0 text-muted-foreground"
+														>
+															+{t.matchedKeywords.length - 3}
+														</Badge>
+													)}
+												</div>
+											</TableCell>
+											<TableCell>
+												<div className="flex items-center justify-center gap-1">
+													<Button
+														size="icon"
+														variant="ghost"
+														className="h-7 w-7 text-primary"
+														title="一鍵生成草稿"
+														onClick={() => gen.mutate(t.topicId)}
+														disabled={
+															gen.isPending && gen.variables === t.topicId
+														}
+													>
+														<Sparkles size={13} />
+													</Button>
+													<Button
+														size="icon"
+														variant="ghost"
+														className="h-7 w-7 text-muted-foreground"
+														title="隱藏此話題"
+														onClick={() => hide.mutate(t.title)}
+													>
+														<EyeOff size={13} />
+													</Button>
+												</div>
+											</TableCell>
+										</TableRow>
+									))}
+								</TableBody>
+							</Table>
+						)}
+					</div>
+				)}
+			</section>
+
+			{generatedDraft && (
+				<Dialog
+					open={!!generatedDraft}
+					onOpenChange={(open) => {
+						if (!open) setGeneratedDraft(null);
+					}}
+				>
+					<DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+						<DialogHeader>
+							<DialogTitle className="text-base font-semibold line-clamp-2">
+								{generatedDraft.title}
+							</DialogTitle>
+						</DialogHeader>
+						<div className="space-y-4">
+							{generatedDraft.subtitle && (
+								<p className="text-sm text-muted-foreground italic">
+									{generatedDraft.subtitle}
+								</p>
+							)}
+							<div className="text-sm leading-relaxed whitespace-pre-wrap border rounded p-3 bg-muted/30 max-h-[45vh] overflow-y-auto">
+								{generatedDraft.body}
+							</div>
+							<div className="flex items-center justify-between pt-2 border-t">
+								<span className="text-xs text-muted-foreground">匯出草稿</span>
+								<ExportPanel draft={generatedDraft} />
+							</div>
+						</div>
+					</DialogContent>
+				</Dialog>
 			)}
-		</section>
+		</>
 	);
 }
 
