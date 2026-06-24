@@ -490,3 +490,58 @@ describe("stopScheduler / isSchedulerRunning", () => {
 		expect(true).toBe(true);
 	});
 });
+
+// ================================================================
+// scheduler.ts 邊緣 branch 補充
+// ================================================================
+
+describe("startScheduler — 邊緣 branch", () => {
+	it("cron 表達式不合法 → 該站點不進 jobs Map（isSchedulerRunning=false）", () => {
+		const siteName = `bad-cron-${testId}`;
+		// validate 對第一個使用 "bad-expression" 的呼叫回傳 false
+		vi.mocked(cron.validate).mockImplementation((expr) =>
+			expr === "bad-expression" ? false : true,
+		);
+		scraperConfig.registerAdapter(makeMockAdapter(`bad-adapter-${testId}`));
+		scraperConfig.addSiteConfig({
+			siteName,
+			adapterName: `bad-adapter-${testId}`,
+			url: `https://test-site.example.com/bad/${testId}`,
+			cron: "bad-expression",
+			enabled: true,
+		});
+
+		startScheduler(DEPS);
+
+		// bad-cron site 不應進入 jobs Map
+		expect(isSchedulerRunning(siteName)).toBe(false);
+	});
+
+	it("job callback 執行時 adapter 不存在 → 不崩潰，不呼叫 savePendingTopic", async () => {
+		const siteName = `no-adapter-${testId}`;
+		// 收集所有 schedule 呼叫的 callback，之後找到最後一個（對應本測試站點）
+		const allCallbacks: Array<() => Promise<void>> = [];
+		vi.mocked(cron.schedule).mockImplementation((_expr, cb) => {
+			allCallbacks.push(cb as () => Promise<void>);
+			return { stop: vi.fn() } as never;
+		});
+
+		scraperConfig.addSiteConfig({
+			siteName,
+			adapterName: `non-existent-adapter-${testId}`,
+			url: `https://test-site.example.com/noAdapter/${testId}`,
+			cron: "0 * * * *",
+			enabled: true,
+		});
+		startScheduler(DEPS);
+
+		// 最後一個 schedule 呼叫對應本測試站點（scraperConfig 按插入順序）
+		const lastCallback = allCallbacks.at(-1);
+		expect(lastCallback).toBeDefined();
+
+		vi.clearAllMocks(); // 清除先前呼叫記錄
+		await lastCallback!();
+		// adapter 不存在 → 不拋錯、不呼叫 savePendingTopic
+		expect(vi.mocked(savePendingTopic)).not.toHaveBeenCalled();
+	});
+});
