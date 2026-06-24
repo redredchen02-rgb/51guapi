@@ -1,10 +1,10 @@
-import type { PendingTopic } from "../scraper/pending-store.js";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
 	clearHotSearchForTest,
 	upsertHotSearchBatch,
 } from "../scraper/hot-search-store.js";
 import { getDb, initPendingDb } from "../scraper/pending-db.js";
+import type { PendingTopic } from "../scraper/pending-store.js";
 import { savePendingTopic } from "../scraper/pending-store.js";
 import {
 	addToBlacklist,
@@ -115,7 +115,10 @@ describe("getRankedList (整合測試 — 需要 DB)", () => {
 	});
 
 	it("選題 title 包含熱搜 keyword → 進入 sectionA，不在 sectionB", async () => {
-		const topic = makeTopic({ title: "章子怡汪峰分居疑雲", siteName: "news-a" });
+		const topic = makeTopic({
+			title: "章子怡汪峰分居疑雲",
+			siteName: "news-a",
+		});
 		await savePendingTopic(topic);
 		upsertHotSearchBatch([makeKeyword("章子怡", "baidu", 1, 80)]);
 		await new Promise((r) => setTimeout(r, 20));
