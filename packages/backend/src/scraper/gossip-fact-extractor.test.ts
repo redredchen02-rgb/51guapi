@@ -209,7 +209,10 @@ describe("gossipExtractFacts", () => {
 
 	it("content 是非合法 JSON → parseGossipFacts 回退 emptyGossipFacts (line 66)", async () => {
 		const fetchFn = mockFetch(llmResponse("not { valid json!"));
-		const result = await gossipExtractFacts(SAMPLE_CONTENT, { ...OPTS, fetchFn });
+		const result = await gossipExtractFacts(SAMPLE_CONTENT, {
+			...OPTS,
+			fetchFn,
+		});
 		// parseGossipFacts 失敗 → 回傳 emptyGossipFacts → 全部字段為 null → confidence 極低
 		expect(result.facts.當事人).toBeNull();
 		expect(result.confidence).toBeLessThan(0.1);
@@ -217,14 +220,20 @@ describe("gossipExtractFacts", () => {
 
 	it("content 是 JSON null（非物件）→ parseGossipFacts 回退 emptyGossipFacts (line 69)", async () => {
 		const fetchFn = mockFetch(llmResponse("null"));
-		const result = await gossipExtractFacts(SAMPLE_CONTENT, { ...OPTS, fetchFn });
+		const result = await gossipExtractFacts(SAMPLE_CONTENT, {
+			...OPTS,
+			fetchFn,
+		});
 		expect(result.facts.當事人).toBeNull();
 		expect(result.confidence).toBeLessThan(0.1);
 	});
 
 	it("content 是 JSON array → parseGossipFacts 回退 emptyGossipFacts (line 69)", async () => {
 		const fetchFn = mockFetch(llmResponse("[1,2,3]"));
-		const result = await gossipExtractFacts(SAMPLE_CONTENT, { ...OPTS, fetchFn });
+		const result = await gossipExtractFacts(SAMPLE_CONTENT, {
+			...OPTS,
+			fetchFn,
+		});
 		expect(result.facts.當事人).toBeNull();
 	});
 
