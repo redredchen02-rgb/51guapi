@@ -7,6 +7,7 @@ import type { GenerateArticleResponse } from "../lib/llm";
 import { generateArticle, generateDraft } from "../lib/llm";
 import { logger } from "../lib/logger";
 import type { GenerateDraftOptions, RuntimeMessage } from "../lib/messages";
+import { createPendingTopic } from "../lib/pending-client";
 import { buildConstraintSuffix } from "../lib/prompt-assembly";
 import { getSettings } from "../lib/storage";
 
@@ -82,6 +83,48 @@ export default defineBackground(() => {
 				err: err instanceof Error ? err.message : String(err),
 			}),
 		);
+
+	if (browser.contextMenus) {
+		browser.runtime.onInstalled.addListener(() => {
+			browser.contextMenus.create({
+				id: "add-gossip-selection",
+				title: "吃瓜小帮手：将选中爆料加入待审池",
+				contexts: ["selection"],
+			});
+		});
+
+		browser.contextMenus.onClicked.addListener(async (info, tab) => {
+			if (info.menuItemId === "add-gossip-selection" && info.selectionText) {
+				const sourceUrl = tab?.url || "";
+				const selection = info.selectionText.trim();
+				const title =
+					selection.slice(0, 50) + (selection.length > 50 ? "..." : "");
+				const siteName = sourceUrl ? new URL(sourceUrl).hostname : "划词爆料";
+
+				try {
+					const success = await createPendingTopic({
+						sourceUrl,
+						siteName,
+						title,
+						domain: "gossip",
+						facts: {
+							當事人: "【待补】",
+							事件摘要: selection,
+						},
+					});
+					if (success) {
+						logger.info("bg", "划词爆料已成功加入待审池");
+					} else {
+						logger.error("bg", "划词爆料加入待审池失败");
+					}
+				} catch (e) {
+					logger.error("bg", "划词爆料请求异常", {
+						err: e instanceof Error ? e.message : String(e),
+					});
+				}
+			}
+		});
+	}
 
 	// SW Keep-Alive:定时唤醒,防止长时间生成时背景因闲置被杀。
 	if (browser.alarms) {

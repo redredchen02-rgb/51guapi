@@ -187,3 +187,30 @@ export async function setPendingVerified(
 		async () => true,
 	);
 }
+
+/**
+ * 手动创建待审核选题
+ */
+export async function createPendingTopic(
+	topic: {
+		sourceUrl: string;
+		siteName: string;
+		title: string;
+		facts?: Record<string, string>;
+		confidence?: number;
+		domain?: "gossip" | "acg";
+	},
+	timeoutMs = 10_000,
+): Promise<boolean> {
+	return requestWithFallback<boolean>(
+		"createPendingTopic",
+		false,
+		"/api/v1/pending-topics",
+		{
+			method: "POST",
+			body: JSON.stringify(topic),
+			timeoutMs,
+		},
+		async () => true,
+	);
+}

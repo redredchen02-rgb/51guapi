@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeBrowser } from "wxt/testing";
-import { patchPendingTopic, updatePendingStatus } from "./pending-client";
+import {
+	createPendingTopic,
+	patchPendingTopic,
+	updatePendingStatus,
+} from "./pending-client";
 
 // patch/updateStatus 不接受注入 fetchFn → 走默认 fetchWithTimeout。
 vi.mock("@51guapi/shared", async (importOriginal) => {
@@ -89,5 +93,37 @@ describe("pending-client — updatePendingStatus", () => {
 	it("网络异常 → false", async () => {
 		mocked.mockRejectedValueOnce(new Error("net"));
 		expect(await updatePendingStatus("id1", "approved")).toBe(false);
+	});
+});
+
+describe("pending-client — createPendingTopic", () => {
+	it("Happy: 2xx → true，POST 命中 URL", async () => {
+		mocked.mockResolvedValueOnce(jsonResponse({ ok: true }));
+		const ok = await createPendingTopic({
+			sourceUrl: "https://test.com",
+			siteName: "test",
+			title: "title",
+			domain: "gossip",
+		});
+		expect(ok).toBe(true);
+		expect(lastUrl()).toContain("/api/v1/pending-topics");
+		expect(lastInit().method).toBe("POST");
+		expect(JSON.parse(lastInit().body as string)).toEqual({
+			sourceUrl: "https://test.com",
+			siteName: "test",
+			title: "title",
+			domain: "gossip",
+		});
+	});
+
+	it("网络异常 → false", async () => {
+		mocked.mockRejectedValueOnce(new Error("net"));
+		expect(
+			await createPendingTopic({
+				sourceUrl: "https://test.com",
+				siteName: "test",
+				title: "title",
+			}),
+		).toBe(false);
 	});
 });
