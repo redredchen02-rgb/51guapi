@@ -212,6 +212,45 @@ describe("generateArticleDraft", () => {
 		expect(result.ok).toBe(false);
 	});
 
+	// ── 缺少覆蓋的路徑 (lines 274-279, 296, 305, 340, 354-355) ───────────────
+
+	it("LLM 返回 429（rate limit）→ ok:false kind:network (lines 274-276 + 289)", async () => {
+		const fetchFn = vi
+			.fn()
+			.mockResolvedValue(
+				new Response("{}", { status: 429, statusText: "Too Many Requests" }),
+			) as typeof fetch;
+		const result = await generateArticleDraft(FACTS, makeDeps(fetchFn));
+		expect(result.ok).toBe(false);
+		if (result.ok) throw new Error("Expected ok:false");
+		expect(result.kind).toBe("network");
+	});
+
+	it("LLM 返回 403（forbidden，非 400/429/500+）→ ok:false kind:network (lines 279-283)", async () => {
+		const fetchFn = vi
+			.fn()
+			.mockResolvedValue(
+				new Response("{}", { status: 403, statusText: "Forbidden" }),
+			) as typeof fetch;
+		const result = await generateArticleDraft(FACTS, makeDeps(fetchFn));
+		expect(result.ok).toBe(false);
+		if (result.ok) throw new Error("Expected ok:false");
+		expect(result.kind).toBe("network");
+	});
+
+	it("LLM 返回 200 但 body 非合法 JSON（res.json() 拋錯）→ ok:false kind:format (line 296)", async () => {
+		const fetchFn = vi.fn().mockResolvedValue(
+			new Response("plain text, not json", {
+				status: 200,
+				headers: { "Content-Type": "application/json" },
+			}),
+		) as typeof fetch;
+		const result = await generateArticleDraft(FACTS, makeDeps(fetchFn));
+		expect(result.ok).toBe(false);
+		if (result.ok) throw new Error("Expected ok:false");
+		expect(result.kind).toBe("format");
+	});
+
 	// ── 缺少覆蓋的路徑 (lines 305, 340, 354-355) ─────────────────────────────
 
 	it("LLM choices 為空 → extractContent 返回 null → ok:false kind:format (line 305)", async () => {

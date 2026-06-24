@@ -82,6 +82,19 @@ describe("baidu-scraper", () => {
 		expect(items).toHaveLength(0);
 	});
 
+	it("res.json() 抛出（非法 JSON body）→ 回傳空陣列 (lines 56-57)", async () => {
+		const badJsonFetch = vi.fn(async () => ({
+			ok: true,
+			status: 200,
+			json: async () => {
+				throw new SyntaxError("Unexpected token");
+			},
+			headers: new Headers(),
+		})) as unknown as typeof fetch;
+		const items = await scrapeBaidu(badJsonFetch);
+		expect(items).toEqual([]);
+	});
+
 	it("過濾掉 word 為空的條目", async () => {
 		const fixture = {
 			data: {

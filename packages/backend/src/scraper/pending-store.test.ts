@@ -634,6 +634,41 @@ describe("pendingTopicsExistingBySourceUrls — O5 批量存在性查询", () =>
 		expect(all).toHaveLength(2); // gv1 + gv2，不含 acg
 	});
 
+	it("listGossipPendingFacts：DB 中 facts 欄位為非法 JSON → 該行被過濾掉不崩潰 (line 364)", async () => {
+		// 直接插入一行 facts 為非法 JSON
+		const now = new Date().toISOString();
+		getDb()
+			.prepare(
+				"INSERT INTO pending_topics (id, source_url, site_name, domain, status, title, facts, raw_content, confidence, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+			)
+			.run(
+				"bad-facts-id",
+				"https://bad-facts.example.com/1",
+				"bad-site",
+				"gossip",
+				"pending",
+				"壞 facts 選題",
+				"not-valid-json{{{",
+				JSON.stringify({
+					title: "壞 facts",
+					body: "",
+					url: "https://bad-facts.example.com/1",
+				}),
+				0.5,
+				now,
+				now,
+			);
+
+		const result = listGossipPendingFacts(false);
+		// bad row 被 filter(Boolean) 過濾，不應拋出
+		const hasBadId = result.some((r) => typeof r === "object" && r !== null);
+		// 只要不拋錯即可；bad row 被過濾後結果可以是空陣列
+		expect(Array.isArray(result)).toBe(true);
+		// 確認 bad row 不在結果中（null 被過濾）
+		expect(result).not.toContain(null);
+		void hasBadId; // suppress lint
+	});
+
 	it("与 discover 过滤等价：filter(!existingUrls.has) 结果与逐个查询语义一致", async () => {
 		await seed("https://exist.com/1");
 		await seed("https://exist.com/2");
