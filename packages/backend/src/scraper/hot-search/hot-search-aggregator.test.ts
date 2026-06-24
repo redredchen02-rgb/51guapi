@@ -120,4 +120,33 @@ describe("scrapeAllPlatforms", () => {
 		const platforms = new Set(stored.map((k) => k.platform));
 		expect(platforms).toEqual(new Set(["baidu", "weibo", "douyin"]));
 	});
+
+	it("應過濾非娛樂/非八卦的熱搜關鍵詞", async () => {
+		vi.mocked(scrapeBaidu).mockResolvedValue([
+			makeItem("章子怡汪峰离婚", 1, 90),
+			makeItem("外交部回应美方制裁", 2, 85),
+		]);
+		vi.mocked(scrapeWeibo).mockResolvedValue([
+			makeItem("A股跌破3000点", 1, 80),
+			makeItem("王力宏回应", 2, 75),
+		]);
+		vi.mocked(scrapeDouyin).mockResolvedValue([
+			makeItem("国乒男团夺冠", 1, 70),
+		]);
+
+		const result = await scrapeAllPlatforms();
+		await new Promise((r) => setTimeout(r, 20));
+
+		// baidu filtered "外交部..." (1 left), weibo filtered "A股..." (1 left), douyin filtered "国乒男团..." (0 left)
+		expect(result.baidu).toBe(1);
+		expect(result.weibo).toBe(1);
+		expect(result.douyin).toBe(0);
+		expect(result.total).toBe(2);
+
+		const stored = listHotSearchKeywords();
+		expect(stored).toHaveLength(2);
+		expect(stored.map((k) => k.keyword)).toEqual(
+			expect.arrayContaining(["章子怡汪峰离婚", "王力宏回应"]),
+		);
+	});
 });
