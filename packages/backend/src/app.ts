@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import {
 	type GossipFactsBlock,
 	isGossipFactsBlock,
@@ -186,8 +187,8 @@ export function buildApp(): FastifyInstance {
 	// Serve webui SPA in production when dist exists alongside this package.
 	// Guard: only register if the dist directory is present — dev mode keeps serving from Vite.
 	const webuiDist = path.resolve(
-		new URL(import.meta.url).pathname,
-		"../../../../webui/dist",
+		fileURLToPath(import.meta.url),
+		"../../../webui/dist",
 	);
 	if (existsSync(webuiDist)) {
 		server.register(staticPlugin, {
