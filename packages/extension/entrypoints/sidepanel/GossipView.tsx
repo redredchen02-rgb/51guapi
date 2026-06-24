@@ -16,6 +16,7 @@ import {
 } from "../../lib/gossip-client";
 import { AddSiteForm } from "./gossip/AddSiteForm";
 import { ChannelWhitelistPanel } from "./gossip/ChannelWhitelistPanel";
+import { QuickFetchPanel } from "./gossip/QuickFetchPanel";
 import { SiteCard } from "./gossip/SiteCard";
 import { btn } from "./gossip/styles";
 
@@ -40,6 +41,7 @@ export function GossipView({ onBack, onTopicAdded }: Props) {
 	const [newChannel, setNewChannel] = useState("");
 	const [chanError, setChanError] = useState("");
 	const [chanBusy, setChanBusy] = useState(false);
+	const [mutationPin, setMutationPin] = useState("");
 
 	// per-site 的 discover 結果和狀態
 	const [discovered, setDiscovered] = useState<
@@ -76,6 +78,30 @@ export function GossipView({ onBack, onTopicAdded }: Props) {
 		void loadChannels();
 	}, [loadSites, loadChannels]);
 
+	async function runWithPinRetry<T>(
+		fn: (pin: string) => Promise<T>,
+	): Promise<T> {
+		const pin = mutationPin;
+		try {
+			return await fn(pin);
+		} catch (e: any) {
+			if (
+				e.message?.includes("Mutation PIN") ||
+				e.message?.includes("HTTP 403")
+			) {
+				const promptPin = window.prompt(
+					"請輸入後端 Mutation PIN 以確認此操作：",
+				);
+				if (promptPin === null) {
+					throw new Error("操作已取消");
+				}
+				setMutationPin(promptPin);
+				return await fn(promptPin);
+			}
+			throw e;
+		}
+	}
+
 	async function handleAddChannel() {
 		if (!newChannel.trim()) {
 			setChanError("请填写渠道域名");
@@ -84,7 +110,11 @@ export function GossipView({ onBack, onTopicAdded }: Props) {
 		setChanBusy(true);
 		setChanError("");
 		try {
-			await createChannel(newChannel.trim());
+			await runWithPinRetry((pin) =>
+				pin
+					? createChannel(newChannel.trim(), { pin })
+					: createChannel(newChannel.trim()),
+			);
 			setNewChannel("");
 			await loadChannels();
 		} catch (e) {
@@ -96,7 +126,9 @@ export function GossipView({ onBack, onTopicAdded }: Props) {
 
 	async function handleDeleteChannel(id: string) {
 		try {
-			await deleteChannel(id);
+			await runWithPinRetry((pin) =>
+				pin ? deleteChannel(id, pin) : deleteChannel(id),
+			);
 			setChannels((prev) => prev.filter((c) => c.id !== id));
 		} catch (e) {
 			setChanError(e instanceof Error ? e.message : "删除渠道失败");
@@ -236,6 +268,8 @@ export function GossipView({ onBack, onTopicAdded }: Props) {
 				</button>
 				<h2 style={{ margin: 0, fontSize: 15 }}>吃瓜素材</h2>
 			</div>
+
+			<QuickFetchPanel onTopicAdded={onTopicAdded} />
 
 			<ChannelWhitelistPanel
 				channels={channels}
