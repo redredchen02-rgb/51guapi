@@ -942,4 +942,48 @@ describe("gossip-routes — recordScraperRun 接线（U2）", () => {
 		const res = await app.inject({ method: "GET", url: "/api/v1/metrics" });
 		expect(gossipVerifyCount(res.body, "suspected_duplicate")).toBe(1);
 	});
+
+	// ── 缺少覆蓋的驗證分支 (lines 90, 93, 151, 195, 198) ──────────────────
+
+	it("POST /gossip/sites：缺 name → 400 missing required fields", async () => {
+		const res = await app.inject({
+			method: "POST",
+			url: "/api/v1/gossip/sites",
+			payload: { listUrl: "https://gossip.example.com/list" },
+		});
+		expect(res.statusCode).toBe(400);
+	});
+
+	it("POST /gossip/sites：name 超過 200 字（TypeBox maxLength=200）→ 400", async () => {
+		const res = await app.inject({
+			method: "POST",
+			url: "/api/v1/gossip/sites",
+			payload: {
+				name: "x".repeat(201),
+				listUrl: "https://gossip.example.com/list",
+			},
+		});
+		expect(res.statusCode).toBe(400);
+	});
+
+	it("from-url：缺 url 和 siteName → 400 missing required fields", async () => {
+		const res = await app.inject({
+			method: "POST",
+			url: "/api/v1/gossip/topics/from-url",
+			payload: {},
+		});
+		expect(res.statusCode).toBe(400);
+	});
+
+	it("from-url：siteName 超過 200 字（TypeBox maxLength=200）→ 400", async () => {
+		const res = await app.inject({
+			method: "POST",
+			url: "/api/v1/gossip/topics/from-url",
+			payload: {
+				url: "https://gossip.example.com/article/1",
+				siteName: "x".repeat(201),
+			},
+		});
+		expect(res.statusCode).toBe(400);
+	});
 });
