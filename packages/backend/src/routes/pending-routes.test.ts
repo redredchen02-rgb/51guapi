@@ -503,3 +503,61 @@ describe("U4/U5 verified + themes", () => {
 		);
 	});
 });
+
+// ================================================================
+// 缺少覆蓋的分支 (lines 220, 249, 306-309)
+// ================================================================
+
+describe("POST /api/v1/pending-topics — 成功路徑 (line 220)", () => {
+	it("有效 body → 201 ok=true，返回 topic with id", async () => {
+		const res = await app.inject({
+			method: "POST",
+			url: "/api/v1/pending-topics",
+			payload: {
+				sourceUrl: "https://gossip.example.com/article/1",
+				siteName: "gossip-site",
+				title: "明星A出軌事件",
+				facts: { 當事人: "明星A", 事件摘要: "出軌" },
+				confidence: 0.8,
+			},
+		});
+		expect(res.statusCode).toBe(200);
+		expect(res.json().ok).toBe(true);
+		expect(res.json().topic.id).toBeDefined();
+		expect(res.json().topic.title).toBe("明星A出軌事件");
+	});
+});
+
+describe("PATCH /api/v1/pending-topics/:id — invalid status (TypeBox schema)", () => {
+	it("status 不在合法枚舉值中 → 400（TypeBox Union 先攔）", async () => {
+		const topic = makeTopic();
+		await savePendingTopic(topic);
+		const res = await app.inject({
+			method: "PATCH",
+			url: `/api/v1/pending-topics/${topic.id}`,
+			payload: { status: "invalid_status_xyz" },
+		});
+		expect(res.statusCode).toBe(400);
+	});
+});
+
+describe("DELETE /api/v1/pending-topics/:id (lines 306-309)", () => {
+	it("刪除存在的 topic → 200 ok=true", async () => {
+		const topic = makeTopic();
+		await savePendingTopic(topic);
+		const res = await app.inject({
+			method: "DELETE",
+			url: `/api/v1/pending-topics/${topic.id}`,
+		});
+		expect(res.statusCode).toBe(200);
+		expect(res.json().ok).toBe(true);
+	});
+
+	it("刪除不存在的 topic → 404", async () => {
+		const res = await app.inject({
+			method: "DELETE",
+			url: "/api/v1/pending-topics/nonexistent-id",
+		});
+		expect(res.statusCode).toBe(404);
+	});
+});
