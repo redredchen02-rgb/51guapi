@@ -19,6 +19,11 @@ const EXTENSION_KEY =
 
 export default defineConfig({
 	modules: ["@wxt-dev/module-react"],
+	// Chrome 120+ supports generators and yield destructuring natively;
+	// avoids esbuild "Transforming destructuring ... not supported yet" on async-mutex.
+	vite: () => ({
+		build: { target: "chrome120" },
+	}),
 	manifest: {
 		name: "吃瓜小帮手",
 		description: "锁定 URL 爬取目标站资源,AI 提炼成吃瓜草稿,预览编辑后导出。",
