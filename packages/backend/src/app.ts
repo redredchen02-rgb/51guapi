@@ -16,6 +16,7 @@ import { registerGossipRoutes } from "./routes/gossip-routes.js";
 import { registerPendingRoutes } from "./routes/pending-routes.js";
 import { registerPreflightRoutes } from "./routes/preflight-routes.js";
 import { registerPromptRoutes } from "./routes/prompt-routes.js";
+import { registerRankingRoutes } from "./routes/ranking-routes.js";
 import { registerScraperRoutes } from "./routes/scraper-routes.js";
 import { demoAdapter } from "./scraper/adapters/demo-adapter.js";
 import { getDb, initPendingDb } from "./scraper/pending-db.js";
@@ -175,6 +176,7 @@ export function buildApp(): FastifyInstance {
 	registerChannelRoutes(server);
 	registerPendingRoutes(server);
 	registerPromptRoutes(server);
+	registerRankingRoutes(server);
 
 	scraperConfig.registerAdapter(demoAdapter);
 	scraperConfig.addSiteConfig({
