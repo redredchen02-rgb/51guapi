@@ -58,7 +58,7 @@ function fold(s: string): string {
  * - 每个标签经简繁归一后按 allow-list 包含匹配；不匹配 → OTHER_THEME
  */
 export function parseThemes(hot: string | null | undefined): string[] {
-	if (!hot || !hot.trim()) return [OTHER_THEME];
+	if (!hot?.trim()) return [OTHER_THEME];
 	const raw = hot
 		.split(/[,，、/|]/)
 		.map((t) => t.trim())

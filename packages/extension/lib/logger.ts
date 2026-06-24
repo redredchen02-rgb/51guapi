@@ -5,7 +5,7 @@ type LogContext = Record<string, unknown>;
  * Overridable dev-mode gate so tests can toggle debug logging
  * without relying on import.meta.env (which is a build-time constant).
  */
-export let isDev = typeof import.meta !== "undefined" && import.meta.env?.DEV;
+export let isDev = import.meta.env.DEV;
 
 function formatLog(
 	level: LogLevel,

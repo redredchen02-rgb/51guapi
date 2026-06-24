@@ -1,4 +1,3 @@
-import type { LookupAddress } from "node:dns";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	type assertHostResolvesPublic,

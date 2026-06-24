@@ -78,7 +78,7 @@ export function PromptSection({
 				<p className="field-hint">
 					源接地:AI 只用 {"{{facts}}"}{" "}
 					里给的事实润色,缺的标【待补】,连结只用给定
-					URL——防止编造作品事实/连结。
+					URL——防止编造事件事实/链接。
 				</p>
 			</div>
 

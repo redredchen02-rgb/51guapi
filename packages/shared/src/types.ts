@@ -1,6 +1,3 @@
-// side panel / background / backend wire 共享的类型定义。
-// Migrated from both packages/backend/src/shared/types.ts and packages/extension/lib/types.ts
-import type { FactsBlock } from "./facts.js";
 import type { VerificationResult } from "./gossip-verify.js";
 import type { DraftSlots } from "./post-assembler.js";
 

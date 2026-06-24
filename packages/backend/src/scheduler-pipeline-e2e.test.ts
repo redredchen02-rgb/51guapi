@@ -4,14 +4,14 @@
 // 复用 scheduler.test.ts 的 cron-spy 捕获范式（mock node-cron → 从 schedule spy 取回注册的
 // callback → 手动 await，不等真实定时），但**关键差异**：本单元**不 mock pending-store**，让
 // savePendingTopic / pendingTopicExistsBySourceUrl 走**真 SQLite 临时 DB**（test-setup 指向临时目录）。
-// 只 mock 外部网络（adapter.fetchContent / fetchList，经 scraperConfig 注入）与 LLM（extractFacts）。
+// 只 mock 外部网络（adapter.fetchContent / fetchList，经 scraperConfig 注入）与 LLM（gossipExtractFacts）。
 //
 // 价值：scheduler.test.ts 把 store 整个 mock 掉，从未证「cron 路径真入池、可读回」；本单元补这条
 // 跨层覆盖（真入池 + score 计算 + 真 DB 去重），并守护 no-publish。
 //
 // ⚠️ 已核实的产出分歧（计划 E5「domain='gossip' / 与 from-url 产出一致」之声称不成立，按实改正）：
 //   - from-url 路径（gossip-routes.ts:312）：用 gossipExtractFacts，存档显式 domain="gossip"。
-//   - scheduler 路径（本单元）：用通用 extractFacts，build topic **不设 domain** → savePendingTopic
+//   - scheduler 路径（本单元）：用通用 gossipExtractFacts，build topic **不设 domain** → savePendingTopic
 //     默认 `domain ?? "acg"`。故 cron 自动爬取入池的是 **domain='acg'**，而吃瓜待审视图过滤
 //     domain='gossip' —— cron 发现的选题不会出现在吃瓜池。这是 ACG 时代排程管线未随吃瓜化迁移
 //     的真实功能缺口，本单元**特征化（characterize）当前行为**并断言 'acg'，不写假的 'gossip'。
@@ -26,9 +26,9 @@ vi.mock("node-cron", () => ({
 		schedule: vi.fn(() => ({ stop: vi.fn() })),
 	},
 }));
-// mock LLM 提炼出口（scheduler 经 extractFacts，非 gossipExtractFacts）。
-vi.mock("./scraper/fact-extractor.js", () => ({
-	extractFacts: vi.fn(),
+// mock LLM 提炼出口（scheduler 经 gossipExtractFacts，非 gossipExtractFacts）。
+vi.mock("./scraper/gossip-fact-extractor.js", () => ({
+	gossipExtractFacts: vi.fn(),
 }));
 // mock 渠道存储（resolveMaxDepth 会查；返回 null = 单页退化，确定化）。
 vi.mock("./scraper/channel-store.js", () => ({
@@ -40,7 +40,7 @@ vi.mock("./services/telegram.js", () => ({
 }));
 
 import cron from "node-cron";
-import { extractFacts } from "./scraper/fact-extractor.js";
+import { gossipExtractFacts } from "./scraper/gossip-fact-extractor.js";
 import { getDb, initPendingDb, resetPendingDb } from "./scraper/pending-db.js";
 import { listPendingTopics } from "./scraper/pending-store.js";
 import { startScheduler } from "./scraper/scheduler.js";
@@ -68,12 +68,19 @@ let testId = 0;
 let currentSite: string;
 let currentUrl: string;
 
-// ⚠️ 注意 facts 形状：scheduler 经通用 extractFacts，其 ExtractedFacts.facts 是 **FactsBlock**
-// （ACG 形状，如 作品名），**非** gossip 的 GossipFactsBlock（當事人/熱度標籤）。这与 domain='acg'
-// 同源——cron 路径端到端是 ACG 时代形状，未随吃瓜化迁移。故此处用 ACG 形状 facts（同 scheduler.test.ts）。
-function acgFacts() {
+// ⚠️ 注意 facts 形状：scheduler 经通用 gossipExtractFacts，其 ExtractedFacts.facts 是 GossipFactsBlock（當事人/熱度標籤）。
+function gossipFacts() {
 	return {
-		facts: { 作品名: "测试作品" },
+		facts: {
+			當事人: "测试当事人",
+			事件摘要: null,
+			起因: null,
+			經過: null,
+			結果: null,
+			來源連結: null,
+			發生時間: null,
+			熱度標籤: null,
+		},
 		confidence: 0.8,
 		coverImageUrl: undefined,
 		extractionMode: "strict" as const,
@@ -121,7 +128,7 @@ beforeEach(() => {
 	initPendingDb();
 	getDb().exec("DELETE FROM pending_topics");
 	vi.clearAllMocks();
-	vi.mocked(extractFacts).mockResolvedValue(acgFacts());
+	vi.mocked(gossipExtractFacts).mockResolvedValue(gossipFacts());
 	process.env.LLM_ENDPOINT = "https://api.test";
 	process.env.LLM_API_KEY = "test-key";
 	testId++;
@@ -145,7 +152,7 @@ describe("E5 scheduler 单条 URL 路径 → 真 pending-store", () => {
 		expect(t.sourceUrl).toBe(currentUrl);
 		expect(t.siteName).toBe(currentSite);
 		expect(t.title).toBe(MOCK_RAW.title);
-		expect(t.facts).toMatchObject({ 作品名: "测试作品" });
+		expect(t.facts).toMatchObject({ 當事人: "测试当事人" });
 		expect(t.confidence).toBe(0.8);
 		expect(t.status).toBe("pending");
 		// score 由真 computeScore 算出（mock 版本拿不到）。

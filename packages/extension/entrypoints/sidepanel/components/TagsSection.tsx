@@ -21,7 +21,7 @@ export function TagsSection({
 					id="tags"
 					className="field-input"
 					style={{ minHeight: 80 }}
-					placeholder={"漢化\n無修正\n校園日常\n…（约 20–50 条为宜）"}
+					placeholder={"明星八卦\n出軌\n塌房\n爆料\n…（约 20–50 条为宜）"}
 					value={tagsText}
 					onChange={(e) => setTagsText(e.target.value)}
 				/>

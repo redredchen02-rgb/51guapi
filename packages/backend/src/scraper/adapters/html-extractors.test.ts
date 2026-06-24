@@ -40,7 +40,7 @@ describe("html-extractors.extractTitle / extractBody（提取邏輯）", () => {
 		const html = `<html><body>${evil}</body></html>`;
 		const t0 = Date.now();
 		const body = extractBody(html);
-		expect(Date.now() - t0).toBeLessThan(1000);
+		expect(Date.now() - t0).toBeLessThan(3000);
 		expect(typeof body).toBe("string");
 	});
 

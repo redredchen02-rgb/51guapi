@@ -1,7 +1,7 @@
 import { getDb, pendingWriteQueue } from "./pending-db.js";
 
-export function addToBlacklist(keyword: string): void {
-	pendingWriteQueue.enqueue(() => {
+export function addToBlacklist(keyword: string): Promise<void> {
+	return pendingWriteQueue.enqueue(() => {
 		getDb()
 			.prepare(
 				"INSERT OR IGNORE INTO ranking_blacklist (keyword, hidden_at) VALUES (?, ?)",

@@ -242,10 +242,7 @@ export function insertChannel(input: CreateChannelInput): CreateChannelResult {
 		id: `chan_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
 		hostname: input.hostname,
 		displayName: input.displayName || input.hostname,
-		pathPrefix:
-			input.pathPrefix && input.pathPrefix.startsWith("/")
-				? input.pathPrefix
-				: "/",
+		pathPrefix: input.pathPrefix?.startsWith("/") ? input.pathPrefix : "/",
 		// clamp 到 [1, MAX_DEPTH];非整数/≤0/缺省回落 1,超界收敛到 MAX_DEPTH。
 		maxDepth:
 			Number.isInteger(input.maxDepth) && (input.maxDepth as number) > 0
