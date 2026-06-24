@@ -26,8 +26,26 @@ vi.mock("./scraper/scheduler.js", async (importOriginal) => {
 	return { ...actual, startScheduler: vi.fn() };
 });
 
+// generate-article 路由用到的两个依赖，mock 掉避免真实 DB 或 LLM 呼叫。
+vi.mock("./scraper/pending-store.js", () => ({
+	loadPendingTopic: vi.fn(),
+	savePendingTopic: vi.fn(),
+	listPendingTopics: vi.fn(),
+	deletePendingTopic: vi.fn(),
+	updatePendingTopicStatus: vi.fn(),
+	pendingTopicExistsBySourceUrl: vi.fn(),
+	pendingTopicsExistingBySourceUrls: vi.fn(),
+	pendingTopicExistsByFingerprint: vi.fn(),
+	listGossipPendingFacts: vi.fn(),
+}));
+vi.mock("./services/draft-article-gen.js", () => ({
+	generateArticleDraft: vi.fn(),
+}));
+
 import { buildApp, registerDraftRoutes, startBackgroundJobs } from "./app.js";
 import { resetPendingDb } from "./scraper/pending-db.js";
+import { loadPendingTopic } from "./scraper/pending-store.js";
+import { generateArticleDraft } from "./services/draft-article-gen.js";
 import {
 	generateDraft,
 	listModels,
@@ -39,6 +57,8 @@ const mockGenerate = vi.mocked(generateDraft);
 const mockListModels = vi.mocked(listModels);
 const mockReview = vi.mocked(reviewDraftLlm);
 const mockRewrite = vi.mocked(rewriteDraftLlm);
+const mockLoadTopic = vi.mocked(loadPendingTopic);
+const mockGenArticle = vi.mocked(generateArticleDraft);
 
 const SAVED = {
 	key: process.env.LLM_API_KEY,
@@ -447,5 +467,174 @@ describe("startBackgroundJobs", () => {
 		expect(() => startBackgroundJobs(app)).not.toThrow();
 		const messages = info.mock.calls.map((c) => String(c[0]));
 		expect(messages.some((m) => m.includes("started"))).toBe(true);
+	});
+});
+
+// ================================================================
+// POST /api/v1/drafts/generate-article — app.ts 直接注册的路由
+// ================================================================
+
+const GOSSIP_FACTS = { 當事人: "章子怡", 事件概述: "分居傳聞" };
+const ARTICLE_DRAFT = {
+	ok: true,
+	draft: {
+		id: "art1",
+		title: "章子怡分居",
+		subtitle: "",
+		category: "gossip",
+		coverImageUrl: "",
+		body: "...",
+		tags: [],
+		description: "",
+		status: "draft",
+		createdAt: new Date().toISOString(),
+	},
+};
+
+describe("POST /api/v1/drafts/generate-article（via buildApp）", () => {
+	let app: FastifyInstance;
+
+	beforeEach(async () => {
+		mockLoadTopic.mockReset();
+		mockGenArticle.mockReset();
+		setConfig();
+		app = buildApp();
+		registerDraftRoutes(app);
+		await app.ready();
+	});
+
+	afterEach(async () => {
+		await app.close();
+	});
+
+	it("topic 不存在 → 404", async () => {
+		mockLoadTopic.mockResolvedValueOnce(null as never);
+		const res = await app.inject({
+			method: "POST",
+			url: "/api/v1/drafts/generate-article",
+			payload: { topicId: "not-found" },
+		});
+		expect(res.statusCode).toBe(404);
+	});
+
+	it("topic.status !== approved → 400", async () => {
+		mockLoadTopic.mockResolvedValueOnce({
+			id: "t1",
+			status: "pending",
+			domain: "gossip",
+			facts: GOSSIP_FACTS,
+		} as never);
+		const res = await app.inject({
+			method: "POST",
+			url: "/api/v1/drafts/generate-article",
+			payload: { topicId: "t1" },
+		});
+		expect(res.statusCode).toBe(400);
+		expect(res.json().error).toContain("尚未审核通过");
+	});
+
+	it("topic.domain !== gossip → 400", async () => {
+		mockLoadTopic.mockResolvedValueOnce({
+			id: "t2",
+			status: "approved",
+			domain: "acg",
+			facts: GOSSIP_FACTS,
+		} as never);
+		const res = await app.inject({
+			method: "POST",
+			url: "/api/v1/drafts/generate-article",
+			payload: { topicId: "t2" },
+		});
+		expect(res.statusCode).toBe(400);
+		expect(res.json().error).toContain("gossip");
+	});
+
+	it("facts 不是 GossipFactsBlock → 400", async () => {
+		mockLoadTopic.mockResolvedValueOnce({
+			id: "t3",
+			status: "approved",
+			domain: "gossip",
+			facts: { title: "no gossip key" },
+		} as never);
+		const res = await app.inject({
+			method: "POST",
+			url: "/api/v1/drafts/generate-article",
+			payload: { topicId: "t3" },
+		});
+		expect(res.statusCode).toBe(400);
+	});
+
+	it("無 LLM 配置 → 500 kind=no-key", async () => {
+		clearConfig();
+		mockLoadTopic.mockResolvedValueOnce({
+			id: "t4",
+			status: "approved",
+			domain: "gossip",
+			facts: GOSSIP_FACTS,
+		} as never);
+		const res = await app.inject({
+			method: "POST",
+			url: "/api/v1/drafts/generate-article",
+			payload: { topicId: "t4" },
+		});
+		expect(res.statusCode).toBe(500);
+		expect(res.json().kind).toBe("no-key");
+	});
+
+	it("generateArticleDraft 成功 → 200", async () => {
+		mockLoadTopic.mockResolvedValueOnce({
+			id: "t5",
+			status: "approved",
+			domain: "gossip",
+			facts: GOSSIP_FACTS,
+		} as never);
+		mockGenArticle.mockResolvedValueOnce(ARTICLE_DRAFT as never);
+		const res = await app.inject({
+			method: "POST",
+			url: "/api/v1/drafts/generate-article",
+			payload: { topicId: "t5" },
+		});
+		expect(res.statusCode).toBe(200);
+		expect(res.json().draft.id).toBe("art1");
+	});
+
+	it("generateArticleDraft 返回 ok=false → 422", async () => {
+		mockLoadTopic.mockResolvedValueOnce({
+			id: "t6",
+			status: "approved",
+			domain: "gossip",
+			facts: GOSSIP_FACTS,
+		} as never);
+		mockGenArticle.mockResolvedValueOnce({
+			ok: false,
+			error: "LLM failed",
+			kind: "network",
+		} as never);
+		const res = await app.inject({
+			method: "POST",
+			url: "/api/v1/drafts/generate-article",
+			payload: { topicId: "t6" },
+		});
+		expect(res.statusCode).toBe(422);
+		expect(res.json().kind).toBe("network");
+	});
+
+	it("generateArticleDraft 抛錯 → 500 (catch block)", async () => {
+		mockLoadTopic.mockResolvedValueOnce({
+			id: "t7",
+			status: "approved",
+			domain: "gossip",
+			facts: GOSSIP_FACTS,
+		} as never);
+		mockGenArticle.mockRejectedValueOnce(
+			new Error("unexpected crash") as never,
+		);
+		const res = await app.inject({
+			method: "POST",
+			url: "/api/v1/drafts/generate-article",
+			payload: { topicId: "t7" },
+		});
+		expect(res.statusCode).toBe(500);
+		expect(res.json().kind).toBe("network");
 	});
 });
