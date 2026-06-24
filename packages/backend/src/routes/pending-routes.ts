@@ -5,6 +5,7 @@ import type { FastifyInstance } from "fastify";
 import { loadVerifyConfig } from "../scraper/gossip-verify-config.js";
 import {
 	deletePendingTopic,
+	listGossipPendingFacts,
 	listPendingTopics,
 	loadPendingTopic,
 	type PendingStatus,
@@ -153,12 +154,8 @@ export async function registerPendingRoutes(
 		},
 		async (request) => {
 			const onlyVerified = request.query.verified !== "false"; // 默认 true
-			const gossip = await listPendingTopics(200, undefined, "score", "gossip");
-			const available = gossip.filter((t) => t.status === "pending");
-			const pool = onlyVerified
-				? available.filter((t) => t.verifiedAt != null)
-				: available;
-			const themes = countThemes(pool.map((t) => t.facts as GossipFactsBlock));
+			const facts = listGossipPendingFacts(onlyVerified);
+			const themes = countThemes(facts as GossipFactsBlock[]);
 			return { ok: true, themes };
 		},
 	);

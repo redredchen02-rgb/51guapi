@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { getDb, initPendingDb } from "./pending-db.js";
 import {
 	deletePendingTopic,
+	listGossipPendingFacts,
 	listPendingTopics,
 	loadPendingTopic,
 	type PendingTopic,
@@ -585,6 +586,52 @@ describe("pendingTopicsExistingBySourceUrls — O5 批量存在性查询", () =>
 		]);
 		expect(result).toEqual(new Set(["https://exist.com/x"]));
 		expect(result.has("https://new.com/y")).toBe(false);
+	});
+
+	it("listGossipPendingFacts onlyVerified=true 只返回已核对的 gossip facts", async () => {
+		const gossipFacts = {
+			當事人: "測試",
+			事件摘要: null,
+			起因: null,
+			經過: null,
+			結果: null,
+			來源連結: null,
+			發生時間: null,
+			熱度標籤: "出軌",
+		};
+		await savePendingTopic(
+			makeTopic({
+				id: "gv1",
+				sourceUrl: "https://g.com/1",
+				domain: "gossip",
+				facts: gossipFacts,
+				verifiedAt: "2026-01-01T00:00:00Z",
+			}),
+		);
+		await savePendingTopic(
+			makeTopic({
+				id: "gv2",
+				sourceUrl: "https://g.com/2",
+				domain: "gossip",
+				facts: gossipFacts,
+			}),
+		); // 未核对
+		await savePendingTopic(
+			makeTopic({
+				id: "av1",
+				sourceUrl: "https://a.com/1",
+				domain: "acg",
+				facts: gossipFacts,
+				verifiedAt: "2026-01-01T00:00:00Z",
+			}),
+		); // 非 gossip
+
+		const verified = listGossipPendingFacts(true);
+		expect(verified).toHaveLength(1);
+		expect((verified[0] as { 當事人: string }).當事人).toBe("測試");
+
+		const all = listGossipPendingFacts(false);
+		expect(all).toHaveLength(2); // gv1 + gv2，不含 acg
 	});
 
 	it("与 discover 过滤等价：filter(!existingUrls.has) 结果与逐个查询语义一致", async () => {
