@@ -3,7 +3,11 @@
 import type { Settings } from "@51guapi/shared";
 import { describe, expect, it, vi } from "vitest";
 import { generateDraft } from "./draft-gen.js";
-import { fetchWithBackoff } from "./fetch-backoff.js";
+import {
+	defaultSleep,
+	fetchWithBackoff,
+	parseRetryAfter,
+} from "./fetch-backoff.js";
 
 const settings: Settings = {
 	endpoint: "https://api.example.com/v1/chat/completions",
@@ -132,6 +136,82 @@ describe("fetchWithBackoff — O4 墙钟预算守", () => {
 
 		// maxRetries=2: sleep 被调用两次后 attempt>=maxRetries 退出
 		expect(sleep).toHaveBeenCalledTimes(2);
+	});
+});
+
+// ---- defaultSleep ----
+
+describe("defaultSleep", () => {
+	it("0ms 立即 resolve，不拋錯", async () => {
+		await expect(defaultSleep(0)).resolves.toBeUndefined();
+	});
+});
+
+// ---- parseRetryAfter ----
+
+function makeResp(header: string | null): Response {
+	return {
+		ok: false,
+		status: 429,
+		headers: { get: () => header },
+	} as unknown as Response;
+}
+
+describe("parseRetryAfter", () => {
+	const NOW = 1_000_000;
+
+	it("無 Retry-After header → null", () => {
+		expect(parseRetryAfter(makeResp(null), NOW)).toBeNull();
+	});
+
+	it("數字 header '2' → 2000ms", () => {
+		expect(parseRetryAfter(makeResp("2"), NOW)).toBe(2000);
+	});
+
+	it("數字 header '0' → 0ms（clamp to 0）", () => {
+		expect(parseRetryAfter(makeResp("0"), NOW)).toBe(0);
+	});
+
+	it("HTTP-date header → 正 delta ms", () => {
+		const futureMs = NOW + 5000;
+		const dateStr = new Date(futureMs).toUTCString();
+		const result = parseRetryAfter(makeResp(dateStr), NOW);
+		expect(result).toBeGreaterThanOrEqual(4990); // 容許 parse 誤差
+	});
+
+	it("無效字串 → null", () => {
+		expect(parseRetryAfter(makeResp("not-a-date-or-number"), NOW)).toBeNull();
+	});
+});
+
+// ---- fetchWithBackoff: network error ----
+
+describe("fetchWithBackoff — fetch 拋出網路錯誤", () => {
+	it("fetchFn throw → 立即返回 { fetchErr }，不重試", async () => {
+		const netErr = new Error("ECONNREFUSED");
+		const fetchFn = vi.fn(async () => {
+			throw netErr;
+		});
+
+		const { fetchErr, res } = await fetchWithBackoff(
+			fetchFn,
+			"https://api.example.com",
+			{},
+			5_000,
+			{
+				settings: FAKE_SETTINGS,
+				apiKey: "k",
+				maxRetries: 3,
+				retryBaseMs: 100,
+				retryCapMs: 1_000,
+				wallClockBudgetMs: 60_000,
+				sleep: vi.fn(noSleep),
+			},
+		);
+
+		expect(fetchErr).toBe(netErr);
+		expect(res).toBeUndefined();
+		expect(fetchFn).toHaveBeenCalledTimes(1); // 不重試
 	});
 });
 
