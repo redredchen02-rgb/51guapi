@@ -1,13 +1,7 @@
+import type { GossipSite } from "@51guapi/shared";
 import { apiFetch } from "@/lib/api-client";
 
-export interface GossipSite {
-	id: string;
-	name: string;
-	listUrl: string;
-	createdAt: string;
-	lastDiscoverAt?: string | null;
-	lastDiscoverCount?: number | null;
-}
+export type { GossipSite };
 
 export async function listGossipSites(): Promise<{
 	ok: boolean;

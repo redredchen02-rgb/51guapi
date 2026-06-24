@@ -1,5 +1,12 @@
-import type { PendingTopic, RejectionReason } from "@51guapi/shared";
+import type {
+	PendingTopic,
+	PendingTopicsResponse,
+	RejectionReason,
+	ThemeCount,
+} from "@51guapi/shared";
 import { apiFetch } from "@/lib/api-client";
+
+export type { PendingTopicsResponse, ThemeCount };
 
 export interface ListPendingTopicsParams {
 	status?: "pending" | "approved" | "rejected";
@@ -8,17 +15,6 @@ export interface ListPendingTopicsParams {
 	verified?: boolean;
 	sort_by?: "score" | "created_at";
 	limit?: number;
-}
-
-export interface PendingTopicsResponse {
-	ok: boolean;
-	topics: PendingTopic[];
-	total?: number;
-}
-
-export interface ThemeCount {
-	theme: string;
-	count: number;
 }
 
 export async function listPendingTopics(
