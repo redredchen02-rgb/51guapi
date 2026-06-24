@@ -103,4 +103,33 @@ describe("weibo-scraper", () => {
 		const items = await scrapeWeibo(throwFetch);
 		expect(items).toHaveLength(0);
 	});
+
+	it("incarnate 拋錯（非 HTTP 錯誤）→ 捕捉並返回空陣列 (lines 88-89)", async () => {
+		let call = 0;
+		const mockFetch = vi.fn(async () => {
+			call++;
+			if (call === 1) return makeJsonResponse({ data: { tid: "tid-ok" } });
+			// incarnate step 拋錯
+			throw new Error("incarnate network failure");
+		}) as unknown as typeof fetch;
+		const items = await scrapeWeibo(mockFetch);
+		expect(items).toHaveLength(0);
+	});
+
+	it("hotsearch res.json() 拋錯 → 捕捉並返回空陣列 (lines 109-110)", async () => {
+		const mockFetch = makeMockFetch([
+			makeJsonResponse({ data: { tid: "tid-json-err" } }),
+			makeJsonResponse({}, { "set-cookie": "SUB=ok; path=/" }),
+			{
+				ok: true,
+				status: 200,
+				json: async () => {
+					throw new SyntaxError("bad json");
+				},
+				headers: new Headers(),
+			} as unknown as Response,
+		]);
+		const items = await scrapeWeibo(mockFetch);
+		expect(items).toHaveLength(0);
+	});
 });
