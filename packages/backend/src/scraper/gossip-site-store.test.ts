@@ -5,6 +5,7 @@ import {
 	getGossipSite,
 	listGossipSites,
 	saveGossipSite,
+	updateDiscoverStats,
 } from "./gossip-site-store.js";
 import { initPendingDb } from "./pending-db.js";
 
@@ -66,5 +67,16 @@ describe("gossip-site-store", () => {
 		await deleteGossipSite(site.id);
 		const loaded = await getGossipSite(site.id);
 		expect(loaded).toBeNull();
+	});
+
+	it("updateDiscoverStats：更新後 getGossipSite 含 lastDiscoverAt + lastDiscoverCount", async () => {
+		const site = makeSite({ id: "site_track_test" });
+		await saveGossipSite(site);
+		updateDiscoverStats(site.id, 7);
+		// pendingWriteQueue 使用 setImmediate，需等待
+		await new Promise((r) => setImmediate(r));
+		const loaded = await getGossipSite(site.id);
+		expect(loaded?.lastDiscoverCount).toBe(7);
+		expect(loaded?.lastDiscoverAt).toBeTruthy();
 	});
 });
