@@ -351,7 +351,9 @@ export async function listPendingTopics(
 }
 
 /** 只拉 facts 欄位用於 theme 計數，不受 500 列表上限限制。格式無效的 row 靜默過濾。 */
-export function listGossipPendingFacts(onlyVerified: boolean): GossipFactsBlock[] {
+export function listGossipPendingFacts(
+	onlyVerified: boolean,
+): GossipFactsBlock[] {
 	const db = getDb();
 	const sql = onlyVerified
 		? "SELECT facts FROM pending_topics WHERE domain = 'gossip' AND status = 'pending' AND verified_at IS NOT NULL"

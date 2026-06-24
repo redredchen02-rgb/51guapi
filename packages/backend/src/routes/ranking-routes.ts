@@ -133,7 +133,12 @@ export function registerRankingRoutes(app: FastifyInstance): void {
 
 			const config = resolveLlmConfig();
 			if (!config)
-				return err(reply, 500, "LLM is not configured. Check LLM_API_KEY and LLM_ENDPOINT in .env.", "no-key");
+				return err(
+					reply,
+					500,
+					"LLM is not configured. Check LLM_API_KEY and LLM_ENDPOINT in .env.",
+					"no-key",
+				);
 
 			try {
 				const result = await generateArticleDraft(topic.facts, {

@@ -237,7 +237,11 @@ export function registerDraftRoutes(app: FastifyInstance): void {
 	app.get("/api/v1/models", async (request, reply) => {
 		const config = resolveLlmConfig();
 		if (!config)
-			return err(reply, 500, "LLM is not configured. Check LLM_API_KEY and LLM_ENDPOINT in .env.");
+			return err(
+				reply,
+				500,
+				"LLM is not configured. Check LLM_API_KEY and LLM_ENDPOINT in .env.",
+			);
 		try {
 			return await listModels(config.endpoint, config.apiKey);
 		} catch (e) {
@@ -259,7 +263,12 @@ export function registerDraftRoutes(app: FastifyInstance): void {
 			const { prompt, settings, facts } = request.body;
 			const config = resolveLlmConfig(settings);
 			if (!config)
-				return err(reply, 500, "LLM is not configured. Check LLM_API_KEY and LLM_ENDPOINT in .env.", "no-key");
+				return err(
+					reply,
+					500,
+					"LLM is not configured. Check LLM_API_KEY and LLM_ENDPOINT in .env.",
+					"no-key",
+				);
 			const resolvedSettings = resolveRequestSettings(settings, config);
 			try {
 				const result = await generateDraft(prompt, {
@@ -303,7 +312,11 @@ export function registerDraftRoutes(app: FastifyInstance): void {
 			const { draft, criteriaPrompt, settings } = request.body;
 			const config = resolveLlmConfig(settings);
 			if (!config)
-				return err(reply, 500, "LLM is not configured. Check LLM_API_KEY and LLM_ENDPOINT in .env.");
+				return err(
+					reply,
+					500,
+					"LLM is not configured. Check LLM_API_KEY and LLM_ENDPOINT in .env.",
+				);
 			const resolvedSettings = resolveRequestSettings(settings, config);
 			try {
 				const result = await reviewDraftLlm(draft, criteriaPrompt, {
@@ -336,7 +349,11 @@ export function registerDraftRoutes(app: FastifyInstance): void {
 			const { draft, failedDims, settings } = request.body;
 			const config = resolveLlmConfig(settings);
 			if (!config)
-				return err(reply, 500, "LLM is not configured. Check LLM_API_KEY and LLM_ENDPOINT in .env.");
+				return err(
+					reply,
+					500,
+					"LLM is not configured. Check LLM_API_KEY and LLM_ENDPOINT in .env.",
+				);
 			if (failedDims.length === 0)
 				return err(reply, 400, "failedDims must be a non-empty array.");
 			const resolvedSettings = resolveRequestSettings(settings, config);
@@ -382,7 +399,12 @@ export function registerDraftRoutes(app: FastifyInstance): void {
 
 			const config = resolveLlmConfig();
 			if (!config)
-				return err(reply, 500, "LLM is not configured. Check LLM_API_KEY and LLM_ENDPOINT in .env.", "no-key");
+				return err(
+					reply,
+					500,
+					"LLM is not configured. Check LLM_API_KEY and LLM_ENDPOINT in .env.",
+					"no-key",
+				);
 
 			try {
 				const result = await generateArticleDraft(topic.facts, {
