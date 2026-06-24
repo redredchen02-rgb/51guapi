@@ -614,14 +614,22 @@ describe("A4a 冻结:防幻觉 grounding 闸(draft-gen.ts:337 不变量)", () =>
 
 describe("callLlmForJson", () => {
 	const baseCljDeps = {
-		settings: { endpoint: "https://api.example.com", model: "m", promptTemplate: "" },
+		settings: {
+			endpoint: "https://api.example.com",
+			model: "m",
+			promptTemplate: "",
+		},
 		apiKey: "test-key",
 		maxRetries: 0,
 		retryBaseMs: 0,
 	};
 
 	it("apiKey 空 → ok:false 未配置 (line 120)", async () => {
-		const res = await callLlmForJson("prompt", { ...baseCljDeps, apiKey: "" }, "lb");
+		const res = await callLlmForJson(
+			"prompt",
+			{ ...baseCljDeps, apiKey: "" },
+			"lb",
+		);
 		expect(res.ok).toBe(false);
 		if (!res.ok) expect(res.error).toMatch(/未配置/);
 	});
@@ -631,7 +639,9 @@ describe("callLlmForJson", () => {
 			"prompt",
 			{
 				...baseCljDeps,
-				fetchFn: async () => { throw new TypeError("network fail"); },
+				fetchFn: async () => {
+					throw new TypeError("network fail");
+				},
 			},
 			"lb",
 		);
