@@ -6,7 +6,11 @@ import {
 	pendingTopicExistsBySourceUrl,
 	savePendingTopic,
 } from "./pending-store.js";
-import { startScheduler } from "./scheduler.js";
+import {
+	isSchedulerRunning,
+	startScheduler,
+	stopScheduler,
+} from "./scheduler.js";
 import { scraperConfig } from "./scraper-config.js";
 import type { RawContent, SiteAdapter } from "./site-adapter.js";
 
@@ -434,5 +438,55 @@ describe("startScheduler — maxDepth drives pagination (U2)", () => {
 		expect(paged).toHaveBeenCalledWith(LIST_URL, 5);
 		expect(vi.mocked(savePendingTopic).mock.calls).toHaveLength(3);
 		delete process.env.SCRAPER_LIST_BUDGET;
+	});
+});
+
+// ================================================================
+// stopScheduler / isSchedulerRunning
+// ================================================================
+
+describe("stopScheduler / isSchedulerRunning", () => {
+	it("startScheduler 後 isSchedulerRunning 回傳 true", () => {
+		const siteName = `stop-test-${testId}`;
+		scraperConfig.registerAdapter(makeMockAdapter(`stop-adapter-${testId}`));
+		scraperConfig.addSiteConfig({
+			siteName,
+			adapterName: `stop-adapter-${testId}`,
+			url: `https://test-site.example.com/stop/${testId}`,
+			cron: "0 * * * *",
+			enabled: true,
+		});
+		startScheduler(DEPS);
+		expect(isSchedulerRunning(siteName)).toBe(true);
+	});
+
+	it("stopScheduler 後 isSchedulerRunning 回傳 false，job.stop() 被呼叫", () => {
+		const siteName = `stop-test2-${testId}`;
+		scraperConfig.registerAdapter(makeMockAdapter(`stop-adapter2-${testId}`));
+		scraperConfig.addSiteConfig({
+			siteName,
+			adapterName: `stop-adapter2-${testId}`,
+			url: `https://test-site.example.com/stop2/${testId}`,
+			cron: "0 * * * *",
+			enabled: true,
+		});
+		startScheduler(DEPS);
+		expect(isSchedulerRunning(siteName)).toBe(true);
+
+		// 取出 node-cron mock 回傳的 stop 函數
+		const scheduleCalls = vi.mocked(cron.schedule).mock.results;
+		const jobMock = scheduleCalls[scheduleCalls.length - 1].value as {
+			stop: ReturnType<typeof vi.fn>;
+		};
+
+		stopScheduler();
+
+		expect(jobMock.stop).toHaveBeenCalledOnce();
+		expect(isSchedulerRunning(siteName)).toBe(false);
+	});
+
+	it("空 jobs 時呼叫 stopScheduler 不報錯", () => {
+		stopScheduler(); // jobs 已空（上個測試 stop 後），不應拋錯
+		expect(true).toBe(true);
 	});
 });
