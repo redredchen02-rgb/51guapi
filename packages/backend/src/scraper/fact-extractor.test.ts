@@ -254,4 +254,19 @@ describe("extractFacts — error paths", () => {
 			extractFacts(makeRaw(), { ...BASE_OPTS, fetchFn, timeoutMs: 50 }),
 		).rejects.toThrow(/timed out/);
 	});
+
+	it("choices content 為非 JSON 字串 → parseFactsFromContent catch → confidence 為 0 (line 56)", async () => {
+		const fetchFn = vi.fn(
+			async () =>
+				new Response(
+					JSON.stringify({
+						choices: [{ message: { content: "無法提取，請提供更多資訊。" } }],
+					}),
+					{ status: 200, headers: { "Content-Type": "application/json" } },
+				),
+		) as typeof fetch;
+		const result = await extractFacts(makeRaw(), { ...BASE_OPTS, fetchFn });
+		expect(result.confidence).toBe(0);
+		expect(Object.keys(result.facts)).toHaveLength(0);
+	});
 });

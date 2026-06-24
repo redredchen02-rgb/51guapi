@@ -570,4 +570,59 @@ describe("POST /api/v1/scraper/trigger — 缺少覆蓋分支", () => {
 		expect(res.statusCode).toBe(500);
 		expect(res.json().error).toMatch(/empty discovery result/);
 	});
+
+	it("validateOutboundTarget: config.url 為無效 URL → 400 Invalid target URL format (line 38)", async () => {
+		const adapterName = `invalid-url-adapter-${testId}`;
+		scraperConfig.registerAdapter(makeMockAdapter(adapterName));
+		scraperConfig.addSiteConfig({
+			siteName: `invalid-url-site-${testId}`,
+			adapterName,
+			url: "not-a-valid-url",
+			cron: "0 * * * *",
+			enabled: true,
+		});
+		const res = await app.inject({
+			method: "POST",
+			url: "/api/v1/scraper/trigger",
+			payload: { siteName: `invalid-url-site-${testId}`, legacy: "acg" },
+		});
+		expect(res.statusCode).toBe(400);
+		expect(res.json().error).toMatch(/Invalid target URL format/);
+	});
+
+	it("validateOutboundTarget: config.url 含憑證 → 400 URL credentials not allowed (line 41)", async () => {
+		const adapterName = `cred-url-adapter-${testId}`;
+		scraperConfig.registerAdapter(makeMockAdapter(adapterName));
+		scraperConfig.addSiteConfig({
+			siteName: `cred-url-site-${testId}`,
+			adapterName,
+			url: "https://user:pass@example.com",
+			cron: "0 * * * *",
+			enabled: true,
+		});
+		const res = await app.inject({
+			method: "POST",
+			url: "/api/v1/scraper/trigger",
+			payload: { siteName: `cred-url-site-${testId}`, legacy: "acg" },
+		});
+		expect(res.statusCode).toBe(400);
+		expect(res.json().error).toMatch(/URL credentials not allowed/);
+	});
+
+	it("adapter 名稱未在 scraperConfig 中註冊 → 500 Adapter not registered (line 98)", async () => {
+		scraperConfig.addSiteConfig({
+			siteName: `no-adapter-site-${testId}`,
+			adapterName: `nonexistent-adapter-${testId}`,
+			url: "https://test-site.example.com",
+			cron: "0 * * * *",
+			enabled: true,
+		});
+		const res = await app.inject({
+			method: "POST",
+			url: "/api/v1/scraper/trigger",
+			payload: { siteName: `no-adapter-site-${testId}`, legacy: "acg" },
+		});
+		expect(res.statusCode).toBe(500);
+		expect(res.json().error).toMatch(/Adapter not registered/);
+	});
 });

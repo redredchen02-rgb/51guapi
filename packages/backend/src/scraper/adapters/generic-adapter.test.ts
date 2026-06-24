@@ -165,6 +165,15 @@ describe("generic-adapter.fetchList", () => {
 		expect(results).toHaveLength(0);
 	});
 
+	it("href 含空格（絕對 URL host 無效）→ new URL() 拋錯 → continue，其餘合法連結仍回傳 (line 110)", async () => {
+		const html =
+			'<html><body><a href="http://bad host.com/gossip/99">壞href</a><a href="/gossip/12345">合法</a></body></html>';
+		mockSafeFetch.mockResolvedValueOnce(makeResponse(html));
+		const results = await fetchList("https://example.com/latest");
+		expect(results.some((r) => r.url.includes("12345"))).toBe(true);
+		expect(results.every((r) => !r.url.includes("bad host"))).toBe(true);
+	});
+
 	it("safeFetch 返回非 200 → 返回空陣列", async () => {
 		mockSafeFetch.mockResolvedValueOnce(makeResponse("", 503));
 		const results = await fetchList("https://example.com/latest");
@@ -341,6 +350,12 @@ function listHtmlWithNext(detailIds: number[], nextHref?: string): string {
 }
 
 describe("generic-adapter.fetchListPaged（U1 翻頁能力）", () => {
+	it("listUrl 為無效 URL → new URL() 拋錯 → return [] 不發請求 (line 165)", async () => {
+		const results = await fetchListPaged("not-a-valid-url", 1);
+		expect(results).toHaveLength(0);
+		expect(mockSafeFetch).not.toHaveBeenCalled();
+	});
+
 	it("Happy：兩頁列表，page1 rel=next 指向同 host page2 → 合併去重後回兩頁詳情 URL", async () => {
 		mockSafeFetch
 			.mockResolvedValueOnce(
