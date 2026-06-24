@@ -1,10 +1,19 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { BarChart3, FileText, ListTodo, Rss, Settings, Tv } from "lucide-react";
+import {
+	BarChart3,
+	FileText,
+	ListTodo,
+	Rss,
+	Settings,
+	TrendingUp,
+	Tv,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
 	{ to: "/pending", icon: ListTodo, label: "待審選題" },
 	{ to: "/draft", icon: FileText, label: "草稿編輯器" },
+	{ to: "/gossip-rank", icon: TrendingUp, label: "吃瓜排行" },
 	{ to: "/sites", icon: Tv, label: "吃瓜站點" },
 	{ to: "/channels", icon: Rss, label: "渠道管理" },
 	{ to: "/metrics", icon: BarChart3, label: "運行狀態" },

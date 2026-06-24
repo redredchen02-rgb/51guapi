@@ -56,7 +56,8 @@ function SitesPage() {
 		mutationFn: discoverGossipSite,
 		onSuccess: (res) => {
 			qc.invalidateQueries({ queryKey: ["pending-topics"] });
-			toast.success(`發現 ${res.discovered ?? 0} 篇新選題`);
+			qc.invalidateQueries({ queryKey: ["gossip-sites"] });
+			toast.success(`發現 ${res.total ?? 0} 篇新選題`);
 		},
 		onError: () => toast.error("探索失敗"),
 	});
@@ -89,6 +90,7 @@ function SitesPage() {
 							<TableRow>
 								<TableHead>站點名稱</TableHead>
 								<TableHead>列表 URL</TableHead>
+								<TableHead className="w-32 text-right">最後探索</TableHead>
 								<TableHead className="w-28 text-center">操作</TableHead>
 							</TableRow>
 						</TableHeader>
@@ -99,8 +101,10 @@ function SitesPage() {
 									site={site}
 									onDelete={() => del.mutate(site.id)}
 									onDiscover={() => discover.mutate(site.id)}
-									isDeleting={del.isPending}
-									isDiscovering={discover.isPending}
+									isDeleting={del.isPending && del.variables === site.id}
+									isDiscovering={
+										discover.isPending && discover.variables === site.id
+									}
 								/>
 							))}
 						</TableBody>
@@ -126,6 +130,15 @@ function SiteRow({
 	isDeleting: boolean;
 	isDiscovering: boolean;
 }) {
+	const lastDiscover = site.lastDiscoverAt
+		? new Date(site.lastDiscoverAt).toLocaleString("zh-TW", {
+				month: "2-digit",
+				day: "2-digit",
+				hour: "2-digit",
+				minute: "2-digit",
+			})
+		: null;
+
 	return (
 		<TableRow>
 			<TableCell className="font-medium">
@@ -136,6 +149,22 @@ function SiteRow({
 			</TableCell>
 			<TableCell className="max-w-xs truncate text-sm text-muted-foreground">
 				{site.listUrl}
+			</TableCell>
+			<TableCell className="text-right text-xs text-muted-foreground">
+				{isDiscovering ? (
+					<span className="animate-pulse">探索中…</span>
+				) : lastDiscover ? (
+					<span title={site.lastDiscoverAt ?? ""}>
+						{lastDiscover}
+						{site.lastDiscoverCount != null && (
+							<span className="ml-1 text-primary">
+								+{site.lastDiscoverCount}
+							</span>
+						)}
+					</span>
+				) : (
+					<span>—</span>
+				)}
 			</TableCell>
 			<TableCell>
 				<div className="flex items-center justify-center gap-1">

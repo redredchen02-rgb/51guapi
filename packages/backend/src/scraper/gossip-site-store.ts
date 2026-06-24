@@ -1,7 +1,7 @@
 import { readdir, readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { dataDirEnv } from "../config/data-dir.js";
-import { getDb } from "./pending-db.js";
+import { getDb, pendingWriteQueue } from "./pending-db.js";
 
 export interface GossipSiteConfig {
 	id: string;
@@ -10,6 +10,8 @@ export interface GossipSiteConfig {
 	enabled: boolean;
 	createdAt: string;
 	updatedAt: string;
+	lastDiscoverAt?: string | null;
+	lastDiscoverCount?: number | null;
 }
 
 export interface GossipSiteCreate {
@@ -26,6 +28,8 @@ interface GossipSiteRow {
 	enabled: number;
 	created_at: string;
 	updated_at: string;
+	last_discover_at: string | null;
+	last_discover_count: number | null;
 }
 
 function rowToSite(row: GossipSiteRow): GossipSiteConfig {
@@ -36,6 +40,8 @@ function rowToSite(row: GossipSiteRow): GossipSiteConfig {
 		enabled: row.enabled !== 0,
 		createdAt: row.created_at,
 		updatedAt: row.updated_at,
+		lastDiscoverAt: row.last_discover_at ?? null,
+		lastDiscoverCount: row.last_discover_count ?? null,
 	};
 }
 
@@ -55,6 +61,17 @@ function insertSite(c: GossipSiteConfig, replace: boolean): void {
 			createdAt: c.createdAt,
 			updatedAt: c.updatedAt,
 		});
+}
+
+/** discover 完成後更新站點的最後爬取時間和新增條目數（migration 018 新增欄位）。 */
+export function updateDiscoverStats(id: string, count: number): void {
+	pendingWriteQueue.enqueue(() => {
+		getDb()
+			.prepare(
+				"UPDATE gossip_sites SET last_discover_at = ?, last_discover_count = ? WHERE id = ?",
+			)
+			.run(new Date().toISOString(), count, id);
+	});
 }
 
 // ---- 一次性 JSON→SQLite backfill（幂等;现网通常 0 行,目录多不存在） ----

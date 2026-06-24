@@ -149,6 +149,30 @@ CREATE INDEX IF NOT EXISTS idx_pending_fingerprint ON pending_topics(content_fin
 	// 回滚靠 A8 前置的 data 时间戳备份)。
 	"016-drop-enrichment.sql": `\
 ALTER TABLE pending_topics DROP COLUMN enrichment;`,
+	// 排行流水線:存儲社群平台熱搜關鍵詞。heat_score 為各平台 0-100 正規化後熱度;
+	// rank_position 為排名（1=最熱）;expires_at = captured_at + 24h，查詢時過濾過期資料。
+	"017-hot-search-keywords.sql": `\
+CREATE TABLE IF NOT EXISTS hot_search_keywords (
+  id            TEXT PRIMARY KEY,
+  keyword       TEXT NOT NULL,
+  platform      TEXT NOT NULL CHECK(platform IN ('baidu','weibo','douyin','xiaohongshu')),
+  heat_score    REAL NOT NULL DEFAULT 0,
+  rank_position INTEGER NOT NULL,
+  captured_at   TEXT NOT NULL,
+  expires_at    TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_hot_search_expires ON hot_search_keywords(expires_at);
+CREATE INDEX IF NOT EXISTS idx_hot_search_platform ON hot_search_keywords(platform);`,
+	// 排行流水線:記錄每個吃瓜站點最後一次 discover 的時間和新增條目數。
+	"018-gossip-sites-tracking.sql": `\
+ALTER TABLE gossip_sites ADD COLUMN last_discover_at TEXT DEFAULT NULL;
+ALTER TABLE gossip_sites ADD COLUMN last_discover_count INTEGER DEFAULT NULL;`,
+	// 排行流水線:使用者隱藏某關鍵詞後加入黑名單，後續排行不再顯示。
+	"019-ranking-blacklist.sql": `\
+CREATE TABLE IF NOT EXISTS ranking_blacklist (
+  keyword    TEXT PRIMARY KEY,
+  hidden_at  TEXT NOT NULL
+);`,
 };
 
 export function runMigrations(
