@@ -4,7 +4,7 @@ import { recordScraperRun } from "../services/metrics.js";
 import { sendAlert } from "../services/telegram.js";
 import { generateId } from "../utils/generate-id.js";
 import { getChannelByHostname } from "./channel-store.js";
-import { extractFacts } from "./fact-extractor.js";
+import { gossipExtractFacts } from "./gossip-fact-extractor.js";
 import {
 	type PendingTopic,
 	pendingTopicExistsBySourceUrl,
@@ -88,7 +88,7 @@ async function runSingleUrl(
 
 	try {
 		const { facts, confidence, extractionMode, coverImageUrl } =
-			await extractFacts(rawContent, {
+			await gossipExtractFacts(rawContent, {
 				endpoint: deps.llmEndpoint,
 				apiKey: deps.llmApiKey,
 				model: deps.llmModel || "gpt-4o-mini",
@@ -205,7 +205,7 @@ async function runListDiscovery(
 	for (const url of freshUrls) {
 		try {
 			const rawContent = await adapter.fetchContent(url);
-			const { facts, confidence, coverImageUrl } = await extractFacts(
+			const { facts, confidence, coverImageUrl } = await gossipExtractFacts(
 				rawContent,
 				{
 					endpoint: deps.llmEndpoint,
