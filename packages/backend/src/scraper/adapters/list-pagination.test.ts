@@ -67,4 +67,8 @@ describe("list-pagination.resolveSameHost（纵深防御安全鉤死：協議白
 	it("Security：file: scheme → 協議白名單拒（undefined）", () => {
 		expect(resolveSameHost("file:///etc/passwd", base)).toBeUndefined();
 	});
+
+	it("畸形 href（`http://[` 缺 IPv6 結尾）→ new URL 拋錯 → catch 回 undefined (line 45)", () => {
+		expect(resolveSameHost("http://[", base)).toBeUndefined();
+	});
 });

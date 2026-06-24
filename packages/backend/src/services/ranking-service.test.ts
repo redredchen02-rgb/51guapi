@@ -227,4 +227,20 @@ describe("getRankedList (整合測試 — 需要 DB)", () => {
 			true,
 		);
 	});
+
+	it("sectionB 含 2+ 關鍵詞 → sort 比較子執行（line 230）", async () => {
+		// 兩個無匹配選題的關鍵詞 → 都進 sectionB → comparator 觸發
+		upsertHotSearchBatch([
+			makeKeyword("鄭爽", "baidu", 1, 95),
+			makeKeyword("張繼科", "weibo", 3, 60),
+		]);
+		await new Promise((r) => setTimeout(r, 20));
+
+		const result = await getRankedList();
+		expect(result.sectionB.length).toBeGreaterThanOrEqual(2);
+		// avgHeatScore 高者排前：鄭爽(95) 在 張繼科(60) 之前
+		const idxA = result.sectionB.findIndex((k) => k.keyword === "鄭爽");
+		const idxB = result.sectionB.findIndex((k) => k.keyword === "張繼科");
+		expect(idxA).toBeLessThan(idxB);
+	});
 });

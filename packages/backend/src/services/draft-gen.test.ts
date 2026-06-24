@@ -11,6 +11,7 @@ import {
 import { describe, expect, it, vi } from "vitest";
 import {
 	buildRequest,
+	callLlmForJson,
 	chatCompletionsUrl,
 	generateDraft,
 	listModels,
@@ -160,6 +161,15 @@ describe("listModels", () => {
 			mockFetch({}, { throwName: "AbortError" }),
 		);
 		expect(r).toEqual({ ok: false, error: expect.stringContaining("超时") });
+	});
+	it("res.json() 拋 SyntaxError → ok:false 含「合法 JSON」 (line 429)", async () => {
+		const r = await listModels(
+			"https://h.com/v1",
+			"k",
+			mockFetch(null, { throwJson: true }),
+		);
+		expect(r.ok).toBe(false);
+		if (!r.ok) expect(r.error).toMatch(/合法 JSON/);
 	});
 });
 
@@ -583,5 +593,63 @@ describe("A4a 冻结:防幻觉 grounding 闸(draft-gen.ts:337 不变量)", () =>
 			// verifyLinks 找不到链接,而是该链接确被判定为已溯源。
 			expect(hasUnsourcedLink(verifyLinks(res.draft.body, []))).toBe(true);
 		}
+	});
+
+	it("settings.fallbackModel 非空 → fallback model 加入 modelsToTry (line 221)", async () => {
+		const settingsWithFallback = {
+			...settings,
+			fallbackModel: "gpt-3.5-turbo",
+		};
+		const slots = { titleSuffix: "介紹", intro: "引子" };
+		const res = await generateDraft("主题", {
+			settings: settingsWithFallback,
+			apiKey: "k",
+			facts: FACTS,
+			fetchFn: mockFetch(slotsReply(slots)),
+			...base,
+		});
+		expect(res.ok).toBe(true);
+	});
+});
+
+describe("callLlmForJson", () => {
+	const baseCljDeps = {
+		settings: { endpoint: "https://api.example.com", model: "m", promptTemplate: "" },
+		apiKey: "test-key",
+		maxRetries: 0,
+		retryBaseMs: 0,
+	};
+
+	it("apiKey 空 → ok:false 未配置 (line 120)", async () => {
+		const res = await callLlmForJson("prompt", { ...baseCljDeps, apiKey: "" }, "lb");
+		expect(res.ok).toBe(false);
+		if (!res.ok) expect(res.error).toMatch(/未配置/);
+	});
+
+	it("fetchFn 拋錯 → ok:false 網絡錯誤 (line 135)", async () => {
+		const res = await callLlmForJson(
+			"prompt",
+			{
+				...baseCljDeps,
+				fetchFn: async () => { throw new TypeError("network fail"); },
+			},
+			"lb",
+		);
+		expect(res.ok).toBe(false);
+		if (!res.ok) expect(res.error).toMatch(/网络错误/);
+	});
+
+	it("res.json() 拋錯（200 + 非 JSON body）→ ok:false 非合法 JSON (line 152)", async () => {
+		const res = await callLlmForJson(
+			"prompt",
+			{
+				...baseCljDeps,
+				fetchFn: async () =>
+					new Response("plain text not json", { status: 200 }),
+			},
+			"lb",
+		);
+		expect(res.ok).toBe(false);
+		if (!res.ok) expect(res.error).toMatch(/非合法 JSON/);
 	});
 });
