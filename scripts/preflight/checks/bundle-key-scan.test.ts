@@ -65,7 +65,7 @@ describe("evaluateBundleScan（特征化:植入 key 判红）", () => {
 				manifest_version: 3,
 				name: "x",
 				key: "A".repeat(240),
-				description: "sk-" + "x".repeat(24),
+				description: `sk-${"x".repeat(24)}`,
 			}),
 		);
 		const r = evaluateBundleScan(d);

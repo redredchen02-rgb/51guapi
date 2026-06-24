@@ -5,7 +5,7 @@
 // 故必须在真实 schema(GenerateDraftResponse)绑定下用 app.inject 验证(Unit 1a)。
 
 import Fastify, { type FastifyInstance } from "fastify";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { generateDraft } from "../services/llm.js";
 import { GenerateDraftResponse } from "../utils/schemas.js";
 

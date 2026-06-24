@@ -25,7 +25,7 @@ export function registerRankingRoutes(app: FastifyInstance): void {
 	});
 
 	// POST /api/v1/ranking/scrape — 一鍵觸發所有站點爬取 + 4 平台熱搜抓取
-	app.post("/api/v1/ranking/scrape", async (request, reply) => {
+	app.post("/api/v1/ranking/scrape", async (request, _reply) => {
 		const errors: string[] = [];
 		let topicsDiscovered = 0;
 

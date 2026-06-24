@@ -21,26 +21,22 @@ describe("ranking-blacklist-store", () => {
 	});
 
 	it("addToBlacklist 後可從 getBlacklistSet 讀回", async () => {
-		addToBlacklist("王力宏");
-		// addToBlacklist 使用 pendingWriteQueue.enqueue，需等 microtask 完成
-		await new Promise((r) => setTimeout(r, 20));
+		await addToBlacklist("王力宏");
 		expect(getBlacklistSet().has("王力宏")).toBe(true);
 	});
 
 	it("INSERT OR IGNORE：重複加入同一關鍵詞不報錯且只有一筆", async () => {
-		addToBlacklist("章子怡");
-		addToBlacklist("章子怡");
-		await new Promise((r) => setTimeout(r, 20));
+		await addToBlacklist("章子怡");
+		await addToBlacklist("章子怡");
 		const s = getBlacklistSet();
 		expect(s.has("章子怡")).toBe(true);
 		expect(s.size).toBe(1);
 	});
 
-	it("多個關鍵詞各自獨立加入", async () => {
-		addToBlacklist("A");
-		addToBlacklist("B");
-		addToBlacklist("C");
-		await new Promise((r) => setTimeout(r, 20));
+	it("多個關鍵词各自獨立加入", async () => {
+		await addToBlacklist("A");
+		await addToBlacklist("B");
+		await addToBlacklist("C");
 		const s = getBlacklistSet();
 		expect(s.size).toBe(3);
 		expect(s.has("A")).toBe(true);
@@ -49,8 +45,7 @@ describe("ranking-blacklist-store", () => {
 	});
 
 	it("clearBlacklistForTest 清除全部黑名單", async () => {
-		addToBlacklist("X");
-		await new Promise((r) => setTimeout(r, 20));
+		await addToBlacklist("X");
 		clearBlacklistForTest();
 		expect(getBlacklistSet().size).toBe(0);
 	});

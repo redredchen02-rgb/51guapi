@@ -1,6 +1,7 @@
+import type { GossipFactsBlock } from "@51guapi/shared";
 import cron from "node-cron";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { extractFacts } from "./fact-extractor.js";
+import { gossipExtractFacts } from "./gossip-fact-extractor.js";
 import {
 	type PendingTopic,
 	pendingTopicExistsBySourceUrl,
@@ -24,8 +25,8 @@ vi.mock("node-cron", () => ({
 	},
 }));
 
-vi.mock("./fact-extractor.js", () => ({
-	extractFacts: vi.fn(),
+vi.mock("./gossip-fact-extractor.js", () => ({
+	gossipExtractFacts: vi.fn(),
 }));
 
 vi.mock("./pending-store.js", () => ({
@@ -42,6 +43,22 @@ vi.mock("./channel-store.js", () => ({
 }));
 
 // ---- helpers ----
+
+function mockGossipFacts(
+	overrides: Partial<GossipFactsBlock> = {},
+): GossipFactsBlock {
+	return {
+		當事人: "测试当事人",
+		事件摘要: null,
+		起因: null,
+		經過: null,
+		結果: null,
+		來源連結: null,
+		發生時間: null,
+		熱度標籤: null,
+		...overrides,
+	};
+}
 
 const MOCK_RAW: RawContent = {
 	title: "测试文章",
@@ -107,9 +124,9 @@ afterEach(() => {
 // ================================================================
 
 describe("startScheduler — cron 任务的 coverImageUrl 透传", () => {
-	it("extractFacts 返回 coverImageUrl → savePendingTopic 收到同值 coverImageUrl", async () => {
-		vi.mocked(extractFacts).mockResolvedValue({
-			facts: { 作品名: "测试作品" },
+	it("gossipExtractFacts 返回 coverImageUrl → savePendingTopic 收到同值 coverImageUrl", async () => {
+		vi.mocked(gossipExtractFacts).mockResolvedValue({
+			facts: mockGossipFacts(),
 			confidence: 0.85,
 			coverImageUrl: "https://cdn.example.com/cover.jpg",
 			extractionMode: "strict",
@@ -123,9 +140,9 @@ describe("startScheduler — cron 任务的 coverImageUrl 透传", () => {
 		);
 	});
 
-	it("extractFacts 无 coverImageUrl → topic 不含该字段（条件展开不产生键）", async () => {
-		vi.mocked(extractFacts).mockResolvedValue({
-			facts: { 作品名: "测试作品" },
+	it("gossipExtractFacts 无 coverImageUrl → topic 不含该字段（条件展开不产生键）", async () => {
+		vi.mocked(gossipExtractFacts).mockResolvedValue({
+			facts: mockGossipFacts(),
 			confidence: 0.85,
 			coverImageUrl: undefined,
 			extractionMode: "strict",
@@ -138,8 +155,8 @@ describe("startScheduler — cron 任务的 coverImageUrl 透传", () => {
 	});
 
 	it("topic 其余字段正确（sourceUrl、siteName、title、facts、confidence、status）", async () => {
-		vi.mocked(extractFacts).mockResolvedValue({
-			facts: { 作品名: "测试作品" },
+		vi.mocked(gossipExtractFacts).mockResolvedValue({
+			facts: mockGossipFacts(),
 			confidence: 0.85,
 			coverImageUrl: undefined,
 			extractionMode: "strict",
@@ -153,15 +170,15 @@ describe("startScheduler — cron 任务的 coverImageUrl 透传", () => {
 			sourceUrl: currentUrl,
 			siteName: currentSite,
 			title: MOCK_RAW.title,
-			facts: { 作品名: "测试作品" },
+			facts: mockGossipFacts(),
 			confidence: 0.85,
 			status: "pending",
 		});
 	});
 
 	it("BUG防守：cron path 写入 domain='gossip'（防止默认 acg 导致吃瓜视图不可见）", async () => {
-		vi.mocked(extractFacts).mockResolvedValue({
-			facts: { 作品名: "测试作品" },
+		vi.mocked(gossipExtractFacts).mockResolvedValue({
+			facts: mockGossipFacts(),
 			confidence: 0.85,
 			coverImageUrl: undefined,
 			extractionMode: "strict",
@@ -173,8 +190,8 @@ describe("startScheduler — cron 任务的 coverImageUrl 透传", () => {
 		expect(savedTopic().domain).toBe("gossip");
 	});
 
-	it("extractFacts reject → 不调用 savePendingTopic，错误被吞不外抛", async () => {
-		vi.mocked(extractFacts).mockRejectedValue(new Error("LLM down"));
+	it("gossipExtractFacts reject → 不调用 savePendingTopic，错误被吞不外抛", async () => {
+		vi.mocked(gossipExtractFacts).mockRejectedValue(new Error("LLM down"));
 
 		const job = startAndGetJob();
 		await expect(job()).resolves.toBeUndefined();
@@ -242,8 +259,8 @@ describe("startScheduler — list-discovery mode (U4)", () => {
 		// clearAllMocks does not reset implementations; explicitly restore defaults here
 		vi.mocked(pendingTopicExistsBySourceUrl).mockResolvedValue(false);
 		vi.mocked(savePendingTopic).mockResolvedValue({ inserted: true });
-		vi.mocked(extractFacts).mockResolvedValue({
-			facts: { 作品名: "测试作품" },
+		vi.mocked(gossipExtractFacts).mockResolvedValue({
+			facts: mockGossipFacts(),
 			confidence: 0.85,
 			coverImageUrl: undefined,
 			extractionMode: "strict",
@@ -385,8 +402,8 @@ describe("startScheduler — maxDepth drives pagination (U2)", () => {
 		vi.mocked(getChannelByHostname).mockReturnValue(null);
 		vi.mocked(pendingTopicExistsBySourceUrl).mockResolvedValue(false);
 		vi.mocked(savePendingTopic).mockResolvedValue({ inserted: true });
-		vi.mocked(extractFacts).mockResolvedValue({
-			facts: { 作品名: "测试" },
+		vi.mocked(gossipExtractFacts).mockResolvedValue({
+			facts: mockGossipFacts(),
 			confidence: 0.85,
 			coverImageUrl: undefined,
 			extractionMode: "strict",
@@ -499,8 +516,8 @@ describe("startScheduler — 邊緣 branch", () => {
 	it("cron 表達式不合法 → 該站點不進 jobs Map（isSchedulerRunning=false）", () => {
 		const siteName = `bad-cron-${testId}`;
 		// validate 對第一個使用 "bad-expression" 的呼叫回傳 false
-		vi.mocked(cron.validate).mockImplementation((expr) =>
-			expr === "bad-expression" ? false : true,
+		vi.mocked(cron.validate).mockImplementation(
+			(expr) => expr !== "bad-expression",
 		);
 		scraperConfig.registerAdapter(makeMockAdapter(`bad-adapter-${testId}`));
 		scraperConfig.addSiteConfig({

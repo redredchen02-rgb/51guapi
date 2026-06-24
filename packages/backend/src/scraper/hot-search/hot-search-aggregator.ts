@@ -2,6 +2,7 @@ import type { HotSearchKeyword } from "../hot-search-store.js";
 import { upsertHotSearchBatch } from "../hot-search-store.js";
 import { scrapeBaidu } from "./baidu-scraper.js";
 import { scrapeDouyin } from "./douyin-scraper.js";
+import { isGossipOrEntertainment } from "./gossip-filter.js";
 import type { HotSearchItem } from "./types.js";
 import { scrapeWeibo } from "./weibo-scraper.js";
 
@@ -43,12 +44,15 @@ export async function scrapeAllPlatforms(
 		scrapeDouyin(fetchFn),
 	]);
 
-	const baiduItems =
-		baiduResult.status === "fulfilled" ? baiduResult.value : [];
-	const weiboItems =
-		weiboResult.status === "fulfilled" ? weiboResult.value : [];
-	const douyinItems =
-		douyinResult.status === "fulfilled" ? douyinResult.value : [];
+	const baiduItems = (
+		baiduResult.status === "fulfilled" ? baiduResult.value : []
+	).filter((item) => isGossipOrEntertainment(item.keyword));
+	const weiboItems = (
+		weiboResult.status === "fulfilled" ? weiboResult.value : []
+	).filter((item) => isGossipOrEntertainment(item.keyword));
+	const douyinItems = (
+		douyinResult.status === "fulfilled" ? douyinResult.value : []
+	).filter((item) => isGossipOrEntertainment(item.keyword));
 
 	if (baiduResult.status === "rejected")
 		errors.push(`baidu: ${baiduResult.reason}`);

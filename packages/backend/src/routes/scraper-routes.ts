@@ -1,15 +1,8 @@
 import { isIP } from "node:net";
 import type { FastifyInstance } from "fastify";
-import { extractFacts } from "../scraper/fact-extractor.js";
-import {
-	type PendingTopic,
-	savePendingTopic,
-} from "../scraper/pending-store.js";
 import { scraperConfig } from "../scraper/scraper-config.js";
 import { isHostAllowed, loadSSRFAllowlist } from "../scraper/ssrf-allowlist.js";
-import { recordScraperRun } from "../services/metrics.js";
 import { err } from "../utils/error-response.js";
-import { generateId } from "../utils/generate-id.js";
 import {
 	AutoGenerateBody as AutoGenerateBodySchema,
 	TriggerScrapeBody as TriggerScrapeBodySchema,
@@ -28,7 +21,7 @@ interface TriggerBody {
  *   2. isHostAllowed 复检：config.url 与 discovery pick 此前未过 allowlist（仅 caller url 过）。
  * 返回 { status, message }（调用方转错误响应）或 null（放行）。
  */
-function validateOutboundTarget(
+function _validateOutboundTarget(
 	rawUrl: string,
 ): { status: number; message: string } | null {
 	let parsed: URL;
@@ -68,172 +61,13 @@ export async function registerScraperRoutes(
 				body: TriggerScrapeBodySchema,
 			},
 		},
-		async (request, reply) => {
-			const { siteName, url, legacy } = request.body;
-
-			if (legacy !== "acg") {
-				return err(
-					reply,
-					410,
-					"Legacy ACG scraper trigger is disabled for the gossip workflow. Use /api/v1/gossip/topics/from-url, or pass legacy:'acg' only for archived ACG maintenance.",
-					"legacy-acg-disabled",
-				);
-			}
-
-			if (!siteName) {
-				return err(reply, 400, "Missing required field: siteName");
-			}
-
-			const config = scraperConfig.getSiteConfig(siteName);
-			if (!config?.enabled) {
-				return err(
-					reply,
-					404,
-					`Site config not found or disabled: ${siteName}`,
-				);
-			}
-
-			const adapter = scraperConfig.getAdapter(config.adapterName);
-			if (!adapter) {
-				return err(reply, 500, `Adapter not registered: ${config.adapterName}`);
-			}
-
-			// List-discovery mode: if no URL supplied and config.listUrl exists, scan the list page.
-			let targetUrl: string;
-			if (url) {
-				targetUrl = url;
-			} else if (!url && config.listUrl && adapter.fetchList) {
-				request.log.info(`List-discovery mode: scanning ${config.listUrl}`);
-				let discovered: string[];
-				try {
-					discovered = await adapter.fetchList(config.listUrl);
-				} catch (e) {
-					request.log.error(e, `fetchList failed for ${config.listUrl}`);
-					return err(
-						reply,
-						500,
-						"Failed to fetch list. Check server logs for details.",
-					);
-				}
-				if (discovered.length === 0) {
-					return err(
-						reply,
-						404,
-						`No articles found at list URL: ${config.listUrl}`,
-					);
-				}
-				// Pick a random article from the discovered list.
-				const randomIndex = Math.floor(Math.random() * discovered.length);
-				const pick = discovered[randomIndex];
-				if (!pick) {
-					return err(reply, 500, "Unexpected: empty discovery result");
-				}
-				targetUrl = pick;
-				request.log.info(
-					`Discovered ${discovered.length} URLs, selected: ${targetUrl}`,
-				);
-			} else {
-				targetUrl = config.url;
-			}
-
-			if (!targetUrl) {
-				return err(reply, 400, "No URL provided and no default URL in config");
-			}
-
-			// SSRF allowlist: caller-supplied url must share hostname and protocol with the registered site config.
-			// Also reject URLs with credentials (userinfo) to prevent bypass via http://evil@allowed.com/.
-			if (url) {
-				let parsed: URL;
-				let configParsed: URL;
-				try {
-					parsed = new URL(url);
-					configParsed = new URL(config.url);
-				} catch {
-					return err(reply, 400, "Invalid URL format");
-				}
-				if (parsed.username || parsed.password) {
-					return err(reply, 400, "URL credentials not allowed");
-				}
-				if (parsed.hostname !== configParsed.hostname) {
-					return err(
-						reply,
-						400,
-						`URL hostname not allowed for site ${siteName}: ${parsed.hostname}`,
-					);
-				}
-				if (parsed.protocol !== configParsed.protocol) {
-					return err(
-						reply,
-						400,
-						`URL protocol not allowed for site ${siteName}: ${parsed.protocol}`,
-					);
-				}
-			}
-
-			// 统一出站闸：无论 targetUrl 来自 caller url / config.url / discovery pick，
-			// 交给 adapter 前都拒 IP 字面 + 复检 allowlist（前者堵 IP-literal 绕过 host
-			// 命名空间，后者补 config.url/pick 此前缺失的 allowlist 校验）。
-			const targetErr = validateOutboundTarget(targetUrl);
-			if (targetErr) {
-				return err(reply, targetErr.status, targetErr.message);
-			}
-
-			const llmEndpoint = process.env.LLM_ENDPOINT;
-			const llmApiKey = process.env.LLM_API_KEY;
-
-			if (!llmEndpoint || !llmApiKey) {
-				return err(
-					reply,
-					500,
-					"LLM_ENDPOINT and LLM_API_KEY must be set in .env",
-				);
-			}
-
-			try {
-				// Step 1: Fetch raw content via adapter
-				request.log.info(
-					`Fetching content from ${targetUrl} via adapter ${adapter.name}`,
-				);
-				const rawContent = await adapter.fetchContent(targetUrl);
-
-				// Step 2: Extract facts via LLM
-				request.log.info("Extracting facts via LLM");
-				const { facts, confidence, coverImageUrl } = await extractFacts(
-					rawContent,
-					{
-						endpoint: llmEndpoint,
-						apiKey: llmApiKey,
-						model: process.env.LLM_MODEL || "gpt-4o-mini",
-					},
-				);
-
-				// Step 3: Save as pending topic
-				const now = new Date().toISOString();
-				const id = generateId("scrape");
-				const pendingTopic: PendingTopic = {
-					id,
-					sourceUrl: targetUrl,
-					siteName: config.siteName,
-					title: rawContent.title,
-					rawContent,
-					facts,
-					confidence,
-					domain: "acg",
-					...(coverImageUrl ? { coverImageUrl } : {}),
-					status: "pending",
-					createdAt: now,
-					updatedAt: now,
-				};
-
-				await savePendingTopic(pendingTopic);
-				recordScraperRun(true);
-
-				return { ok: true, pendingTopic };
-			} catch (e) {
-				recordScraperRun(false);
-				request.log.error(e, `Scrape failed for ${siteName}`);
-				return err(reply, 500, "Scrape failed. Check server logs for details.");
-			}
+		async (_request, reply) => {
+			return err(
+				reply,
+				410,
+				"Legacy ACG scraper trigger is disabled.",
+				"legacy-acg-disabled",
+			);
 		},
 	);
 
@@ -267,50 +101,13 @@ export async function registerScraperRoutes(
 				body: AutoGenerateBodySchema,
 			},
 		},
-		async (request, reply) => {
-			const { minConfidence, maxItems, legacy } = request.body ?? {};
-
-			if (legacy !== "acg") {
-				return err(
-					reply,
-					410,
-					"Legacy ACG auto-generate is disabled for the gossip workflow. Use pending-topic review plus /api/v1/drafts/generate, or pass legacy:'acg' only for archived ACG maintenance.",
-					"legacy-acg-disabled",
-				);
-			}
-
-			const llmEndpoint = process.env.LLM_ENDPOINT;
-			const llmApiKey = process.env.LLM_API_KEY;
-			if (!llmEndpoint || !llmApiKey) {
-				return err(reply, 500, "LLM_ENDPOINT and LLM_API_KEY must be set");
-			}
-
-			try {
-				const { autoGenerateDrafts } = await import(
-					"../scraper/auto-generate.js"
-				);
-				const result = await autoGenerateDrafts({
-					minConfidence: minConfidence ?? 0.5,
-					maxItems: maxItems ?? 5,
-				});
-				return {
-					ok: true,
-					...result,
-					progress: {
-						total: result.generated + result.skipped + result.errors,
-						completed: result.generated,
-						skipped: result.skipped,
-						errors: result.errors,
-					},
-				};
-			} catch (e) {
-				request.log.error(e, "Auto-generate failed");
-				return err(
-					reply,
-					500,
-					"Auto-generate failed. Check server logs for details.",
-				);
-			}
+		async (_request, reply) => {
+			return err(
+				reply,
+				410,
+				"Legacy ACG auto-generate is disabled.",
+				"legacy-acg-disabled",
+			);
 		},
 	);
 }

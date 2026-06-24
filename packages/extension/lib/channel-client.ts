@@ -34,10 +34,11 @@ export async function fetchChannels(
 export interface CreateChannelOptions {
 	displayName?: string;
 	reason?: string;
+	pin?: string;
 }
 
 /**
- * 新增渠道(自用模式:只需有效 JWT,无确认手势/口令)。
+ * 新增渠道(自用模式:只需有效 JWT,无确认手势/口令; 2026-06-24 安全加固: 引入 x-guapi-mutation-pin)。
  * 返回新增(或去重命中)的渠道。
  */
 export async function createChannel(
@@ -45,9 +46,16 @@ export async function createChannel(
 	opts: CreateChannelOptions = {},
 	fetchFn?: typeof fetch,
 ): Promise<Channel> {
+	const headers: Record<string, string> = {
+		"Content-Type": "application/json",
+	};
+	if (opts.pin) {
+		headers["x-guapi-mutation-pin"] = opts.pin;
+	}
+
 	const res = await apiFetch("/api/v1/channels", {
 		method: "POST",
-		headers: { "Content-Type": "application/json" },
+		headers,
 		body: JSON.stringify({
 			channel,
 			displayName: opts.displayName,
@@ -68,11 +76,26 @@ export async function createChannel(
 
 export async function deleteChannel(
 	id: string,
+	pinOrFetchFn?: string | typeof fetch,
 	fetchFn?: typeof fetch,
 ): Promise<void> {
+	let pin: string | undefined;
+	let actualFetch = fetchFn;
+	if (typeof pinOrFetchFn === "function") {
+		actualFetch = pinOrFetchFn;
+	} else {
+		pin = pinOrFetchFn;
+	}
+
+	const headers: Record<string, string> = {};
+	if (pin) {
+		headers["x-guapi-mutation-pin"] = pin;
+	}
+
 	const res = await apiFetch(`/api/v1/channels/${id}`, {
 		method: "DELETE",
-		fetchFn,
+		headers,
+		fetchFn: actualFetch,
 		timeoutMs: 10_000,
 	});
 	if (res.status === 401) throw new Error("Unauthorized");

@@ -135,8 +135,7 @@ describe("getRankedList (整合測試 — 需要 DB)", () => {
 		const topic = makeTopic({ title: "王力宏離婚事件", siteName: "news-b" });
 		await savePendingTopic(topic);
 		upsertHotSearchBatch([makeKeyword("王力宏", "baidu", 1, 70)]);
-		addToBlacklist("王力宏");
-		await new Promise((r) => setTimeout(r, 20));
+		await addToBlacklist("王力宏");
 
 		const result = await getRankedList();
 		expect(result.sectionA).toHaveLength(0);

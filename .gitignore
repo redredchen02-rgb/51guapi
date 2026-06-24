@@ -10,6 +10,8 @@ dist
 coverage
 packages/backend/data
 packages/backend/logs
+gossip-sites/
+prompts/
 packages/backend/.env
 .claude/worktrees/
 .pnpm-store

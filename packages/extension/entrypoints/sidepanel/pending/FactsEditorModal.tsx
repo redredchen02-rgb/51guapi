@@ -54,6 +54,66 @@ export function FactsEditorModal({
 					{topic.extractionMode ? ` · ${topic.extractionMode}` : ""}
 				</div>
 			)}
+			{(() => {
+				const entities = (editedFacts?.當事人 ?? topic.facts.當事人 ?? "")
+					.split(/[,，]/)
+					.map((s) => s.trim())
+					.filter(Boolean);
+				if (entities.length === 0) return null;
+				return (
+					<div
+						style={{
+							marginBottom: "var(--space-md)",
+							padding: "var(--space-md)",
+							backgroundColor: "rgba(0, 0, 0, 0.02)",
+							borderRadius: "var(--radius-md)",
+							border: "1px dashed var(--color-border-lighter)",
+						}}
+					>
+						<div
+							className="font-semibold text-xs text-muted"
+							style={{ marginBottom: "var(--space-xs)" }}
+						>
+							👥 当事人图谱:
+						</div>
+						<div
+							style={{
+								display: "flex",
+								flexWrap: "wrap",
+								alignItems: "center",
+								gap: "var(--space-xs)",
+							}}
+						>
+							{entities.map((name, idx) => (
+								<React.Fragment key={name}>
+									{idx > 0 && (
+										<span
+											style={{
+												color: "var(--color-primary)",
+												fontWeight: "bold",
+											}}
+										>
+											↔
+										</span>
+									)}
+									<span
+										style={{
+											background: "rgba(24, 144, 255, 0.1)",
+											color: "#1890ff",
+											padding: "2px 8px",
+											borderRadius: "var(--radius-sm)",
+											fontSize: "var(--font-xs)",
+											fontWeight: "bold",
+										}}
+									>
+										{name}
+									</span>
+								</React.Fragment>
+							))}
+						</div>
+					</div>
+				);
+			})()}
 			{topic.coverImageUrl && (
 				<img
 					src={topic.coverImageUrl}

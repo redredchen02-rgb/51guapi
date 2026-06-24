@@ -1,3 +1,5 @@
 # Fingerprints of known false-positives in test fixtures
 # Format: <commit>:<file>:<rule>:<line>
 ac0e214371c13e254e5483ee7b965252a157f029:packages/backend/src/config/env-check.test.ts:generic-api-key:6
+64da698c29941b64745331db9bb4587a2271b8c5:packages/backend/src/routes/channel-routes.test.ts:generic-api-key:35
+64da698c29941b64745331db9bb4587a2271b8c5:packages/backend/src/routes/channel-routes.test.ts:generic-api-key:186
