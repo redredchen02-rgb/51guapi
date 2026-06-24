@@ -517,6 +517,22 @@ describe("startScheduler — 邊緣 branch", () => {
 		expect(isSchedulerRunning(siteName)).toBe(false);
 	});
 
+	it("cron 欄位缺失（undefined）→ 站點被跳過，不進 jobs Map (line 277-279)", () => {
+		const siteName = `no-cron-${testId}`;
+		scraperConfig.registerAdapter(makeMockAdapter(`no-cron-adapter-${testId}`));
+		scraperConfig.addSiteConfig({
+			siteName,
+			adapterName: `no-cron-adapter-${testId}`,
+			url: `https://test-site.example.com/nocron/${testId}`,
+			// cron 欄位省略（undefined）→ 觸發 !site.cron 分支
+			enabled: true,
+		});
+
+		startScheduler(DEPS);
+
+		expect(isSchedulerRunning(siteName)).toBe(false);
+	});
+
 	it("job callback 執行時 adapter 不存在 → 不崩潰，不呼叫 savePendingTopic", async () => {
 		const siteName = `no-adapter-${testId}`;
 		// 收集所有 schedule 呼叫的 callback，之後找到最後一個（對應本測試站點）
