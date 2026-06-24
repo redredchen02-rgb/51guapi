@@ -80,4 +80,21 @@ describe("callLlmForJson(review/rewrite)429/5xx 退避 + 不-throw 契约", () =
 		expect(result?.ok).toBe(false);
 		expect(sleep).toHaveBeenCalledTimes(2);
 	});
+
+	it("LLM 返回 JSON 但缺少 dimensions 陣列 → ok:false 含 dimensions 錯誤訊息 (line 75)", async () => {
+		const sleep = vi.fn(noSleep);
+		const fetchFn = seqFetch([
+			{ status: 200, payload: oaiReply(JSON.stringify({ result: "ok" })) },
+		]);
+		const res = await reviewDraftLlm(MIN_DRAFT, undefined, {
+			settings,
+			apiKey: "k",
+			fetchFn,
+			sleep,
+			maxRetries: 2,
+			...base,
+		});
+		expect(res.ok).toBe(false);
+		expect("error" in res && res.error).toMatch(/dimensions/);
+	});
 });

@@ -187,4 +187,44 @@ describe("getRankedList (整合測試 — 需要 DB)", () => {
 		// acg domain 的選題不應進入 ranking
 		expect(result.sectionA.every((t) => t.title !== "章子怡新番")).toBe(true);
 	});
+
+	it("36h 前的選題 recencyScore=0.5 — 進入 sectionA（line 55）", async () => {
+		const createdAt36h = new Date(
+			Date.now() - 36 * 60 * 60 * 1000,
+		).toISOString();
+		const topic = makeTopic({
+			title: "章子怡汪峰分居新消息",
+			siteName: "news-36h",
+			createdAt: createdAt36h,
+			updatedAt: createdAt36h,
+		});
+		await savePendingTopic(topic);
+		upsertHotSearchBatch([makeKeyword("章子怡", "baidu", 1, 80)]);
+		await new Promise((r) => setTimeout(r, 20));
+
+		const result = await getRankedList();
+		expect(
+			result.sectionA.some((t) => t.title === "章子怡汪峰分居新消息"),
+		).toBe(true);
+	});
+
+	it(">48h 前的選題 recencyScore=0.1 — 進入 sectionA（line 56）", async () => {
+		const createdAt72h = new Date(
+			Date.now() - 72 * 60 * 60 * 1000,
+		).toISOString();
+		const topic = makeTopic({
+			title: "章子怡出軌舊新聞",
+			siteName: "news-72h",
+			createdAt: createdAt72h,
+			updatedAt: createdAt72h,
+		});
+		await savePendingTopic(topic);
+		upsertHotSearchBatch([makeKeyword("章子怡", "weibo", 1, 80)]);
+		await new Promise((r) => setTimeout(r, 20));
+
+		const result = await getRankedList();
+		expect(result.sectionA.some((t) => t.title === "章子怡出軌舊新聞")).toBe(
+			true,
+		);
+	});
 });
