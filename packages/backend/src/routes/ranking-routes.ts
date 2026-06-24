@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
-import type { FastifyInstance } from "fastify";
 import { isGossipFactsBlock } from "@51guapi/shared";
+import type { FastifyInstance } from "fastify";
 import { fetchListPaged } from "../scraper/adapters/generic-adapter.js";
 import { getChannelByHostname } from "../scraper/channel-store.js";
 import { listGossipSites } from "../scraper/gossip-site-store.js";
@@ -134,18 +134,32 @@ export function registerRankingRoutes(app: FastifyInstance): void {
 			const config = getLlmConfig();
 			const validation = validateLlmConfig(config);
 			if (!validation.valid)
-				return err(reply, 500, validation.error ?? "LLM config error", "no-key");
+				return err(
+					reply,
+					500,
+					validation.error ?? "LLM config error",
+					"no-key",
+				);
 
 			try {
 				const result = await generateArticleDraft(topic.facts, {
-					settings: { endpoint: config.endpoint, model: config.model, promptTemplate: "" },
+					settings: {
+						endpoint: config.endpoint,
+						model: config.model,
+						promptTemplate: "",
+					},
 					apiKey: config.apiKey,
 				});
 				if (!result.ok) return err(reply, 422, result.error, result.kind);
 				return result;
 			} catch (e) {
 				request.log.error(e, "Failed to generate draft from ranking");
-				return err(reply, 500, "Internal error during draft generation.", "network");
+				return err(
+					reply,
+					500,
+					"Internal error during draft generation.",
+					"network",
+				);
 			}
 		},
 	);

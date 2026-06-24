@@ -4,12 +4,9 @@ import type { HotSearchItem } from "./types.js";
 
 // Sina Visitor System — 兩步預熱取匿名 cookie，再抓熱搜。
 // 每次呼叫做完整三步（個人工具低頻，不快取 cookie）。
-const GENVISITOR_URL =
-	"https://passport.weibo.com/visitor/genvisitor";
-const VISITOR_URL_BASE =
-	"https://passport.weibo.com/visitor/visitor";
-const HOTSEARCH_URL =
-	"https://weibo.com/ajax/side/hotSearch";
+const GENVISITOR_URL = "https://passport.weibo.com/visitor/genvisitor";
+const VISITOR_URL_BASE = "https://passport.weibo.com/visitor/visitor";
+const HOTSEARCH_URL = "https://weibo.com/ajax/side/hotSearch";
 
 const UA =
 	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36";

@@ -1,9 +1,9 @@
-import { upsertHotSearchBatch } from "../hot-search-store.js";
 import type { HotSearchKeyword } from "../hot-search-store.js";
+import { upsertHotSearchBatch } from "../hot-search-store.js";
 import { scrapeBaidu } from "./baidu-scraper.js";
 import { scrapeDouyin } from "./douyin-scraper.js";
-import { scrapeWeibo } from "./weibo-scraper.js";
 import type { HotSearchItem } from "./types.js";
+import { scrapeWeibo } from "./weibo-scraper.js";
 
 export interface ScrapeResult {
 	baidu: number;

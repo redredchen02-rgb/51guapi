@@ -1,8 +1,8 @@
 import type { HotSearchKeyword } from "../scraper/hot-search-store.js";
 import { listHotSearchKeywords } from "../scraper/hot-search-store.js";
-import { getBlacklistSet } from "../scraper/ranking-blacklist-store.js";
 import type { PendingTopic } from "../scraper/pending-store.js";
 import { listPendingTopics } from "../scraper/pending-store.js";
+import { getBlacklistSet } from "../scraper/ranking-blacklist-store.js";
 
 export interface SourcePlatform {
 	platform: string;
@@ -119,7 +119,12 @@ export async function getRankedList(): Promise<RankingResult> {
 	const freshAt = new Date().toISOString();
 
 	// 1. 取所有 pending 狀態的 gossip 選題（最多 500）
-	const topics = await listPendingTopics(500, "pending", "created_at", "gossip");
+	const topics = await listPendingTopics(
+		500,
+		"pending",
+		"created_at",
+		"gossip",
+	);
 
 	// 2. 取未過期熱搜詞
 	const hotKeywords = listHotSearchKeywords();

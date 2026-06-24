@@ -12,7 +12,10 @@ function makeMockFetch(responses: Response[]): typeof fetch {
 	}) as unknown as typeof fetch;
 }
 
-function makeJsonResponse(body: unknown, headers?: Record<string, string>): Response {
+function makeJsonResponse(
+	body: unknown,
+	headers?: Record<string, string>,
+): Response {
 	const h = new Headers(headers);
 	return {
 		ok: true,
@@ -37,7 +40,10 @@ describe("weibo-scraper", () => {
 	it("三步成功：返回正確條目", async () => {
 		const mockFetch = makeMockFetch([
 			makeJsonResponse({ data: { tid: "test-tid-123" } }),
-			makeJsonResponse({}, { "set-cookie": "SUB=abc123; path=/; SUBP=def456; path=/" }),
+			makeJsonResponse(
+				{},
+				{ "set-cookie": "SUB=abc123; path=/; SUBP=def456; path=/" },
+			),
 			makeJsonResponse(WEIBO_HOT_FIXTURE),
 		]);
 		const items = await scrapeWeibo(mockFetch);
@@ -79,7 +85,12 @@ describe("weibo-scraper", () => {
 		const mockFetch = makeMockFetch([
 			makeJsonResponse({ data: { tid: "tid-err" } }),
 			makeJsonResponse({}, { "set-cookie": "SUB=ok; path=/" }),
-			{ ok: false, status: 403, json: async () => ({}), headers: new Headers() } as unknown as Response,
+			{
+				ok: false,
+				status: 403,
+				json: async () => ({}),
+				headers: new Headers(),
+			} as unknown as Response,
 		]);
 		const items = await scrapeWeibo(mockFetch);
 		expect(items).toHaveLength(0);

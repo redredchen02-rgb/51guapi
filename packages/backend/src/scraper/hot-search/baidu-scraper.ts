@@ -2,8 +2,7 @@ import { allowlistCheck } from "../adapters/guarded-fetch.js";
 import { safeFetch } from "../ssrf-guard.js";
 import type { HotSearchItem } from "./types.js";
 
-const BAIDU_URL =
-	"https://top.baidu.com/api/board?platform=pc&tab=realtime";
+const BAIDU_URL = "https://top.baidu.com/api/board?platform=pc&tab=realtime";
 
 const UA =
 	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36";
