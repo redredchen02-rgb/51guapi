@@ -179,6 +179,66 @@ describe("extractFacts — error paths", () => {
 		).rejects.toThrow(/500/);
 	});
 
+	it("fetch 拋出 non-AbortError → 直接向上拋", async () => {
+		const netErr = new Error("ECONNREFUSED");
+		const fetchFn = vi.fn().mockRejectedValue(netErr);
+		await expect(
+			extractFacts(makeRaw(), { ...BASE_OPTS, fetchFn }),
+		).rejects.toThrow("ECONNREFUSED");
+	});
+
+	it("res.json() 解析失敗 → 拋出 not valid JSON", async () => {
+		const fetchFn = vi.fn().mockResolvedValue({
+			ok: true,
+			status: 200,
+			json: async () => {
+				throw new SyntaxError("Unexpected token");
+			},
+		} as unknown as Response);
+		await expect(
+			extractFacts(makeRaw(), { ...BASE_OPTS, fetchFn }),
+		).rejects.toThrow(/not valid JSON/i);
+	});
+
+	it("rawContent.metadata 非空 → prompt 包含元數據塊", async () => {
+		let capturedBody = "";
+		const fetchFn = vi.fn(async (_url: string, init?: RequestInit) => {
+			capturedBody = init?.body as string;
+			return new Response(
+				JSON.stringify({
+					choices: [
+						{
+							message: {
+								content: JSON.stringify({
+									作品名: "Test",
+									漢化組: null,
+									集數: null,
+									作者: null,
+									出版商: null,
+									語言: null,
+									格式: null,
+									發布日期: null,
+									標籤: null,
+									簡介: null,
+									字數: null,
+									評分: null,
+									時長: null,
+								}),
+							},
+						},
+					],
+				}),
+				{ status: 200, headers: { "Content-Type": "application/json" } },
+			);
+		}) as typeof fetch;
+		await extractFacts(makeRaw({ metadata: { 評分: "9.5", 字數: "20萬" } }), {
+			...BASE_OPTS,
+			fetchFn,
+		});
+		expect(capturedBody).toContain("结构化元数据");
+		expect(capturedBody).toContain("評分: 9.5");
+	});
+
 	it('请求超时 → 抛出 "timed out"', async () => {
 		const fetchFn = vi.fn(async (_url: string, opts?: RequestInit) => {
 			await new Promise<never>((_, reject) => {
