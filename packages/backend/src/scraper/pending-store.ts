@@ -349,6 +349,24 @@ export async function listPendingTopics(
 	return rows.map(rowToTopic);
 }
 
+/** 只拉 facts 欄位用於 theme 計數，不受 500 列表上限限制。 */
+export function listGossipPendingFacts(onlyVerified: boolean): unknown[] {
+	const db = getDb();
+	const sql = onlyVerified
+		? "SELECT facts FROM pending_topics WHERE domain = 'gossip' AND status = 'pending' AND verified_at IS NOT NULL"
+		: "SELECT facts FROM pending_topics WHERE domain = 'gossip' AND status = 'pending'";
+	const rows = db.prepare(sql).all() as { facts: string }[];
+	return rows
+		.map((r) => {
+			try {
+				return JSON.parse(r.facts);
+			} catch {
+				return null;
+			}
+		})
+		.filter(Boolean);
+}
+
 export async function deletePendingTopic(id: string): Promise<void> {
 	const db = getDb();
 	await pendingWriteQueue.enqueue(() => {
