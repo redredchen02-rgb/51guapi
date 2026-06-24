@@ -483,6 +483,32 @@ describe("pending-store (SQLite)", () => {
 		);
 	});
 
+	it("safeJsonParse：非法 JSON 字段 → 退回 fallback 值 (line 89)", async () => {
+		const now = new Date().toISOString();
+		const id = "bad-raw-content-id";
+		getDb()
+			.prepare(
+				"INSERT INTO pending_topics (id, source_url, site_name, domain, status, title, facts, raw_content, confidence, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+			)
+			.run(
+				id,
+				"https://bad-raw.example.com/1",
+				"bad-site",
+				"gossip",
+				"pending",
+				"壞 rawContent 選題",
+				JSON.stringify({ 當事人: "test" }),
+				"not-valid-json{{{",
+				0.5,
+				now,
+				now,
+			);
+
+		const loaded = await loadPendingTopic(id);
+		expect(loaded).not.toBeNull();
+		expect(loaded?.rawContent).toBeUndefined();
+	});
+
 	it("listPendingTopics(domain='gossip') 只返回 gossip 記錄，不包含 acg", async () => {
 		await savePendingTopic(
 			makeTopic({ sourceUrl: "https://acgs.com/1", domain: "acg" }),
