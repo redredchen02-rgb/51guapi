@@ -221,4 +221,32 @@ describe("channel-routes", () => {
 		});
 		expect(res.statusCode).toBe(400);
 	});
+
+	// ── 缺少覆蓋的驗證分支 (lines 82, 85, 111) ──────────────────────────────
+
+	it("缺少 channel 字段 → 400 缺少渠道域名 (line 82)", async () => {
+		const res = await app.inject({
+			method: "POST",
+			url: "/api/v1/channels",
+			headers: JSON_HEADERS,
+			payload: { displayName: "只有displayName" },
+		});
+		expect(res.statusCode).toBe(400);
+		expect(res.json().error).toMatch(/缺少渠道域名/);
+	});
+
+	it("displayName 超過 200 字 → 400 (line 85)", async () => {
+		mockLookup.mockResolvedValueOnce(resolved("1.2.3.4"));
+		const res = await app.inject({
+			method: "POST",
+			url: "/api/v1/channels",
+			headers: JSON_HEADERS,
+			payload: {
+				channel: "valid.example.com",
+				displayName: "x".repeat(201),
+			},
+		});
+		expect(res.statusCode).toBe(400);
+		expect(res.json().error).toMatch(/过长/);
+	});
 });
