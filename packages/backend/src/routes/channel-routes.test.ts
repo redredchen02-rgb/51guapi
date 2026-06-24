@@ -32,7 +32,7 @@ async function buildApp(): Promise<FastifyInstance> {
 
 const JSON_HEADERS = {
 	"content-type": "application/json",
-	"x-guapi-mutation-pin": "test-pin-123456",
+	"x-guapi-mutation-pin": "test-pin-123456", // gitleaks:allow
 };
 
 describe("channel-routes", () => {
@@ -183,7 +183,7 @@ describe("channel-routes", () => {
 		await app.inject({
 			method: "DELETE",
 			url: `/api/v1/channels/${id}`,
-			headers: { "x-guapi-mutation-pin": "test-pin-123456" },
+			headers: { "x-guapi-mutation-pin": "test-pin-123456" }, // gitleaks:allow
 		});
 		// 删除后即不在 allowlist
 		expect(
