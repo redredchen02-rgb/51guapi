@@ -1,13 +1,7 @@
+import type { GossipSite } from "@51guapi/shared";
 import { apiFetch } from "./api-fetch";
 
-export interface GossipSite {
-	id: string;
-	name: string;
-	listUrl: string;
-	enabled: boolean;
-	createdAt: string;
-	updatedAt: string;
-}
+export type { GossipSite };
 
 export interface DiscoveredItem {
 	url: string;

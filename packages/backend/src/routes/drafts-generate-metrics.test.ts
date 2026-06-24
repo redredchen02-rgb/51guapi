@@ -20,6 +20,11 @@ vi.mock("../utils/llm-config.js", () => ({
 		apiKey: "k",
 	})),
 	validateLlmConfig: vi.fn(() => ({ valid: true })),
+	resolveLlmConfig: vi.fn(() => ({
+		endpoint: "https://api.example.com/v1",
+		model: "m",
+		apiKey: "k",
+	})),
 }));
 
 import { registerDraftRoutes } from "../app.js";

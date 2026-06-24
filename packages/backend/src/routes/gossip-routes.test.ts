@@ -97,14 +97,15 @@ describe("gossip-routes", () => {
 		expect(res.statusCode).toBe(400);
 	});
 
-	it("POST /gossip/sites：listUrl 為 IP literal → 400", async () => {
+	it("POST /gossip/sites：listUrl 為 IP literal → 201（IP 保護由 ssrf-guard 在 fetch 時攔截）", async () => {
+		// IP literal 不再在路由層拒絕，改由下游 ssrf-guard 在實際 fetch 時攔截。
+		// 私網 IP（192.168.1.1）在 ssrf-guard DNS 解析後被 isPrivateIp() 阻斷。
 		const res = await app.inject({
 			method: "POST",
 			url: "/api/v1/gossip/sites",
-			payload: { name: "惡意站點", listUrl: "https://192.168.1.1/list" },
+			payload: { name: "IP站點", listUrl: "https://192.168.1.1/list" },
 		});
-		expect(res.statusCode).toBe(400);
-		expect(res.json().error).toMatch(/IP literal/i);
+		expect(res.statusCode).toBe(201);
 	});
 
 	it("POST /gossip/sites：listUrl 使用 http:// → 400 + https scheme 錯誤", async () => {
@@ -117,14 +118,13 @@ describe("gossip-routes", () => {
 		expect(res.json().error).toMatch(/https/i);
 	});
 
-	it("POST /gossip/sites：listUrl 為 127.0.0.1 IP literal → 400", async () => {
+	it("POST /gossip/sites：listUrl 為 127.0.0.1 IP literal → 201（IP 保護由 ssrf-guard 處理）", async () => {
 		const res = await app.inject({
 			method: "POST",
 			url: "/api/v1/gossip/sites",
 			payload: { name: "站點", listUrl: "https://127.0.0.1/list" },
 		});
-		expect(res.statusCode).toBe(400);
-		expect(res.json().error).toMatch(/IP literal/i);
+		expect(res.statusCode).toBe(201);
 	});
 
 	it("POST /gossip/sites：listUrl 無效字串 → 400", async () => {
@@ -639,6 +639,23 @@ describe("gossip-routes", () => {
 			url: `/api/v1/gossip/sites/${site.id}/discover`,
 		});
 		expect(res.statusCode).toBe(500);
+	});
+
+	it("discover（SEC-001）：DB 中 listUrl 為 http:// → discover 返回 400（https-only 保護）", async () => {
+		// 直接往 DB 插入 http:// URL，模擬限制收緊前存入的舊資料。
+		// 預期 discover 端點的 parseUrl() 校驗阻止 fetch。
+		const db = getDb();
+		const now = new Date().toISOString();
+		db.prepare(
+			"INSERT INTO gossip_sites (id, name, list_url, enabled, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+		).run("sec001-test", "舊站點", "http://gossip.com/latest", 1, now, now);
+
+		const res = await app.inject({
+			method: "POST",
+			url: "/api/v1/gossip/sites/sec001-test/discover",
+		});
+		expect(res.statusCode).toBe(400);
+		expect(res.json().error).toMatch(/https/i);
 	});
 
 	it("discover（U2）：渠道 maxDepth=3 → fetchListPaged 以 maxPages=3 调用", async () => {

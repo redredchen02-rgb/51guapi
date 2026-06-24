@@ -1,9 +1,14 @@
-import type { PendingTopic, RejectionReason } from "@51guapi/shared";
+import type {
+	PendingTopic,
+	PendingTopicsResponse,
+	RejectionReason,
+	ThemeCount,
+} from "@51guapi/shared";
 import { type ApiFetchInit, apiFetch } from "./api-fetch";
 import { logger } from "./logger";
 
-// PendingTopic 现为 @51guapi/shared 的 canonical 契约;此处 re-export 保持既有 import 路径。
-export type { PendingTopic };
+// 以下类型现为 @51guapi/shared 的 canonical 契约;此处 re-export 保持既有 import 路径。
+export type { PendingTopic, PendingTopicsResponse, ThemeCount };
 
 export interface FetchPendingTopicsOptions {
 	status?: string;
@@ -14,18 +19,6 @@ export interface FetchPendingTopicsOptions {
 	theme?: string;
 	/** true=只取已人工核对（题材池）；false=只取未核对；U4。 */
 	verified?: boolean;
-}
-
-/** 题材计数项（题材选择器用）。 */
-export interface ThemeCount {
-	theme: string;
-	count: number;
-}
-
-export interface PendingTopicsResponse {
-	ok: boolean;
-	topics?: PendingTopic[];
-	error?: string;
 }
 
 export interface PendingTopicResponse {

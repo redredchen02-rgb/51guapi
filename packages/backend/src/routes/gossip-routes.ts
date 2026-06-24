@@ -36,19 +36,9 @@ import {
 	GossipSiteParams as GossipSiteParamsSchema,
 } from "../utils/schemas.js";
 
-/** 返回 400 如果 hostname 是 IP literal（IPv4、decimal-encoded IPv4 或 IPv6）。 */
-function isIpLiteral(hostname: string): boolean {
-	// IPv4 dotted-quad
-	if (/^\d{1,3}(\.\d{1,3}){3}$/.test(hostname)) return true;
-	// Decimal-encoded IPv4 (e.g. 2130706433 → 127.0.0.1)
-	if (/^\d+$/.test(hostname) && BigInt(hostname) <= 0xffffffffn) return true;
-	// IPv6 含冒號
-	if (hostname.includes(":")) return true;
-	// IPv6 帶中括號
-	if (/^\[.*\]$/.test(hostname)) return true;
-	return false;
-}
-
+// https-only 校驗：gossip 渠道只允許 https 爬取（ssrf-guard 允許 http，語義不同）。
+// IP literal 保護由下游 ssrf-guard 統一處理（私網 IP 在 DNS 解析後攔截，
+// 公網 IP literal 被 allowlist 按 hostname 精確匹配拒絕）。
 function parseUrl(
 	raw: string,
 ): { url: URL; error?: undefined } | { error: string; url?: undefined } {
@@ -56,9 +46,6 @@ function parseUrl(
 		const u = new URL(raw);
 		if (u.protocol !== "https:") {
 			return { error: "URL must use https scheme" };
-		}
-		if (isIpLiteral(u.hostname)) {
-			return { error: "IP literal URLs are not allowed" };
 		}
 		return { url: u };
 	} catch {
@@ -141,6 +128,13 @@ export async function registerGossipRoutes(
 			const site = await getGossipSite(request.params.id);
 			if (!site) return err(reply, 404, "Site not found");
 			if (!site.enabled) return err(reply, 400, "Site is disabled");
+
+			// SEC-001 修復：DB 中 listUrl 可能在限制收緊前入庫（如 http:// 渠道），
+			// 必須在 fetchListPaged 之前過 parseUrl，確保 https-only 等校驗生效。
+			const parsedListUrl = parseUrl(site.listUrl);
+			if (parsedListUrl.error) {
+				return err(reply, 400, `Invalid site listUrl: ${parsedListUrl.error}`);
+			}
 
 			// 翻页页数上限取自 listUrl host 对应渠道的 maxDepth；无渠道则 1（单页，与 v0.1 等价）。
 			let maxPages = 1;

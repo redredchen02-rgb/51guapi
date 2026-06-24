@@ -12,10 +12,15 @@ export const ErrorBody = Type.Object({
 export const SettingsSchema = Type.Object({
 	endpoint: Type.String(),
 	model: Type.String(),
+	fallbackModel: Type.Optional(Type.String()),
 	promptTemplate: Type.Optional(Type.String()),
-	facts: Type.Optional(Type.String()),
-	fewShot: Type.Optional(Type.String()),
-	extraInstructions: Type.Optional(Type.String()),
+	fewShotPairs: Type.Optional(
+		Type.Array(Type.Object({ input: Type.String(), output: Type.String() })),
+	),
+	recommendedTags: Type.Optional(Type.Array(Type.String())),
+	backendUrl: Type.Optional(Type.String()),
+	reviewCriteriaPrompt: Type.Optional(Type.String()),
+	webSearchEnabled: Type.Optional(Type.Boolean()),
 });
 
 // ── FactsBlock ────────────────────────────────────────
@@ -93,22 +98,6 @@ export const RewriteDraftBody = Type.Object({
 	}),
 	failedDims: Type.Array(Type.String()),
 	settings: SettingsSchema,
-});
-
-// ── Auth ──────────────────────────────────────────────
-export const LoginBody = Type.Object({
-	// 自用模式:免密登入,password 可选且被忽略。maxLength 仍作为通用体积上限。
-	password: Type.Optional(Type.String({ maxLength: 1024 })),
-});
-
-export const LoginResponse = Type.Object({
-	ok: OkStatus,
-	token: Type.String(),
-});
-
-export const AuthStatusResponse = Type.Object({
-	ok: OkStatus,
-	authenticated: Type.Boolean(),
 });
 
 // ── Models ────────────────────────────────────────────

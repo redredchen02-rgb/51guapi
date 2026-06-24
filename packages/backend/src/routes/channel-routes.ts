@@ -17,12 +17,9 @@ import {
 
 // 渠道管理路由 — 操作者持续新增爬取渠道,域名动态进 SSRF allowlist。
 //
-// 自用模式(2026-06-18,plan docs/plans/2026-06-18-003):有意移除「确认手势 + 管理员
-// 口令 step-up」两道写入闸,加渠道只需有效 JWT。这是对 2026-06-17-002 R3 越权防线的
-// **有意撤除**(单操作者自用工具),**勿当 bug 加回**。本路由不入 PUBLIC_ROUTES → 仍受
-// 全局 JWT preHandler 保护。
-//
-// 2026-06-24 安全加固: 引入 x-guapi-mutation-pin 验证，防范 automated script / XSS / Prompt Injection 越权修改 allowlist。
+// 自用模式(plan 2026-06-18-003 + JWT 移除 PR #48):完全无鉴权,加渠道无需任何凭证。
+// 写入闸由 x-guapi-mutation-pin 头验证(mutation-pin.ts)防范自动化脚本 / XSS /
+// Prompt Injection 越权修改 allowlist。**勿将无鉴权视为 bug 并加回 JWT。**
 
 interface CreateBody {
 	channel?: string; // URL 或裸域名

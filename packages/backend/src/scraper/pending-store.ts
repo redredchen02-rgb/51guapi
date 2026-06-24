@@ -3,6 +3,7 @@ import type {
 	GossipFactsBlock,
 	VerificationResult,
 } from "@51guapi/shared";
+import { isGossipFactsBlock } from "@51guapi/shared";
 import { getDb, pendingWriteQueue } from "./pending-db.js";
 import type { RawContent } from "./site-adapter.js";
 
@@ -349,22 +350,18 @@ export async function listPendingTopics(
 	return rows.map(rowToTopic);
 }
 
-/** 只拉 facts 欄位用於 theme 計數，不受 500 列表上限限制。 */
-export function listGossipPendingFacts(onlyVerified: boolean): unknown[] {
+/** 只拉 facts 欄位用於 theme 計數，不受 500 列表上限限制。格式無效的 row 靜默過濾。 */
+export function listGossipPendingFacts(
+	onlyVerified: boolean,
+): GossipFactsBlock[] {
 	const db = getDb();
 	const sql = onlyVerified
 		? "SELECT facts FROM pending_topics WHERE domain = 'gossip' AND status = 'pending' AND verified_at IS NOT NULL"
 		: "SELECT facts FROM pending_topics WHERE domain = 'gossip' AND status = 'pending'";
 	const rows = db.prepare(sql).all() as { facts: string }[];
 	return rows
-		.map((r) => {
-			try {
-				return JSON.parse(r.facts);
-			} catch {
-				return null;
-			}
-		})
-		.filter(Boolean);
+		.map((r) => safeJsonParse<unknown>(r.facts, null))
+		.filter((v): v is GossipFactsBlock => isGossipFactsBlock(v));
 }
 
 export async function deletePendingTopic(id: string): Promise<void> {

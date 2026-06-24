@@ -1,5 +1,11 @@
 // Shared types and utilities for 吃瓜小帮手 (51guapi) monorepo
 
+export type {
+	GossipSite,
+	PendingTopicsResponse,
+	ThemeCount,
+} from "./api-types.js";
+
 export type { ArticleSlots, AssembledArticle } from "./article-assembler.js";
 export { assembleGossipArticle } from "./article-assembler.js";
 export type { TagValidationResult } from "./article-tags.js";

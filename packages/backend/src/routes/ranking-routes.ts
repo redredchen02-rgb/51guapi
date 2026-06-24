@@ -15,7 +15,7 @@ import { addToBlacklist } from "../scraper/ranking-blacklist-store.js";
 import { generateArticleDraft } from "../services/draft-article-gen.js";
 import { getRankedList } from "../services/ranking-service.js";
 import { err } from "../utils/error-response.js";
-import { getLlmConfig, validateLlmConfig } from "../utils/llm-config.js";
+import { resolveLlmConfig } from "../utils/llm-config.js";
 
 export function registerRankingRoutes(app: FastifyInstance): void {
 	// GET /api/v1/ranking — 返回加權排行表（A 區交集 + B 區僅熱搜）
@@ -131,13 +131,12 @@ export function registerRankingRoutes(app: FastifyInstance): void {
 				return err(reply, 400, "選題已被拒絕，無法生成草稿");
 			}
 
-			const config = getLlmConfig();
-			const validation = validateLlmConfig(config);
-			if (!validation.valid)
+			const config = resolveLlmConfig();
+			if (!config)
 				return err(
 					reply,
 					500,
-					validation.error ?? "LLM config error",
+					"LLM is not configured. Check LLM_API_KEY and LLM_ENDPOINT in .env.",
 					"no-key",
 				);
 
