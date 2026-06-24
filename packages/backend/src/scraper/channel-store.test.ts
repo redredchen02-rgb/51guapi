@@ -127,6 +127,54 @@ describe("normalizeChannelHost", () => {
 	it("單標籤域名（無點）→ 非法域名格式 (line 163)", () => {
 		expect(normalizeChannelHost("localhost").error).toMatch(/非法域名格式/);
 	});
+
+	it("裸域名含斜线 → 请输入域名或完整 https URL (line 133)", () => {
+		expect(normalizeChannelHost("example.com/path").error).toMatch(
+			/请输入域名或完整 https URL/,
+		);
+	});
+
+	it("仅点号输入 → 域名为空 (line 138)", () => {
+		expect(normalizeChannelHost(".").error).toMatch(/域名为空/);
+	});
+
+	it("平假名域名放行 (Hiragana, line 88)", () => {
+		const r = normalizeChannelHost("こんにちは.com");
+		expect(r.error).toBeUndefined();
+		expect(r.hostname).toBeTruthy();
+	});
+
+	it("片假名域名放行 (Katakana, line 89)", () => {
+		const r = normalizeChannelHost("コンニチハ.com");
+		expect(r.error).toBeUndefined();
+		expect(r.hostname).toBeTruthy();
+	});
+
+	it("韩语域名放行 (Hangul, lines 90-91)", () => {
+		const r = normalizeChannelHost("안녕.com");
+		expect(r.error).toBeUndefined();
+		expect(r.hostname).toBeTruthy();
+	});
+
+	it("CJK 扩展 A 放行 (line 85)", () => {
+		// U+3400 = 㐀, CJK Extension A
+		const r = normalizeChannelHost("㐀㐁.com");
+		expect(r.error).toBeUndefined();
+		expect(r.hostname).toBeTruthy();
+	});
+
+	it("CJK 兼容放行 (line 87)", () => {
+		// U+F900 = 豈, CJK Compatibility Ideograph
+		const r = normalizeChannelHost("豈.com");
+		expect(r.error).toBeUndefined();
+		expect(r.hostname).toBeTruthy();
+	});
+	it("韩字字母(Jamo)放行 (line 91)", () => {
+		// U+1100 ᄀ, Hangul Jamo Initial Consonant
+		const r = normalizeChannelHost("ᄀᄁ.com");
+		expect(r.error).toBeUndefined();
+		expect(r.hostname).toBeTruthy();
+	});
 });
 
 describe("assertHostResolvesPublic", () => {
@@ -163,6 +211,16 @@ describe("assertHostResolvesPublic", () => {
 		}) as unknown as typeof import("node:dns/promises").lookup;
 		await expect(assertHostResolvesPublic("x.example", lk)).rejects.toThrow(
 			/解析失败/,
+		);
+	});
+
+	it("DNS 失败:非 Error 物件抛出 → String(e) 路径 (line 182)", async () => {
+		const lk = vi.fn(async () => {
+			// biome-ignore lint/complexity/noUselessCatch: intentional non-Error throw
+			throw "raw-string-dns-error";
+		}) as unknown as typeof import("node:dns/promises").lookup;
+		await expect(assertHostResolvesPublic("x.example", lk)).rejects.toThrow(
+			"DNS 解析失败(拒绝入库): raw-string-dns-error",
 		);
 	});
 
@@ -270,6 +328,45 @@ describe("channel store (SQLite)", () => {
 			createdBy: "op",
 		});
 		expect(neg.channel?.maxDepth).toBe(1);
+	});
+
+	it("displayName 为空串时回退到 hostname (line 244)", () => {
+		const r = insertChannel({
+			hostname: "a.com",
+			displayName: "",
+			createdBy: "op",
+		});
+		expect(r.channel?.displayName).toBe("a.com");
+	});
+
+	it("pathPrefix 以 / 开头时原样保留 (lines 244-246)", () => {
+		const r = insertChannel({
+			hostname: "a.com",
+			displayName: "a",
+			pathPrefix: "/articles",
+			createdBy: "op",
+		});
+		expect(r.channel?.pathPrefix).toBe("/articles");
+	});
+
+	it("pathPrefix 不以 / 开头时回退到 / (line 244 false-branch)", () => {
+		const r = insertChannel({
+			hostname: "a.com",
+			displayName: "a",
+			pathPrefix: "no-leading-slash",
+			createdBy: "op",
+		});
+		expect(r.channel?.pathPrefix).toBe("/");
+	});
+
+	it("maxBytes 为正整数时原样保留 (line 255)", () => {
+		const r = insertChannel({
+			hostname: "a.com",
+			displayName: "a",
+			maxBytes: 2 * 1024 * 1024,
+			createdBy: "op",
+		});
+		expect(r.channel?.maxBytes).toBe(2 * 1024 * 1024);
 	});
 
 	it("数量上限 MAX_CHANNELS 拒绝", () => {
