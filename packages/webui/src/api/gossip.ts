@@ -5,6 +5,8 @@ export interface GossipSite {
 	name: string;
 	listUrl: string;
 	createdAt: string;
+	lastDiscoverAt?: string | null;
+	lastDiscoverCount?: number | null;
 }
 
 export async function listGossipSites(): Promise<{
@@ -32,8 +34,8 @@ export async function deleteGossipSite(id: string): Promise<{ ok: boolean }> {
 
 export async function discoverGossipSite(
 	id: string,
-): Promise<{ ok: boolean; discovered?: number }> {
-	return apiFetch<{ ok: boolean; discovered?: number }>(
+): Promise<{ ok: boolean; total: number }> {
+	return apiFetch<{ ok: boolean; total: number }>(
 		`/api/v1/gossip/sites/${id}/discover`,
 		{
 			method: "POST",

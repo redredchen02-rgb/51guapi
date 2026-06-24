@@ -13,6 +13,7 @@ import { Route as SitesRouteImport } from './routes/sites'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as PendingRouteImport } from './routes/pending'
 import { Route as MetricsRouteImport } from './routes/metrics'
+import { Route as GossipRankRouteImport } from './routes/gossip-rank'
 import { Route as DraftRouteImport } from './routes/draft'
 import { Route as ChannelsRouteImport } from './routes/channels'
 import { Route as IndexRouteImport } from './routes/index'
@@ -37,6 +38,11 @@ const MetricsRoute = MetricsRouteImport.update({
   path: '/metrics',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GossipRankRoute = GossipRankRouteImport.update({
+  id: '/gossip-rank',
+  path: '/gossip-rank',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DraftRoute = DraftRouteImport.update({
   id: '/draft',
   path: '/draft',
@@ -57,6 +63,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/channels': typeof ChannelsRoute
   '/draft': typeof DraftRoute
+  '/gossip-rank': typeof GossipRankRoute
   '/metrics': typeof MetricsRoute
   '/pending': typeof PendingRoute
   '/settings': typeof SettingsRoute
@@ -66,6 +73,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/channels': typeof ChannelsRoute
   '/draft': typeof DraftRoute
+  '/gossip-rank': typeof GossipRankRoute
   '/metrics': typeof MetricsRoute
   '/pending': typeof PendingRoute
   '/settings': typeof SettingsRoute
@@ -76,6 +84,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/channels': typeof ChannelsRoute
   '/draft': typeof DraftRoute
+  '/gossip-rank': typeof GossipRankRoute
   '/metrics': typeof MetricsRoute
   '/pending': typeof PendingRoute
   '/settings': typeof SettingsRoute
@@ -87,6 +96,7 @@ export interface FileRouteTypes {
     | '/'
     | '/channels'
     | '/draft'
+    | '/gossip-rank'
     | '/metrics'
     | '/pending'
     | '/settings'
@@ -96,6 +106,7 @@ export interface FileRouteTypes {
     | '/'
     | '/channels'
     | '/draft'
+    | '/gossip-rank'
     | '/metrics'
     | '/pending'
     | '/settings'
@@ -105,6 +116,7 @@ export interface FileRouteTypes {
     | '/'
     | '/channels'
     | '/draft'
+    | '/gossip-rank'
     | '/metrics'
     | '/pending'
     | '/settings'
@@ -115,6 +127,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ChannelsRoute: typeof ChannelsRoute
   DraftRoute: typeof DraftRoute
+  GossipRankRoute: typeof GossipRankRoute
   MetricsRoute: typeof MetricsRoute
   PendingRoute: typeof PendingRoute
   SettingsRoute: typeof SettingsRoute
@@ -123,6 +136,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/gossip-rank': {
+      id: '/gossip-rank'
+      path: '/gossip-rank'
+      fullPath: '/gossip-rank'
+      preLoaderRoute: typeof GossipRankRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sites': {
       id: '/sites'
       path: '/sites'
@@ -179,6 +199,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ChannelsRoute: ChannelsRoute,
   DraftRoute: DraftRoute,
+  GossipRankRoute: GossipRankRoute,
   MetricsRoute: MetricsRoute,
   PendingRoute: PendingRoute,
   SettingsRoute: SettingsRoute,
