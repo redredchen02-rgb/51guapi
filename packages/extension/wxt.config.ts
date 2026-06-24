@@ -30,7 +30,7 @@ export default defineConfig({
 		key: EXTENSION_KEY,
 		// alarms:background 用 chrome.alarms 做 SW keep-alive;缺此权限会让
 		// chrome.alarms 为 undefined,background main() 启动即抛异常 → SW 整个失效。
-		permissions: ["storage", "sidePanel", "alarms"],
+		permissions: ["storage", "sidePanel", "alarms", "tabs", "contextMenus"],
 		host_permissions: parseHosts(),
 		action: { default_title: "吃瓜小帮手" },
 		side_panel: { default_path: "sidepanel.html" },

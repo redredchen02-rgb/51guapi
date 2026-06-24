@@ -23,6 +23,11 @@ vi.mock("../../lib/channel-client", () => ({
 	deleteChannel: vi.fn(),
 }));
 
+// QuickFetchPanel 内部调用 getCurrentTabUrl；集成测试中 mock 掉，避免触碰真实 browser.tabs API。
+vi.mock("../../lib/current-tab", () => ({
+	getCurrentTabUrl: vi.fn(async () => null),
+}));
+
 import { createChannel, fetchChannels } from "../../lib/channel-client";
 import {
 	createGossipSite,
@@ -314,6 +319,28 @@ describe("GossipView", () => {
 		fireEvent.click(screen.getByText("刪除"));
 		await waitFor(() => expect(screen.queryByText("站點A")).toBeNull());
 		expect(mockDelete).toHaveBeenCalledWith("site-a");
+	});
+
+	// U3 集成：QuickFetchPanel 挂载验证
+	it("渲染时 QuickFetchPanel「快速抓取」面板可见", async () => {
+		mockFetchSites.mockResolvedValueOnce([]);
+		render(<GossipView onBack={onBack} onTopicAdded={onTopicAdded} />);
+		await waitFor(() => expect(screen.getByText("快速抓取")).toBeDefined());
+		expect(screen.getByText("📋 抓取当前页面")).toBeDefined();
+	});
+
+	it("QuickFetchPanel 手动 URL 抓取成功 → 调用 GossipView.onTopicAdded", async () => {
+		mockFetchSites.mockResolvedValueOnce([]);
+		mockFromUrl.mockResolvedValueOnce({ id: "t_quick", title: "快速标题" });
+		render(<GossipView onBack={onBack} onTopicAdded={onTopicAdded} />);
+		await waitFor(() => screen.getByPlaceholderText(/粘贴 URL/));
+
+		fireEvent.change(screen.getByPlaceholderText(/粘贴 URL/), {
+			target: { value: "https://example.com/quick-article" },
+		});
+		fireEvent.click(screen.getByText("🔗 抓取"));
+
+		await waitFor(() => expect(onTopicAdded).toHaveBeenCalledTimes(1));
 	});
 
 	it("删除站点失败 → 错误显示在该站点卡片（discoverError），站点保留", async () => {
