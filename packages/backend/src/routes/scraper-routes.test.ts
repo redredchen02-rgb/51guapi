@@ -1,5 +1,6 @@
 import Fastify, { type FastifyInstance } from "fastify";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { extractFacts } from "../scraper/fact-extractor.js";
 import { savePendingTopic } from "../scraper/pending-store.js";
 import { scraperConfig } from "../scraper/scraper-config.js";
 import type { RawContent, SiteAdapter } from "../scraper/site-adapter.js";
@@ -412,5 +413,84 @@ describe("POST /api/v1/scraper/auto-generate — legacy:acg 分支", () => {
 			payload: { legacy: "acg" },
 		});
 		expect(res.statusCode).toBe(500);
+	});
+});
+
+// ================================================================
+// 缺少覆蓋的分支 (lines 132, 140, 233-235)
+// ================================================================
+
+describe("POST /api/v1/scraper/trigger — 缺少覆蓋分支", () => {
+	afterEach(() => {
+		delete process.env.LLM_ENDPOINT;
+		delete process.env.LLM_API_KEY;
+	});
+
+	it("config.url 為空字串且無 listUrl/fetchList → 400 No URL provided (line 140)", async () => {
+		const adapterName = `empty-url-adapter-${testId}`;
+		scraperConfig.registerAdapter(makeMockAdapter(adapterName));
+		scraperConfig.addSiteConfig({
+			siteName: `empty-url-site-${testId}`,
+			adapterName,
+			url: "",
+			cron: "0 * * * *",
+			enabled: true,
+		});
+		const res = await app.inject({
+			method: "POST",
+			url: "/api/v1/scraper/trigger",
+			payload: { siteName: `empty-url-site-${testId}`, legacy: "acg" },
+		});
+		expect(res.statusCode).toBe(400);
+		expect(res.json().error).toMatch(/No URL provided/);
+	});
+
+	it("extractFacts 拋錯 → catch block 返回 500 Scrape failed (lines 233-235)", async () => {
+		process.env.LLM_ENDPOINT = "https://api.openai.com";
+		process.env.LLM_API_KEY = "test-key";
+		vi.mocked(extractFacts).mockRejectedValueOnce(
+			new Error("LLM network error"),
+		);
+
+		const res = await app.inject({
+			method: "POST",
+			url: "/api/v1/scraper/trigger",
+			payload: {
+				siteName: siteName(),
+				legacy: "acg",
+				url: "https://test-site.example.com/article/catch-test",
+			},
+		});
+		expect(res.statusCode).toBe(500);
+		expect(res.json().error).toMatch(/Scrape failed/);
+	});
+
+	it("list-discovery mode: adapter.fetchList 返回 URL → 成功入池（line 132）", async () => {
+		process.env.LLM_ENDPOINT = "https://api.openai.com";
+		process.env.LLM_API_KEY = "test-key";
+
+		const discoveredUrl = "https://test-site.example.com/article/discovered";
+		const discoveryAdapter: SiteAdapter = {
+			name: `discovery-adapter-${testId}`,
+			fetchContent: vi.fn(async () => MOCK_RAW),
+			fetchList: vi.fn(async () => [discoveredUrl]),
+		};
+		scraperConfig.registerAdapter(discoveryAdapter);
+		scraperConfig.addSiteConfig({
+			siteName: `discovery-site-${testId}`,
+			adapterName: `discovery-adapter-${testId}`,
+			url: "https://test-site.example.com",
+			listUrl: "https://test-site.example.com/list",
+			cron: "0 * * * *",
+			enabled: true,
+		});
+
+		const res = await app.inject({
+			method: "POST",
+			url: "/api/v1/scraper/trigger",
+			payload: { siteName: `discovery-site-${testId}`, legacy: "acg" },
+		});
+		expect(res.statusCode).toBe(200);
+		expect(res.json().ok).toBe(true);
 	});
 });
