@@ -1,3 +1,4 @@
+// DEV SCAFFOLD: Copy this file to create a new site adapter. Not imported by production code.
 /**
  * template-adapter.ts — 新站点适配器开发脚手架。
  *

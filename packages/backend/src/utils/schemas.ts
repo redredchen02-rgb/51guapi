@@ -12,10 +12,15 @@ export const ErrorBody = Type.Object({
 export const SettingsSchema = Type.Object({
 	endpoint: Type.String(),
 	model: Type.String(),
+	fallbackModel: Type.Optional(Type.String()),
 	promptTemplate: Type.Optional(Type.String()),
-	facts: Type.Optional(Type.String()),
-	fewShot: Type.Optional(Type.String()),
-	extraInstructions: Type.Optional(Type.String()),
+	fewShotPairs: Type.Optional(
+		Type.Array(Type.Object({ input: Type.String(), output: Type.String() })),
+	),
+	recommendedTags: Type.Optional(Type.Array(Type.String())),
+	backendUrl: Type.Optional(Type.String()),
+	reviewCriteriaPrompt: Type.Optional(Type.String()),
+	webSearchEnabled: Type.Optional(Type.Boolean()),
 });
 
 // ── FactsBlock ────────────────────────────────────────
