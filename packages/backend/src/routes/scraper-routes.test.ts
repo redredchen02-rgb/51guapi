@@ -493,4 +493,81 @@ describe("POST /api/v1/scraper/trigger — 缺少覆蓋分支", () => {
 		expect(res.statusCode).toBe(200);
 		expect(res.json().ok).toBe(true);
 	});
+
+	it("list-discovery: fetchList 拋錯 → 500 Failed to fetch list (lines 111-112)", async () => {
+		const throwAdapter: SiteAdapter = {
+			name: `throw-adapter-${testId}`,
+			fetchContent: vi.fn(async () => MOCK_RAW),
+			fetchList: vi.fn(async () => {
+				throw new Error("network failure");
+			}),
+		};
+		scraperConfig.registerAdapter(throwAdapter);
+		scraperConfig.addSiteConfig({
+			siteName: `throw-list-site-${testId}`,
+			adapterName: `throw-adapter-${testId}`,
+			url: "https://test-site.example.com",
+			listUrl: "https://test-site.example.com/list",
+			cron: "0 * * * *",
+			enabled: true,
+		});
+
+		const res = await app.inject({
+			method: "POST",
+			url: "/api/v1/scraper/trigger",
+			payload: { siteName: `throw-list-site-${testId}`, legacy: "acg" },
+		});
+		expect(res.statusCode).toBe(500);
+		expect(res.json().error).toMatch(/Failed to fetch list/);
+	});
+
+	it("list-discovery: fetchList 返回空陣列 → 404 No articles found (line 119)", async () => {
+		const emptyAdapter: SiteAdapter = {
+			name: `empty-list-adapter-${testId}`,
+			fetchContent: vi.fn(async () => MOCK_RAW),
+			fetchList: vi.fn(async () => []),
+		};
+		scraperConfig.registerAdapter(emptyAdapter);
+		scraperConfig.addSiteConfig({
+			siteName: `empty-list-site-${testId}`,
+			adapterName: `empty-list-adapter-${testId}`,
+			url: "https://test-site.example.com",
+			listUrl: "https://test-site.example.com/list",
+			cron: "0 * * * *",
+			enabled: true,
+		});
+
+		const res = await app.inject({
+			method: "POST",
+			url: "/api/v1/scraper/trigger",
+			payload: { siteName: `empty-list-site-${testId}`, legacy: "acg" },
+		});
+		expect(res.statusCode).toBe(404);
+		expect(res.json().error).toMatch(/No articles found/);
+	});
+
+	it("list-discovery: fetchList 返回含空字串的陣列 → pick 為 falsy → 500 (line 128)", async () => {
+		const falsyAdapter: SiteAdapter = {
+			name: `falsy-adapter-${testId}`,
+			fetchContent: vi.fn(async () => MOCK_RAW),
+			fetchList: vi.fn(async () => [""]),
+		};
+		scraperConfig.registerAdapter(falsyAdapter);
+		scraperConfig.addSiteConfig({
+			siteName: `falsy-pick-site-${testId}`,
+			adapterName: `falsy-adapter-${testId}`,
+			url: "https://test-site.example.com",
+			listUrl: "https://test-site.example.com/list",
+			cron: "0 * * * *",
+			enabled: true,
+		});
+
+		const res = await app.inject({
+			method: "POST",
+			url: "/api/v1/scraper/trigger",
+			payload: { siteName: `falsy-pick-site-${testId}`, legacy: "acg" },
+		});
+		expect(res.statusCode).toBe(500);
+		expect(res.json().error).toMatch(/empty discovery result/);
+	});
 });

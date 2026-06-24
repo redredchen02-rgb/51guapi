@@ -105,6 +105,28 @@ describe("normalizeChannelHost", () => {
 		expect(normalizeChannelHost("").error).toBeTruthy();
 		expect(normalizeChannelHost("   ").error).toBeTruthy();
 	});
+
+	it("https URL 解析失敗（格式錯誤）→ 非法 URL (line 121)", () => {
+		expect(normalizeChannelHost("https://[invalid-ipv6").error).toMatch(
+			/非法 URL/,
+		);
+	});
+
+	it("https URL 含憑證 (user:pass@) → 拒絕 (line 128)", () => {
+		expect(normalizeChannelHost("https://user:pass@example.com").error).toMatch(
+			/凭证/,
+		);
+	});
+
+	it("IPv6 字面量 ([::1]) → 禁止 IP 字面量 (line 145)", () => {
+		expect(normalizeChannelHost("https://[::1]:8080").error).toMatch(
+			/IP 字面量/,
+		);
+	});
+
+	it("單標籤域名（無點）→ 非法域名格式 (line 163)", () => {
+		expect(normalizeChannelHost("localhost").error).toMatch(/非法域名格式/);
+	});
 });
 
 describe("assertHostResolvesPublic", () => {

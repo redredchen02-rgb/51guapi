@@ -103,6 +103,12 @@ describe("assertUrlSafe", () => {
 			URL,
 		);
 	});
+
+	it("rejects a totally unparseable URL → Invalid URL (line 146)", async () => {
+		await expect(assertUrlSafe("not-a-valid-url")).rejects.toBeInstanceOf(
+			SsrfError,
+		);
+	});
 });
 
 describe("safeFetch", () => {
